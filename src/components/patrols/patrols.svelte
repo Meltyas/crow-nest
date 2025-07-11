@@ -1,8 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { GuardStat } from '@/guard/stats';
-  import { getStats } from '@/guard/stats';
-  import { getPatrols, savePatrols, type Patrol, type PatrolSkill } from '@/patrol/patrols';
+  import { getStats } from "@/guard/stats";
+  import {
+    getPatrols,
+    savePatrols,
+    type Patrol,
+    type PatrolSkill,
+    type PatrolMember,
+  } from "@/patrol/patrols";
 
   let stats: GuardStat[] = [];
   let patrols: Patrol[] = [];
@@ -19,7 +25,14 @@
   function addPatrol() {
     patrols = [
       ...patrols,
-      { id: crypto.randomUUID(), officer: '', soldiers: [], modifier: 0, skills: [] }
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        officer: null,
+        soldiers: [],
+        modifier: 0,
+        skills: [],
+      },
     ];
     persist();
   }
@@ -31,23 +44,42 @@
   }
 
   function onDropOfficer(event: DragEvent, patrol: Patrol) {
-    const data = event.dataTransfer?.getData('text/plain');
-    if (data) {
-      patrol.officer = data;
-      persist();
+    const uuid = event.dataTransfer?.getData('text/plain');
+    if (!uuid) return;
+    const doc = fromUuidSync(uuid as string);
+    if (!doc) return;
+    const actor = doc instanceof Token ? doc.actor : doc;
+    if (!actor) return;
+
+    patrol.officer = {
+      id: actor.id ?? '',
+      name: actor.name ?? '',
+      img: actor.img ?? '',
+    };
+
+    if (!patrol.name) {
+      patrol.name = `Patrulla de ${actor.name}`;
     }
+    persist();
   }
 
   function onDropSoldier(event: DragEvent, patrol: Patrol) {
-    const data = event.dataTransfer?.getData('text/plain');
-    if (data) {
-      patrol.soldiers = [...patrol.soldiers, data];
-      persist();
-    }
+    const uuid = event.dataTransfer?.getData('text/plain');
+    if (!uuid) return;
+    const doc = fromUuidSync(uuid as string);
+    if (!doc) return;
+    const actor = doc instanceof Token ? doc.actor : doc;
+    if (!actor) return;
+
+    patrol.soldiers = [
+      ...patrol.soldiers,
+      { id: actor.id ?? '', name: actor.name ?? '', img: actor.img ?? '' },
+    ];
+    persist();
   }
 
   function addSkill(patrol: Patrol) {
-    const skill: PatrolSkill = { img: '', description: '' };
+    const skill: PatrolSkill = { name: '', description: '', img: '' };
     patrol.skills = [...patrol.skills, skill];
     persist();
   }
@@ -104,12 +136,19 @@
 <div class="patrols">
   {#each patrols as patrol, i}
     <div class="patrol">
+      <strong>{patrol.name}</strong>
       <div
         class="drop-zone officer"
         on:dragover|preventDefault
         on:drop={(e) => onDropOfficer(e, patrol)}
       >
-        Oficial: {patrol.officer || 'Arrastra un actor aquí'}
+        {#if patrol.officer}
+          <img src={patrol.officer.img} alt={patrol.officer.name} width="32" height="32" />
+          <span>{patrol.officer.name}</span>
+          <button on:click={() => console.log(patrol.officer)}>Info</button>
+        {:else}
+          <em>Arrastra un oficial aquí</em>
+        {/if}
       </div>
       <div
         class="drop-zone"
@@ -117,7 +156,10 @@
         on:drop={(e) => onDropSoldier(e, patrol)}
       >
         {#each patrol.soldiers as s}
-          <div>{s}</div>
+          <div>
+            <img src={s.img} alt={s.name} width="24" height="24" /> {s.name}
+            <button on:click={() => console.log(s)}>Info</button>
+          </div>
         {/each}
         {#if patrol.soldiers.length === 0}
           <em>Arrastra soldados aquí</em>
@@ -141,8 +183,9 @@
           <div class="skill">
             <img src={sk.img} alt="" />
             <input placeholder="Imagen" bind:value={sk.img} on:change={persist} />
+            <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
             <input placeholder="Descripción" bind:value={sk.description} on:change={persist} />
-            <button on:click={() => removeSkill(patrol, j)}>X</button>
+            <button on:click={() => removeSkill(patrol, j)}>Quitar</button>
           </div>
         {/each}
         <button on:click={() => addSkill(patrol)}>Añadir Habilidad</button>

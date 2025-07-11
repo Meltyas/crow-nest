@@ -252,6 +252,13 @@
     height: 24px;
   }
 
+  .stat-img {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
   .stat-container {
     display: flex;
     align-items: center;
@@ -332,11 +339,9 @@
   <div class="stat-container">
       {#each stats as stat, i}
     <div class="stat">
-      <img
-        src={stat.img || 'icons/svg/shield.svg'}
-        alt="stat"
-        on:click={() => onImageClick(stat)}
-      />
+      <button class="stat-img" on:click={() => onImageClick(stat)}>
+        <img src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+      </button>
       <input
         id={`file-${stat.key}`}
         type="file"
@@ -360,7 +365,10 @@
           <button on:click={() => removeStat(i)}>Quitar</button>
         </div>
       {:else}
-        <div class="stat-view">{stat.name}: {stat.value}</div>
+        <div class="stat-view">
+          <div class="stat-name">{stat.name}</div>
+          <div class="stat-value">{stat.value}</div>
+        </div>
       {/if}
 
     </div>
