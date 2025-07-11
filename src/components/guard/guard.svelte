@@ -169,7 +169,15 @@
       );
       const r = new Roll(`1d20 + ${stat.value + bonus}`);
       r.evaluate({ async: false });
-      r.toMessage({ speaker: { alias: 'Guardia' }, flavor: stat.name });
+
+      const lines: string[] = [];
+      for (const m of modifiers) {
+        const v = m.mods[stat.key];
+        if (v) lines.push(`${m.name} ${v > 0 ? '+' : ''}${v}`);
+      }
+
+      const flavor = [stat.name, ...lines].join('<br/>');
+      r.toMessage({ speaker: { alias: 'La Guardia' }, flavor });
     }
   }
 
