@@ -30,10 +30,10 @@
     const left = desiredLeft;
 
     let top = wrap.top - popup.top - tip.height - 4;
-    if (wrap.top + top < popup.top) {
+    if (top < 0) {
       top = wrap.top - popup.top + wrap.height + 4;
     }
-    if (wrap.top + top + tip.height > popup.bottom) {
+    if (top + tip.height > popup.height) {
       top = popup.height - tip.height;
     }
 
@@ -52,11 +52,9 @@
 
 <div class="tooltip-wrapper" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>
   <slot></slot>
-  {#if show}
-    <div class="tooltip" bind:this={tooltipEl}>
-      {@html content}
-    </div>
-  {/if}
+  <div class="tooltip" bind:this={tooltipEl} style:display={show ? undefined : 'none'}>
+    {@html content}
+  </div>
 </div>
 
 <style>
