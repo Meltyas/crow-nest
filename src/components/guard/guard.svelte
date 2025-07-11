@@ -1,41 +1,43 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { GuardStat, LogEntry } from '@/guard/stats';
+  import { getStats, getLog, saveStats } from '@/guard/stats';
 
-  interface Stat {
-    id: string;
-    name: string;
-    value: number;
-    img?: string;
-  }
+  interface Stat extends GuardStat {}
 
   let stats: Stat[] = [];
-  let log: string[] = [];
+  let log: LogEntry[] = [];
   let showLog = false;
   let addingStat = false;
   let editing = false;
-  let newStat: Stat = { id: '', name: '', value: 0 };
+  let newStat: Stat = { key: '', name: '', value: 0 };
 
   onMount(() => {
-    const savedStats = localStorage.getItem('crowGuardStats');
-    if (savedStats) stats = JSON.parse(savedStats);
-    const savedLog = localStorage.getItem('crowGuardLog');
-    if (savedLog) log = JSON.parse(savedLog);
+    stats = getStats() as Stat[];
+    log = getLog();
   });
 
-  function persist() {
-    localStorage.setItem('crowGuardStats', JSON.stringify(stats));
-    localStorage.setItem('crowGuardLog', JSON.stringify(log));
+  async function persist() {
+    await saveStats(stats, log);
   }
 
   function openAddStat() {
-    newStat = { id: crypto.randomUUID(), name: '', value: 0 };
+    newStat = { key: crypto.randomUUID(), name: '', value: 0 };
     addingStat = true;
   }
 
-  function confirmAddStat() {
+  async function confirmAddStat() {
     stats = [...stats, { ...newStat }];
-    log = [...log, `Añadido stat ${newStat.id}`];
-    persist();
+    log = [
+      ...log,
+      {
+        user: game.user?.name ?? 'unknown',
+        time: Date.now(),
+        action: `create ${newStat.key}`,
+        next: { ...newStat },
+      },
+    ];
+    await persist();
     addingStat = false;
   }
 
@@ -43,16 +45,31 @@
     addingStat = false;
   }
 
-  function removeStat(index: number) {
+  async function removeStat(index: number) {
     const [removed] = stats.splice(index, 1);
     stats = [...stats];
-    log = [...log, `Eliminado stat ${removed.id}`];
-    persist();
+    log = [
+      ...log,
+      {
+        user: game.user?.name ?? 'unknown',
+        time: Date.now(),
+        action: `delete ${removed.key}`,
+        previous: removed,
+      },
+    ];
+    await persist();
   }
 
-  function updateStat() {
-    log = [...log, 'Modificados stats'];
-    persist();
+  async function updateStat() {
+    log = [
+      ...log,
+      {
+        user: game.user?.name ?? 'unknown',
+        time: Date.now(),
+        action: 'edit',
+      },
+    ];
+    await persist();
   }
 
   function toggleLog() {
@@ -65,7 +82,7 @@
 
   function onImageClick(stat: Stat) {
     if (editing) {
-      const input = document.getElementById(`file-${stat.id}`) as HTMLInputElement | null;
+      const input = document.getElementById(`file-${stat.key}`) as HTMLInputElement | null;
       input?.click();
     } else {
       const r = new Roll(`1d20 + ${stat.value}`);
@@ -156,7 +173,7 @@
         on:click={() => onImageClick(stat)}
       />
       <input
-        id={`file-${stat.id}`}
+        id={`file-${stat.key}`}
         type="file"
         accept="image/*"
         on:change={(e) => onFileChange(stat, e)}
@@ -190,7 +207,7 @@
   {#if showLog}
     <div class="log">
       {#each log as entry}
-        <div>{entry}</div>
+        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
       {/each}
     </div>
   {/if}
