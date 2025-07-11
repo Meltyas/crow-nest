@@ -179,7 +179,18 @@
     const total = totalStat(stat, group);
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate({ async: false });
-    r.toMessage({ speaker: { alias: group.officer || labels.groupSingular }, flavor: stat.name });
+
+    const lines: string[] = [];
+    for (const m of modifiers) {
+      const v = m.mods[stat.key];
+      if (v) lines.push(`${m.name} ${v > 0 ? '+' : ''}${v}`);
+    }
+    const groupMod = group.mods[stat.key];
+    if (groupMod) lines.push(`Modificador de la patrulla ${groupMod > 0 ? '+' : ''}${groupMod}`);
+
+    const flavor = [stat.name, ...lines].join('<br/>');
+    const alias = group.name || (group.officer ? `La Patrulla de ${group.officer.name}` : 'La Patrulla');
+    r.toMessage({ speaker: { alias }, flavor });
   }
 </script>
 
