@@ -22,7 +22,10 @@ export default defineConfig({
     },
   },
   plugins: [
-    svelte({ configFile: path.resolve(__dirname, "svelte.config.js") }),
+    svelte({
+      configFile: path.resolve(__dirname, "svelte.config.js"),
+      emitCss: false,
+    }),
   ],
   css: {
     postcss: "../postcss.config.cjs",

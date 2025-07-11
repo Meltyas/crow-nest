@@ -1,4 +1,5 @@
 import Hud from "@/components/hud/hud.svelte";
+import "./styles/global.pcss";
 
 Hooks.once("init", () => {
   console.log("Crow Nest | Initializing module");
