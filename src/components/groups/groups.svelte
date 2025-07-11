@@ -2,33 +2,37 @@
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getStats, getModifiers } from "@/guard/stats";
   import Tooltip from '@/components/tooltip.svelte';
-  import {
-    getPatrols,
-    savePatrols,
-    type Patrol,
-    type PatrolSkill,
-    type PatrolMember
-  } from "@/patrol/patrols";
+  import type { Group, GroupSkill, GroupMember } from "@/shared/group";
   import { onMount } from 'svelte';
 
+  export let getGroups: () => Group[];
+  export let saveGroups: (groups: Group[]) => Promise<void>;
+  export let labels = {
+    groupSingular: 'Patrulla',
+    addGroup: 'Añadir Patrulla',
+    removeGroup: 'Eliminar Patrulla',
+    officerDrop: 'Arrastra un oficial aquí',
+    soldierDrop: 'Arrastra soldados aquí',
+  };
+
   let stats: GuardStat[] = [];
-  let patrols: Patrol[] = [];
+  let groups: Group[] = [];
   let modifiers: GuardModifier[] = [];
   let editingMods = false;
 
   onMount(() => {
     stats = getStats() as GuardStat[];
-    patrols = getPatrols();
+    groups = getGroups();
     modifiers = getModifiers();
   });
 
   async function persist() {
-    await savePatrols(patrols);
+    await saveGroups(groups);
   }
 
-  function addPatrol() {
-    patrols = [
-      ...patrols,
+  function addGroup() {
+    groups = [
+      ...groups,
       {
         id: crypto.randomUUID(),
         name: '',
@@ -41,13 +45,13 @@
     persist();
   }
 
-  function removePatrol(index: number) {
-    patrols.splice(index, 1);
-    patrols = [...patrols];
+  function removeGroup(index: number) {
+    groups.splice(index, 1);
+    groups = [...groups];
     persist();
   }
 
-  function onDragMember(event: DragEvent, member: PatrolMember | null) {
+  function onDragMember(event: DragEvent, member: GroupMember | null) {
     if (!member) return;
     const payload = {
       type: 'Actor',
@@ -56,10 +60,10 @@
     event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
   }
 
-  function onDragDeploy(event: DragEvent, patrol: Patrol) {
+  function onDragDeploy(event: DragEvent, group: Group) {
     const payload = {
       type: 'CrowPatrol',
-      patrolId: patrol.id,
+      patrolId: group.id,
     };
     event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
   }
@@ -67,70 +71,64 @@
   async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
     event.preventDefault();
     const raw = event.dataTransfer?.getData("text/plain");
-    console.log("🎯 Raw dropped data:", raw);
     if (!raw) return null;
 
     try {
       const data = JSON.parse(raw);
-      console.log("✅ Parsed drop data:", data);
-
       if (data?.uuid) {
         const droppedActor = await fromUuid(data.uuid);
-        console.log("🎭 Dropped Actor:", droppedActor);
-
         if (droppedActor instanceof Actor) {
           return droppedActor;
         }
       }
     } catch (err) {
-      console.error("❌ Failed to parse drop data:", err);
+      console.error("Failed to parse drop data:", err);
     }
 
     return null;
   }
 
-  async function onDropOfficer(event: DragEvent, patrol: Patrol) {
+  async function onDropOfficer(event: DragEvent, group: Group) {
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    patrol.officer = {
+    group.officer = {
       id: actor.id,
       name: actor.name,
       img: actor.img,
     };
 
-    if (!patrol.name) {
-      patrol.name = `Patrulla de ${actor.name}`;
+    if (!group.name) {
+      group.name = `${labels.groupSingular} de ${actor.name}`;
     }
 
-    patrols = [...patrols];
+    groups = [...groups];
     persist();
   }
 
-
-  async function onDropSoldier(event: DragEvent, patrol: Patrol) {
+  async function onDropSoldier(event: DragEvent, group: Group) {
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    patrol.soldiers = [
-      ...patrol.soldiers,
+    group.soldiers = [
+      ...group.soldiers,
       { id: actor.id, name: actor.name, img: actor.img },
     ];
-    patrols = [...patrols];
+    groups = [...groups];
     persist();
   }
 
-  function addSkill(patrol: Patrol) {
-    const skill: PatrolSkill = { name: '', description: '', img: '' };
-    patrol.skills = [...patrol.skills, skill];
-    patrols = [...patrols];
+  function addSkill(group: Group) {
+    const skill: GroupSkill = { name: '', description: '', img: '' };
+    group.skills = [...group.skills, skill];
+    groups = [...groups];
     persist();
   }
 
-  function removeSkill(patrol: Patrol, index: number) {
-    patrol.skills.splice(index, 1);
-    patrol.skills = [...patrol.skills];
-    patrols = [...patrols];
+  function removeSkill(group: Group, index: number) {
+    group.skills.splice(index, 1);
+    group.skills = [...group.skills];
+    groups = [...groups];
     persist();
   }
 
@@ -138,20 +136,20 @@
     return modifiers.reduce((acc, m) => acc + (m.mods[key] || 0), 0);
   }
 
-  function totalStat(stat: GuardStat, patrol: Patrol): number {
-    return stat.value + guardBonus(stat.key) + (patrol.mods[stat.key] || 0);
+  function totalStat(stat: GuardStat, group: Group): number {
+    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0);
   }
 
-  function roll(stat: GuardStat, patrol: Patrol) {
-    const total = totalStat(stat, patrol);
+  function roll(stat: GuardStat, group: Group) {
+    const total = totalStat(stat, group);
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate({ async: false });
-    r.toMessage({ speaker: { alias: patrol.officer || 'Patrol' }, flavor: stat.name });
+    r.toMessage({ speaker: { alias: group.officer || labels.groupSingular }, flavor: stat.name });
   }
 </script>
 
 <style>
-  .patrol {
+  .group {
     border: 1px solid #666;
     padding: 0.5rem;
     margin-bottom: 0.5rem;
@@ -190,7 +188,7 @@
     gap: 0.25rem;
   }
 
-  .patrol-stat {
+  .group-stat {
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -213,41 +211,41 @@
   }
 </style>
 
-<div class="patrols">
-  {#each patrols as patrol, i}
-    <div class="patrol">
-      <strong>{patrol.name}</strong>
+<div class="groups">
+  {#each groups as group, i}
+    <div class="group">
+      <strong>{group.name}</strong>
       <div
         class="drop-zone officer"
         on:dragover|preventDefault
-        on:drop={(e) => onDropOfficer(e, patrol)}
+        on:drop={(e) => onDropOfficer(e, group)}
       >
-        {#if patrol.officer}
+        {#if group.officer}
           <div
             class="member"
             draggable="true"
-            on:dragstart={(e) => onDragMember(e, patrol.officer)}
+            on:dragstart={(e) => onDragMember(e, group.officer)}
           >
             <img
-              src={patrol.officer.img}
-              alt={patrol.officer.name}
+              src={group.officer.img}
+              alt={group.officer.name}
               width="32"
               height="32"
               draggable="true"
             />
-            <span>{patrol.officer.name}</span>
-            <button on:click={() => console.log(patrol.officer)}>Info</button>
+            <span>{group.officer.name}</span>
+            <button on:click={() => console.log(group.officer)}>Info</button>
           </div>
         {:else}
-          <em>Arrastra un oficial aquí</em>
+          <em>{labels.officerDrop}</em>
         {/if}
       </div>
       <div
         class="drop-zone"
         on:dragover|preventDefault
-        on:drop={(e) => onDropSoldier(e, patrol)}
+        on:drop={(e) => onDropSoldier(e, group)}
       >
-        {#each patrol.soldiers as s}
+        {#each group.soldiers as s}
           <div
             class="member"
             draggable="true"
@@ -265,23 +263,23 @@
             <button on:click={() => console.log(s)}>Info</button>
           </div>
         {/each}
-        {#if patrol.soldiers.length === 0}
-          <em>Arrastra soldados aquí</em>
+        {#if group.soldiers.length === 0}
+          <em>{labels.soldierDrop}</em>
         {/if}
       </div>
       <div>
         {#each stats as stat}
-          <div class="patrol-stat">
+          <div class="group-stat">
             <Tooltip content={`<span>${stat.name}</span>`}>
-              <button class="stat-icon" on:click={() => roll(stat, patrol)}>
+              <button class="stat-icon" on:click={() => roll(stat, group)}>
                 <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
               </button>
             </Tooltip>
             {#if editingMods}
-              <input type="number" bind:value={patrol.mods[stat.key]} on:change={persist} />
+              <input type="number" bind:value={group.mods[stat.key]} on:change={persist} />
             {:else}
-              <span>{patrol.mods[stat.key] || 0}</span>
-              <span>({totalStat(stat, patrol)})</span>
+              <span>{group.mods[stat.key] || 0}</span>
+              <span>({totalStat(stat, group)})</span>
             {/if}
           </div>
         {/each}
@@ -291,24 +289,24 @@
       </button>
       <div class="skills">
         <strong>Habilidades</strong>
-        {#each patrol.skills as sk, j}
+        {#each group.skills as sk, j}
           <div class="skill">
             <img src={sk.img} alt="" />
             <input placeholder="Imagen" bind:value={sk.img} on:change={persist} />
             <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
             <input placeholder="Descripción" bind:value={sk.description} on:change={persist} />
-            <button on:click={() => removeSkill(patrol, j)}>Quitar</button>
+            <button on:click={() => removeSkill(group, j)}>Quitar</button>
           </div>
         {/each}
-        <button on:click={() => addSkill(patrol)}>Añadir Habilidad</button>
+        <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
       </div>
       <button
         class="deploy"
         draggable="true"
-        on:dragstart={(e) => onDragDeploy(e, patrol)}
+        on:dragstart={(e) => onDragDeploy(e, group)}
       >Desplegar</button>
-      <button on:click={() => removePatrol(i)}>Eliminar Patrulla</button>
+      <button on:click={() => removeGroup(i)}>{labels.removeGroup}</button>
     </div>
   {/each}
-  <button on:click={addPatrol}>Añadir Patrulla</button>
+  <button on:click={addGroup}>{labels.addGroup}</button>
 </div>
