@@ -7,9 +7,14 @@
   let pos = { x: 0, y: 0 };
   let dragging = false;
   let offset = { x: 0, y: 0 };
+  let size = { width: 800, height: 400 };
+  let resizing = false;
+  let startResize = { x: 0, y: 0, width: 0, height: 0 };
 
   onMount(() => {
     pos = { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 };
+    const saved = localStorage.getItem('crowPopupSize');
+    if (saved) size = JSON.parse(saved);
   });
 
   function onHeaderDown(event: MouseEvent) {
@@ -34,6 +39,33 @@
     dragging = false;
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
+  }
+
+  function onResizeDown(event: MouseEvent) {
+    resizing = true;
+    startResize = {
+      x: event.clientX,
+      y: event.clientY,
+      width: size.width,
+      height: size.height,
+    };
+    window.addEventListener('mousemove', onResizeMove);
+    window.addEventListener('mouseup', onResizeUp);
+  }
+
+  function onResizeMove(event: MouseEvent) {
+    if (!resizing) return;
+    size = {
+      width: Math.max(200, startResize.width + (event.clientX - startResize.x)),
+      height: Math.max(100, startResize.height + (event.clientY - startResize.y)),
+    };
+  }
+
+  function onResizeUp() {
+    resizing = false;
+    localStorage.setItem('crowPopupSize', JSON.stringify(size));
+    window.removeEventListener('mousemove', onResizeMove);
+    window.removeEventListener('mouseup', onResizeUp);
   }
 
   function close() {
@@ -73,19 +105,30 @@
   .content {
     padding: 0.5rem;
   }
+
+  .resizer {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+    background: rgba(255, 255, 255, 0.3);
+  }
 </style>
 
 <div
   class="window-app"
-  style="transform: translate({pos.x}px, {pos.y}px);"
+  style="transform: translate({pos.x}px, {pos.y}px); width: {size.width}px; height: {size.height}px;"
 >
   <header on:mousedown={onHeaderDown}>
     <span>{title}</span>
     <a class="close" on:click={close}>×</a>
   </header>
-  <div class="backdrop">
-    <div class="content">
+  <div class="backdrop" style="height: calc(100% - 1.5rem);">
+    <div class="content" style="height: 100%; overflow: auto;">
       <slot />
     </div>
   </div>
+  <div class="resizer" on:mousedown={onResizeDown}></div>
 </div>

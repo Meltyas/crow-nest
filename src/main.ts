@@ -5,6 +5,7 @@ import {
   SETTING_STATS,
   SETTING_LOG,
   SETTING_MODIFIERS,
+  SETTING_RESOURCES,
 } from "@/constants";
 import "./styles/global.pcss";
 
@@ -23,6 +24,12 @@ Hooks.once("init", () => {
     default: [],
   });
   game.settings.register(MODULE_ID, SETTING_MODIFIERS, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, SETTING_RESOURCES, {
     scope: "world",
     config: false,
     type: Array,

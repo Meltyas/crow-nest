@@ -3,6 +3,7 @@ import {
   SETTING_STATS,
   SETTING_LOG,
   SETTING_MODIFIERS,
+  SETTING_RESOURCES,
 } from "@/constants";
 
 export interface GuardStat {
@@ -25,6 +26,13 @@ export interface GuardModifier {
   name: string;
   img?: string;
   mods: Record<string, number>;
+}
+
+export interface GuardResource {
+  key: string;
+  name: string;
+  value: number;
+  img?: string;
 }
 
 export function getStats(): GuardStat[] {
@@ -50,4 +58,14 @@ export async function saveModifiers(
   modifiers: GuardModifier[]
 ): Promise<void> {
   await game.settings.set(MODULE_ID, SETTING_MODIFIERS, modifiers);
+}
+
+export function getResources(): GuardResource[] {
+  return (
+    game.settings.get(MODULE_ID, SETTING_RESOURCES) as GuardResource[]
+  ) ?? [];
+}
+
+export async function saveResources(resources: GuardResource[]): Promise<void> {
+  await game.settings.set(MODULE_ID, SETTING_RESOURCES, resources);
 }

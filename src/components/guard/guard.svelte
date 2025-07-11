@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { GuardStat, LogEntry, GuardModifier } from '@/guard/stats';
+  import type { GuardStat, LogEntry, GuardModifier, GuardResource } from '@/guard/stats';
   import {
     getStats,
     getLog,
     saveStats,
     getModifiers,
     saveModifiers,
+    getResources,
+    saveResources,
   } from '@/guard/stats';
 
   interface Stat extends GuardStat {}
@@ -23,10 +25,15 @@
   let editingMods = false;
   let newModifier: GuardModifier = { key: '', name: '', mods: {} };
 
+  let resources: GuardResource[] = [];
+  let addingResource = false;
+  let newResource: GuardResource = { key: '', name: '', value: 0 };
+
   onMount(() => {
     stats = getStats() as Stat[];
     log = getLog();
     modifiers = getModifiers();
+    resources = getResources();
   });
 
   async function persist() {
@@ -35,6 +42,10 @@
 
   async function persistMods() {
     await saveModifiers(modifiers);
+  }
+
+  async function persistRes() {
+    await saveResources(resources);
   }
 
   function openAddStat() {
@@ -177,6 +188,47 @@
     };
     reader.readAsDataURL(input.files[0]);
   }
+
+  function openAddResource() {
+    newResource = { key: crypto.randomUUID(), name: '', value: 0 };
+    addingResource = true;
+  }
+
+  function cancelAddResource() {
+    addingResource = false;
+  }
+
+  async function confirmAddResource() {
+    resources = [...resources, { ...newResource }];
+    await persistRes();
+    addingResource = false;
+  }
+
+  async function removeResource(index: number) {
+    resources.splice(index, 1);
+    resources = [...resources];
+    await persistRes();
+  }
+
+  async function updateResource() {
+    await persistRes();
+  }
+
+  function onResImageClick(res: GuardResource) {
+    const input = document.getElementById(`res-file-${res.key}`) as HTMLInputElement | null;
+    input?.click();
+  }
+
+  function onResFileChange(res: GuardResource, event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      res.img = String(reader.result);
+      updateResource();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
 </script>
 
 <style>
@@ -249,10 +301,25 @@
   .stat-view {
     font-weight: bold;
   }
+
+  .add-resource-form {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.5rem 0;
+  }
+
+  .resource {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
 </style>
 
 <div class="guard-container">
-  <button on:click={openAddStat} disabled={!editing}>Añadir Stat</button>
+  {#if editing}
+    <button on:click={openAddStat}>Añadir Stat</button>
+  {/if}
   <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
   {#if addingStat}
     <div class="add-stat-form">
@@ -312,7 +379,9 @@
 
   <hr />
   <h3>Modificaciones Situacionales</h3>
-  <button on:click={openAddModifier} disabled={!editingMods}>Añadir Modificador</button>
+  {#if editingMods}
+    <button on:click={openAddModifier}>Añadir Modificador</button>
+  {/if}
   <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
   {#if addingModifier}
     <div class="add-mod-form">
@@ -354,6 +423,28 @@
           {/each}
         </div>
       {/if}
+    </div>
+  {/each}
+
+  <hr />
+  <h3>Recursos</h3>
+  {#if addingResource}
+    <div class="add-resource-form">
+      <input placeholder="Nombre" bind:value={newResource.name} />
+      <input type="number" bind:value={newResource.value} />
+      <button on:click={confirmAddResource}>Agregar</button>
+      <button on:click={cancelAddResource}>Cancelar</button>
+    </div>
+  {/if}
+  <button on:click={openAddResource}>Añadir Recurso</button>
+
+  {#each resources as res, i}
+    <div class="resource">
+      <img src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => onResImageClick(res)} />
+      <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
+      <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
+      <input type="number" bind:value={res.value} on:change={updateResource} />
+      <button on:click={() => removeResource(i)}>Quitar</button>
     </div>
   {/each}
 </div>
