@@ -36,7 +36,7 @@
 </script>
 
 <style>
-  .hud {
+  .hud-crow {
     position: fixed;
     top: 0;
     left: 0;
@@ -51,7 +51,7 @@
 </style>
 
 <div
-  class="hud"
+  class="hud-crow"
   style="transform: translate({pos.x}px, {pos.y}px);"
   on:mousedown={onMouseDown}
 >
