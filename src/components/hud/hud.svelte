@@ -1,10 +1,23 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Popup from "@/components/popup/popup.svelte";
 
-  let pos = { x: 20, y: 20 };
+  let pos = { x: 0, y: 0 };
   let isDragging = false;
   let offset = { x: 0, y: 0 };
   let showPopup = false;
+
+  onMount(() => {
+    const saved = localStorage.getItem("crowHudPos");
+    if (saved) {
+      pos = JSON.parse(saved);
+    } else {
+      pos = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      };
+    }
+  });
 
   function onMouseDown(event: MouseEvent) {
     isDragging = true;
@@ -26,6 +39,7 @@
 
   function onMouseUp() {
     isDragging = false;
+    localStorage.setItem("crowHudPos", JSON.stringify(pos));
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
   }
@@ -45,16 +59,26 @@
     padding: 0.5rem;
     border-radius: 0.5rem;
     user-select: none;
-    cursor: move;
     z-index: 1000;
+    width: max-content;
+  }
+
+  .hud-crow.expanded {
+    background: rgba(0, 0, 0, 1);
+  }
+
+  .drag-area {
+    cursor: move;
+    margin-bottom: 0.25rem;
   }
 </style>
 
 <div
   class="hud-crow"
+  class:expanded={showPopup}
   style="transform: translate({pos.x}px, {pos.y}px);"
-  on:mousedown={onMouseDown}
 >
+  <div class="drag-area" on:mousedown={onMouseDown}>Crow Nest</div>
   <button on:click|stopPropagation={togglePopup}>Abrir Popup</button>
 </div>
 
