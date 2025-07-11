@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import type { GuardStat } from '@/guard/stats';
   import { getStats } from "@/guard/stats";
   import {
     getPatrols,
     savePatrols,
     type Patrol,
-    type PatrolSkill,
-    type PatrolMember,
+    type PatrolSkill
   } from "@/patrol/patrols";
+  import { onMount } from 'svelte';
 
   let stats: GuardStat[] = [];
   let patrols: Patrol[] = [];
@@ -54,23 +53,42 @@
     console.log('Dropped actor', { uuid, actor });
     return actor;
   }
+async function onDropOfficer(event: DragEvent, patrol: Patrol) {
+  event.preventDefault();
 
-  function onDropOfficer(event: DragEvent, patrol: Patrol) {
-    const actor = actorFromDrop(event);
-    if (!actor) return;
+  const raw = event.dataTransfer?.getData("text/plain");
+  console.log("🎯 Raw dropped data:", raw);
 
-    patrol.officer = {
-      id: actor.id ?? '',
-      name: actor.name ?? '',
-      img: actor.img ?? '',
-    };
+  if (!raw) return;
 
-    if (!patrol.name) {
-      patrol.name = `Patrulla de ${actor.name}`;
+  try {
+    const data = JSON.parse(raw);
+    console.log("✅ Parsed drop data:", data);
+
+    if (data?.uuid) {
+      const droppedActor = await fromUuid(data.uuid);
+      console.log("🎭 Dropped Actor:", droppedActor);
+
+      if (!(droppedActor instanceof Actor)) return;
+
+      patrol.officer = {
+        id: droppedActor.id,
+        name: droppedActor.name,
+        img: droppedActor.img,
+      };
+
+      if (!patrol.name) {
+        patrol.name = `Patrulla de ${droppedActor.name}`;
+      }
+
+      patrols = [...patrols];
+      persist();
     }
-    patrols = [...patrols];
-    persist();
+  } catch (err) {
+    console.error("❌ Failed to parse drop data:", err);
   }
+}
+
 
   function onDropSoldier(event: DragEvent, patrol: Patrol) {
     const actor = actorFromDrop(event);
