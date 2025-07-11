@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getStats, getModifiers } from "@/guard/stats";
+  import Tooltip from '@/components/tooltip.svelte';
   import {
     getPatrols,
     savePatrols,
@@ -13,6 +14,7 @@
   let stats: GuardStat[] = [];
   let patrols: Patrol[] = [];
   let modifiers: GuardModifier[] = [];
+  let editingMods = false;
 
   onMount(() => {
     stats = getStats() as GuardStat[];
@@ -32,7 +34,7 @@
         name: '',
         officer: null,
         soldiers: [],
-        modifier: 0,
+        mods: {},
         skills: [],
       },
     ];
@@ -137,7 +139,7 @@
   }
 
   function totalStat(stat: GuardStat, patrol: Patrol): number {
-    return stat.value + guardBonus(stat.key) + patrol.modifier;
+    return stat.value + guardBonus(stat.key) + (patrol.mods[stat.key] || 0);
   }
 
   function roll(stat: GuardStat, patrol: Patrol) {
@@ -199,7 +201,6 @@
   }
 
   .stat-icon {
-    position: relative;
     background: none;
     border: none;
     padding: 0;
@@ -209,25 +210,6 @@
   .stat-icon img {
     width: 24px;
     height: 24px;
-  }
-
-  .stat-icon .tooltip {
-    visibility: hidden;
-    background: #333;
-    color: white;
-    text-align: center;
-    border-radius: 4px;
-    padding: 0.25rem;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-  }
-
-  .stat-icon:hover .tooltip {
-    visibility: visible;
   }
 </style>
 
@@ -271,14 +253,15 @@
             draggable="true"
             on:dragstart={(e) => onDragMember(e, s)}
           >
-            <img
-              src={s.img}
-              alt={s.name}
-              width="24"
-              height="24"
-              draggable="true"
-            />
-            {s.name}
+            <Tooltip content={s.name}>
+              <img
+                src={s.img}
+                alt={s.name}
+                width="24"
+                height="24"
+                draggable="true"
+              />
+            </Tooltip>
             <button on:click={() => console.log(s)}>Info</button>
           </div>
         {/each}
@@ -287,21 +270,25 @@
         {/if}
       </div>
       <div>
-        <label>Modificador</label>
-        <input type="number" bind:value={patrol.modifier} on:change={persist} />
-      </div>
-      <div>
         {#each stats as stat}
           <div class="patrol-stat">
-            <button class="stat-icon" on:click={() => roll(stat, patrol)}>
-              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-              <span class="tooltip">{stat.name}</span>
-            </button>
-            <span>{patrol.modifier}</span>
-            <span>({totalStat(stat, patrol)})</span>
+            <Tooltip content={stat.name}>
+              <button class="stat-icon" on:click={() => roll(stat, patrol)}>
+                <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+              </button>
+            </Tooltip>
+            {#if editingMods}
+              <input type="number" bind:value={patrol.mods[stat.key]} on:change={persist} />
+            {:else}
+              <span>{patrol.mods[stat.key] || 0}</span>
+              <span>({totalStat(stat, patrol)})</span>
+            {/if}
           </div>
         {/each}
       </div>
+      <button on:click={() => (editingMods = !editingMods)}>
+        {editingMods ? 'Guardar Mods' : 'Editar Mods'}
+      </button>
       <div class="skills">
         <strong>Habilidades</strong>
         {#each patrol.skills as sk, j}

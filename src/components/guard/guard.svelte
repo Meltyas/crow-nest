@@ -10,6 +10,7 @@
     saveStats,
   } from '@/guard/stats';
   import { onMount } from 'svelte';
+  import Tooltip from '@/components/tooltip.svelte';
 
   interface Stat extends GuardStat {}
 
@@ -23,7 +24,7 @@
   let modifiers: GuardModifier[] = [];
   let addingModifier = false;
   let editingMods = false;
-  let newModifier: GuardModifier = { key: '', name: '', mods: {} };
+  let newModifier: GuardModifier = { key: '', name: '', description: '', mods: {} };
 
   let resources: GuardResource[] = [];
   let addingResource = false;
@@ -100,7 +101,7 @@
   }
 
   function openAddModifier() {
-    newModifier = { key: crypto.randomUUID(), name: '', mods: {} };
+    newModifier = { key: crypto.randomUUID(), name: '', description: '', mods: {} };
     addingModifier = true;
   }
 
@@ -131,6 +132,18 @@
       ),
     }));
     await persistMods();
+  }
+
+  function modChanges(mod: GuardModifier): string {
+    return Object.entries(mod.mods)
+      .map(([k, v]) => {
+        const stat = stats.find((s) => s.key === k);
+        if (!stat) return '';
+        const val = Number(v) > 0 ? `+${v}` : `${v}`;
+        return `${stat.name}: ${val}`;
+      })
+      .filter(Boolean)
+      .join(', ');
   }
 
   function toggleEditingMods() {
@@ -410,6 +423,7 @@
   {#if addingModifier}
     <div class="add-mod-form">
       <input placeholder="Nombre" bind:value={newModifier.name} />
+      <input placeholder="Descripción" bind:value={newModifier.description} />
       {#each stats as stat}
         <div class="modifier-values">
           <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
@@ -423,11 +437,14 @@
   <div class="modifier-container">
   {#each modifiers as mod, i}
     <div class="modifier">
-      <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+      <Tooltip content={`${mod.name}: ${mod.description ?? ''}`}> 
+        <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+      </Tooltip>
       <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
       {#if editingMods}
         <div class="modifier-edit">
           <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
+          <input placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
           {#each stats as stat}
             <div class="modifier-values">
               <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
@@ -437,15 +454,16 @@
           <button on:click={() => removeModifier(i)}>Quitar</button>
         </div>
       {:else}
-        <div>{mod.name}</div>
-        <div class="modifier-values">
-          {#each Object.entries(mod.mods) as [k,v]}
-            {#if stats.find(s => s.key === k)}
-              <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
-              <span>{v>0 ? '+' : ''}{v}</span>
-            {/if}
-          {/each}
-        </div>
+        <Tooltip content={modChanges(mod)}>
+          <div class="modifier-values">
+            {#each Object.entries(mod.mods) as [k,v]}
+              {#if stats.find(s => s.key === k)}
+                <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
+                <span>{v>0 ? '+' : ''}{v}</span>
+              {/if}
+            {/each}
+          </div>
+        </Tooltip>
       {/if}
     </div>
   {/each}
