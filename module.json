@@ -1,21 +1,11 @@
 {
-  "name": "crow-nest",
+  "id": "crow-nest",
   "title": "Crow Nest",
-  "description": "Crow Nest: Persistent guard and patrol management system for Foundry VTT.",
+  "description": "Persistent guard and patrol management system for Foundry VTT.",
   "version": "0.1.0",
   "author": "Your Name",
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "11",
-  "scripts": ["dist/main.js"],
-  "styles": ["dist/global.css"],
-  "languages": [
-    {
-      "lang": "es",
-      "name": "Español",
-      "path": "static/lang/es.json"
-    }
-  ],
-  "url": "https://github.com/your-name/crow-nest",
-  "manifest": "https://yourdomain.com/foundryvtt/crow-nest/module.json",
-  "download": "https://yourdomain.com/foundryvtt/crow-nest/crow-nest.zip"
+  "type": "module",
+  "scripts": ["dist/main.js"]
 }
