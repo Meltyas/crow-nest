@@ -9,24 +9,26 @@
     await tick();
     if (!tooltipEl || !wrapperEl) return;
     const wrap = wrapperEl.getBoundingClientRect();
+    const container = wrapperEl.closest('.window-app') || document.body;
+    const popup = (container as HTMLElement).getBoundingClientRect();
 
     const center = wrap.left + wrap.width / 2;
-    const availableLeft = center;
-    const availableRight = window.innerWidth - center;
-    const maxWidth = 2 * Math.min(availableLeft, availableRight) - 8;
-    tooltipEl.style.maxWidth = `${maxWidth}px`;
+    tooltipEl.style.maxWidth = `${popup.width - 8}px`;
 
     const tip = tooltipEl.getBoundingClientRect();
-    const desiredLeftViewport = center - tip.width / 2;
-    const clampedLeftViewport = Math.min(
-      Math.max(desiredLeftViewport, 0),
-      window.innerWidth - tip.width
+    let desiredLeft = center - tip.width / 2;
+    desiredLeft = Math.min(
+      Math.max(desiredLeft, popup.left),
+      popup.right - tip.width
     );
-    const left = clampedLeftViewport - wrap.left;
+    const left = desiredLeft - wrap.left;
 
     let top = -tip.height - 4;
-    if (top < -wrap.top) {
+    if (wrap.top + top < popup.top) {
       top = wrap.height + 4;
+    }
+    if (wrap.top + top + tip.height > popup.bottom) {
+      top = popup.bottom - wrap.top - tip.height;
     }
 
     tooltipEl.style.left = `${left}px`;
