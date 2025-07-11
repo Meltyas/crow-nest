@@ -17,12 +17,14 @@ export interface Patrol {
   name: string;
   officer: PatrolMember | null;
   soldiers: PatrolMember[];
-  modifier: number;
+  mods: Record<string, number>;
   skills: PatrolSkill[];
 }
 
 export function getPatrols(): Patrol[] {
-  return (game.settings.get(MODULE_ID, SETTING_PATROLS) as Patrol[]) ?? [];
+  const stored =
+    (game.settings.get(MODULE_ID, SETTING_PATROLS) as Patrol[]) ?? [];
+  return stored.map((p) => ({ mods: {}, ...p }));
 }
 
 export async function savePatrols(patrols: Patrol[]): Promise<void> {

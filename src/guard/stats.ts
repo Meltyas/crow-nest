@@ -24,6 +24,7 @@ export interface LogEntry {
 export interface GuardModifier {
   key: string;
   name: string;
+  description?: string;
   img?: string;
   mods: Record<string, number>;
 }
