@@ -372,7 +372,7 @@
               {#if editing[group.id]}
                 <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
                 <textarea placeholder="Descripción" bind:value={sk.description} on:change={persist}></textarea>
-                <button on:click={() => removeSkill(group, j)}>Quitar</button>
+                <button on:click={() => removeSkill(group, j)}>X</button>
               {:else}
                 <div class="info">
                   <strong>{sk.name}</strong>

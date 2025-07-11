@@ -265,17 +265,23 @@
     align-items: center;
     gap: 0.25rem;
     margin-bottom: 0.25rem;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
   }
 
   .stat img {
-    width: 24px;
-    height: 24px;
+    height: 42px;
+    width: 42px;
   }
 
   .stat-img {
     background: none;
     border: none;
     padding: 0;
+    height: 42px;
+    width: 42px;
     cursor: pointer;
   }
 
@@ -283,6 +289,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .log {
@@ -325,7 +333,29 @@
     gap: 0.25rem;
   }
 
+  .stat-name-input {
+    max-width: 100px;
+    text-align: center;
+  }
+
+  .stat-number {
+    display: flex;
+  }
+
+  .stat-number-input {
+    width: 30px;
+    text-align: center;
+  }
+
+  .stat-number-close {
+    width: 24px;
+    text-align: center;
+  }
+
   .stat-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     font-weight: bold;
   }
 
@@ -357,13 +387,32 @@
     display: flex;
     gap: 0.25rem;
   }
+  .button-holder {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .stat-value {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .stat-name {
+    margin-bottom: 0.25rem;
+  }
 </style>
-
+<h3>Los Cuervos</h3>
 <div class="guard-container">
-  {#if editing}
-    <button on:click={openAddStat}>Añadir Stat</button>
-  {/if}
-  <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
+
+  <div class="button-holder">
+    {#if editing}
+      <button on:click={openAddStat}>Añadir Stat</button>
+    {/if}
+    <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
+  </div>
+
   {#if addingStat}
     <div class="add-stat-form">
       <input placeholder="Nombre" bind:value={newStat.name} />
@@ -388,17 +437,21 @@
       {#if editing}
         <div class="stats-editables">
           <input
+            class="stat-name-input"
             placeholder="Nombre"
             bind:value={stat.name}
             on:change={updateStat}
           />
+        </div>
+        <div class="stat-number">
           <input
+            class="stat-number-input"
             type="number"
             placeholder="Valor"
             bind:value={stat.value}
             on:change={updateStat}
           />
-          <button on:click={() => removeStat(i)}>Quitar</button>
+          <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
         </div>
       {:else}
         <div class="stat-view">
@@ -422,7 +475,7 @@
   {/if}
 
   <hr />
-  <h3>Modificaciones Situacionales</h3>
+  <h4>Modificaciones Situacionales</h4>
   {#if editingMods}
     <button on:click={openAddModifier}>Añadir Modificador</button>
   {/if}
@@ -458,7 +511,7 @@
               <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
             </div>
           {/each}
-          <button on:click={() => removeModifier(i)}>Quitar</button>
+          <button on:click={() => removeModifier(i)}>X</button>
         </div>
       {:else}
         <Tooltip content={modChanges(mod)}>
@@ -495,7 +548,7 @@
       <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
       <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
       <input type="number" bind:value={res.value} on:change={updateResource} />
-      <button on:click={() => removeResource(i)}>Quitar</button>
+      <button on:click={() => removeResource(i)}>X</button>
     </div>
   {/each}
   </div>
