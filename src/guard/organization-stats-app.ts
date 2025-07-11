@@ -1,5 +1,5 @@
 import { MODULE_ID } from "@/constants";
-import { GuardStat, LogEntry, getStats, getLog, saveStats } from "./stats";
+import { GuardStat, LogEntry, getLog, getStats, saveStats } from "./stats";
 
 declare const Sortable: any;
 
@@ -58,7 +58,9 @@ export default class OrganizationStatsApp extends Application {
     r.toMessage({ speaker: { alias: "Guardia" }, flavor: stat.name });
   }
 
-  private async _promptForStat(stat?: GuardStat): Promise<{ name: string; value: number } | null> {
+  private async _promptForStat(
+    stat?: GuardStat
+  ): Promise<{ name: string; value: number } | null> {
     return new Promise((resolve) => {
       const content = `<form>
         <div class="form-group"><label>Nombre</label><input type="text" name="name" value="${stat?.name ?? ""}"/></div>
@@ -72,7 +74,10 @@ export default class OrganizationStatsApp extends Application {
             label: "OK",
             callback: (html: JQuery) => {
               const name = String(html.find("[name=name]").val());
-              const value = parseInt(String(html.find("[name=value]").val()), 10);
+              const value = parseInt(
+                String(html.find("[name=value]").val()),
+                10
+              );
               if (Number.isNaN(value)) {
                 ui.notifications.error("Valor inválido");
                 resolve(null);
@@ -98,9 +103,18 @@ export default class OrganizationStatsApp extends Application {
   private async _onAdd() {
     const data = await this._promptForStat();
     if (!data) return;
-    const stat: GuardStat = { key: this._nextKey(), name: data.name, value: data.value };
+    const stat: GuardStat = {
+      key: this._nextKey(),
+      name: data.name,
+      value: data.value,
+    };
     this.stats.push(stat);
-    this.log.push({ user: game.user!.name!, time: Date.now(), action: `create ${stat.key}`, next: stat });
+    this.log.push({
+      user: game.user!.name!,
+      time: Date.now(),
+      action: `create ${stat.key}`,
+      next: stat,
+    });
     await saveStats(this.stats, this.log);
     this.render();
   }
@@ -114,7 +128,13 @@ export default class OrganizationStatsApp extends Application {
     if (!data) return;
     stat.name = data.name;
     stat.value = data.value;
-    this.log.push({ user: game.user!.name!, time: Date.now(), action: `edit ${stat.key}`, previous, next: { ...stat } });
+    this.log.push({
+      user: game.user!.name!,
+      time: Date.now(),
+      action: `edit ${stat.key}`,
+      previous,
+      next: { ...stat },
+    });
     await saveStats(this.stats, this.log);
     this.render();
   }
@@ -123,10 +143,18 @@ export default class OrganizationStatsApp extends Application {
     const key = $(ev.currentTarget).data("key");
     const index = this.stats.findIndex((s) => s.key === key);
     if (index === -1) return;
-    const confirmed = await Dialog.confirm({ title: "Borrar Stat", content: `¿Eliminar ${this.stats[index].name}?` });
+    const confirmed = await Dialog.confirm({
+      title: "Borrar Stat",
+      content: `¿Eliminar ${this.stats[index].name}?`,
+    });
     if (!confirmed) return;
     const [removed] = this.stats.splice(index, 1);
-    this.log.push({ user: game.user!.name!, time: Date.now(), action: `delete ${removed.key}`, previous: removed });
+    this.log.push({
+      user: game.user!.name!,
+      time: Date.now(),
+      action: `delete ${removed.key}`,
+      previous: removed,
+    });
     await saveStats(this.stats, this.log);
     this.render();
   }
@@ -141,7 +169,11 @@ export default class OrganizationStatsApp extends Application {
         if (stat) newOrder.push(stat);
       });
     this.stats = newOrder;
-    this.log.push({ user: game.user!.name!, time: Date.now(), action: "reorder" });
+    this.log.push({
+      user: game.user!.name!,
+      time: Date.now(),
+      action: "reorder",
+    });
     await saveStats(this.stats, this.log);
     this.render(false);
   }

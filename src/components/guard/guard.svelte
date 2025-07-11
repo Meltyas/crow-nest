@@ -68,6 +68,7 @@
 
   .stat {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.25rem;
     margin-bottom: 0.25rem;
@@ -76,6 +77,12 @@
   .stat img {
     width: 24px;
     height: 24px;
+  }
+
+  .stat-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .log {
@@ -91,6 +98,10 @@
     gap: 0.25rem;
     margin: 0.5rem 0;
   }
+  .stats-editables {
+    display: flex;
+    gap: 0.25rem;
+  }
 </style>
 
 <div class="guard-container">
@@ -103,15 +114,20 @@
       <button on:click={cancelAddStat}>Cancelar</button>
     </div>
   {/if}
-  {#each stats as stat, i}
+  <div class="stat-container">
+      {#each stats as stat, i}
     <div class="stat">
       <img src="icons/svg/shield.svg" alt="stat" />
-      <input placeholder="Nombre" bind:value={stat.name} on:change={updateStat} />
-      <input placeholder="ID" bind:value={stat.id} on:change={updateStat} />
+      <div class="stats-editables">
+              <input placeholder="Nombre" bind:value={stat.name} on:change={updateStat} />
       <input type="number" placeholder="Valor" bind:value={stat.value} on:change={updateStat} />
       <button on:click={() => removeStat(i)}>Quitar</button>
+      </div>
+
     </div>
   {/each}
+
+  </div>
 
   <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
   {#if showLog}
