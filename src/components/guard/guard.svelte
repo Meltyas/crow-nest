@@ -10,6 +10,8 @@
   let stats: Stat[] = [];
   let log: string[] = [];
   let showLog = false;
+  let addingStat = false;
+  let newStat: Stat = { id: '', name: '', value: 0 };
 
   onMount(() => {
     const savedStats = localStorage.getItem('crowGuardStats');
@@ -23,11 +25,20 @@
     localStorage.setItem('crowGuardLog', JSON.stringify(log));
   }
 
-  function addStat() {
-    const stat: Stat = { id: crypto.randomUUID(), name: '', value: 0 };
-    stats = [...stats, stat];
-    log = [...log, `Añadido stat ${stat.id}`];
+  function openAddStat() {
+    newStat = { id: crypto.randomUUID(), name: '', value: 0 };
+    addingStat = true;
+  }
+
+  function confirmAddStat() {
+    stats = [...stats, { ...newStat }];
+    log = [...log, `Añadido stat ${newStat.id}`];
     persist();
+    addingStat = false;
+  }
+
+  function cancelAddStat() {
+    addingStat = false;
   }
 
   function removeStat(index: number) {
@@ -51,6 +62,8 @@
   .guard-container {
     padding: 0.5rem;
     color: white;
+    max-height: 400px;
+    overflow-y: auto;
   }
 
   .stat {
@@ -72,10 +85,24 @@
     max-height: 150px;
     overflow-y: auto;
   }
+
+  .add-stat-form {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.5rem 0;
+  }
 </style>
 
 <div class="guard-container">
-  <button on:click={addStat}>Añadir Stat</button>
+  <button on:click={openAddStat}>Añadir Stat</button>
+  {#if addingStat}
+    <div class="add-stat-form">
+      <input placeholder="Nombre" bind:value={newStat.name} />
+      <input type="number" placeholder="Valor" bind:value={newStat.value} />
+      <button on:click={confirmAddStat}>Agregar</button>
+      <button on:click={cancelAddStat}>Cancelar</button>
+    </div>
+  {/if}
   {#each stats as stat, i}
     <div class="stat">
       <img src="icons/svg/shield.svg" alt="stat" />
