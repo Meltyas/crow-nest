@@ -4,31 +4,36 @@
   let show = false;
   let tooltipEl: HTMLDivElement;
   let wrapperEl: HTMLDivElement;
+  let containerEl: HTMLElement | null = null;
 
   async function position() {
     await tick();
     if (!tooltipEl || !wrapperEl) return;
+    containerEl = wrapperEl.closest('.window-app');
+    if (!containerEl) containerEl = document.body;
+    if (tooltipEl.parentElement !== containerEl) {
+      containerEl.appendChild(tooltipEl);
+    }
     const wrap = wrapperEl.getBoundingClientRect();
-    const container = wrapperEl.closest('.window-app') || document.body;
-    const popup = (container as HTMLElement).getBoundingClientRect();
+    const popup = containerEl.getBoundingClientRect();
 
-    const center = wrap.left + wrap.width / 2;
+    const center = wrap.left - popup.left + wrap.width / 2;
     tooltipEl.style.maxWidth = `${popup.width - 8}px`;
 
     const tip = tooltipEl.getBoundingClientRect();
     let desiredLeft = center - tip.width / 2;
     desiredLeft = Math.min(
-      Math.max(desiredLeft, popup.left),
-      popup.right - tip.width
+      Math.max(desiredLeft, 0),
+      popup.width - tip.width
     );
-    const left = desiredLeft - wrap.left;
+    const left = desiredLeft;
 
-    let top = -tip.height - 4;
+    let top = wrap.top - popup.top - tip.height - 4;
     if (wrap.top + top < popup.top) {
-      top = wrap.height + 4;
+      top = wrap.top - popup.top + wrap.height + 4;
     }
     if (wrap.top + top + tip.height > popup.bottom) {
-      top = popup.bottom - wrap.top - tip.height;
+      top = popup.height - tip.height;
     }
 
     tooltipEl.style.left = `${left}px`;
