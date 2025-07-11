@@ -42,61 +42,57 @@
     persist();
   }
 
-  function actorFromDrop(event: DragEvent): Actor | null {
+  async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
     event.preventDefault();
-    const uuid = event.dataTransfer?.getData('text/plain');
-    if (!uuid) return null;
-    const doc = fromUuidSync(uuid);
-    if (!doc) return null;
-    const actor = doc instanceof Token ? doc.actor : doc;
-    if (!actor) return null;
-    console.log('Dropped actor', { uuid, actor });
-    return actor;
-  }
-async function onDropOfficer(event: DragEvent, patrol: Patrol) {
-  event.preventDefault();
+    const raw = event.dataTransfer?.getData("text/plain");
+    console.log("🎯 Raw dropped data:", raw);
+    if (!raw) return null;
 
-  const raw = event.dataTransfer?.getData("text/plain");
-  console.log("🎯 Raw dropped data:", raw);
+    try {
+      const data = JSON.parse(raw);
+      console.log("✅ Parsed drop data:", data);
 
-  if (!raw) return;
+      if (data?.uuid) {
+        const droppedActor = await fromUuid(data.uuid);
+        console.log("🎭 Dropped Actor:", droppedActor);
 
-  try {
-    const data = JSON.parse(raw);
-    console.log("✅ Parsed drop data:", data);
-
-    if (data?.uuid) {
-      const droppedActor = await fromUuid(data.uuid);
-      console.log("🎭 Dropped Actor:", droppedActor);
-
-      if (!(droppedActor instanceof Actor)) return;
-
-      patrol.officer = {
-        id: droppedActor.id,
-        name: droppedActor.name,
-        img: droppedActor.img,
-      };
-
-      if (!patrol.name) {
-        patrol.name = `Patrulla de ${droppedActor.name}`;
+        if (droppedActor instanceof Actor) {
+          return droppedActor;
+        }
       }
-
-      patrols = [...patrols];
-      persist();
+    } catch (err) {
+      console.error("❌ Failed to parse drop data:", err);
     }
-  } catch (err) {
-    console.error("❌ Failed to parse drop data:", err);
+
+    return null;
   }
-}
+
+  async function onDropOfficer(event: DragEvent, patrol: Patrol) {
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    patrol.officer = {
+      id: actor.id,
+      name: actor.name,
+      img: actor.img,
+    };
+
+    if (!patrol.name) {
+      patrol.name = `Patrulla de ${actor.name}`;
+    }
+
+    patrols = [...patrols];
+    persist();
+  }
 
 
-  function onDropSoldier(event: DragEvent, patrol: Patrol) {
-    const actor = actorFromDrop(event);
+  async function onDropSoldier(event: DragEvent, patrol: Patrol) {
+    const actor = await actorFromDrop(event);
     if (!actor) return;
 
     patrol.soldiers = [
       ...patrol.soldiers,
-      { id: actor.id ?? '', name: actor.name ?? '', img: actor.img ?? '' },
+      { id: actor.id, name: actor.name, img: actor.img },
     ];
     patrols = [...patrols];
     persist();
