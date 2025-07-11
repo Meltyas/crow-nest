@@ -7,5 +7,5 @@
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "11",
   "type": "module",
-  "scripts": ["dist/main.js"]
+  "esmodules": ["dist/main.js"]
 }
