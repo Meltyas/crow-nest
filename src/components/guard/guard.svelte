@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import type { GuardStat, LogEntry, GuardModifier, GuardResource } from '@/guard/stats';
+  import type { GuardModifier, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
-    getStats,
     getLog,
-    saveStats,
     getModifiers,
-    saveModifiers,
     getResources,
+    getStats,
+    saveModifiers,
     saveResources,
+    saveStats,
   } from '@/guard/stats';
+  import { onMount } from 'svelte';
 
   interface Stat extends GuardStat {}
 
@@ -321,6 +321,22 @@
     gap: 0.25rem;
     margin-bottom: 0.25rem;
   }
+  .modifier-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .modifier {
+    max-width: 125px;
+  }
+  .standard-image {
+    width: 24px;
+    height: 24px;
+  }
+  .resource-container {
+    display: flex;
+    gap: 0.25rem;
+  }
 </style>
 
 <div class="guard-container">
@@ -339,9 +355,18 @@
   <div class="stat-container">
       {#each stats as stat, i}
     <div class="stat">
+<<<<<<< Updated upstream
       <button class="stat-img" on:click={() => onImageClick(stat)}>
         <img src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
       </button>
+=======
+      <img
+        class="standard-image"
+        src={stat.img || 'icons/svg/shield.svg'}
+        alt="stat"
+        on:click={() => onImageClick(stat)}
+      />
+>>>>>>> Stashed changes
       <input
         id={`file-${stat.key}`}
         type="file"
@@ -396,7 +421,7 @@
       <input placeholder="Nombre" bind:value={newModifier.name} />
       {#each stats as stat}
         <div class="modifier-values">
-          <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+          <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
           <input type="number" bind:value={newModifier.mods[stat.key]} />
         </div>
       {/each}
@@ -404,17 +429,17 @@
       <button on:click={cancelAddModifier}>Cancelar</button>
     </div>
   {/if}
-
+  <div class="modifier-container">
   {#each modifiers as mod, i}
     <div class="modifier">
-      <img src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+      <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
       <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
       {#if editingMods}
         <div class="modifier-edit">
           <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
           {#each stats as stat}
             <div class="modifier-values">
-              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+              <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
               <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
             </div>
           {/each}
@@ -425,7 +450,7 @@
         <div class="modifier-values">
           {#each Object.entries(mod.mods) as [k,v]}
             {#if stats.find(s => s.key === k)}
-              <img src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
+              <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
               <span>{v>0 ? '+' : ''}{v}</span>
             {/if}
           {/each}
@@ -433,6 +458,7 @@
       {/if}
     </div>
   {/each}
+</div>
 
   <hr />
   <h3>Recursos</h3>
@@ -446,13 +472,15 @@
   {/if}
   <button on:click={openAddResource}>Añadir Recurso</button>
 
+  <div class="resource-container">
   {#each resources as res, i}
     <div class="resource">
-      <img src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => onResImageClick(res)} />
+      <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => onResImageClick(res)} />
       <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
       <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
       <input type="number" bind:value={res.value} on:change={updateResource} />
       <button on:click={() => removeResource(i)}>Quitar</button>
     </div>
   {/each}
+  </div>
 </div>
