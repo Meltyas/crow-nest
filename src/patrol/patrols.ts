@@ -1,14 +1,22 @@
 import { MODULE_ID, SETTING_PATROLS } from "@/constants";
 
 export interface PatrolSkill {
-  img: string;
+  name: string;
   description: string;
+  img: string;
+}
+
+export interface PatrolMember {
+  id: string;
+  name: string;
+  img: string;
 }
 
 export interface Patrol {
   id: string;
-  officer: string;
-  soldiers: string[];
+  name: string;
+  officer: PatrolMember | null;
+  soldiers: PatrolMember[];
   modifier: number;
   skills: PatrolSkill[];
 }
