@@ -9,13 +9,26 @@
     await tick();
     if (!tooltipEl || !wrapperEl) return;
     const wrap = wrapperEl.getBoundingClientRect();
+
+    const center = wrap.left + wrap.width / 2;
+    const availableLeft = center;
+    const availableRight = window.innerWidth - center;
+    const maxWidth = 2 * Math.min(availableLeft, availableRight) - 8;
+    tooltipEl.style.maxWidth = `${maxWidth}px`;
+
     const tip = tooltipEl.getBoundingClientRect();
-    let left = (wrap.width - tip.width) / 2;
-    left = Math.max(0, Math.min(left, wrap.width - tip.width));
+    const desiredLeftViewport = center - tip.width / 2;
+    const clampedLeftViewport = Math.min(
+      Math.max(desiredLeftViewport, 0),
+      window.innerWidth - tip.width
+    );
+    const left = clampedLeftViewport - wrap.left;
+
     let top = -tip.height - 4;
     if (top < -wrap.top) {
       top = wrap.height + 4;
     }
+
     tooltipEl.style.left = `${left}px`;
     tooltipEl.style.top = `${top}px`;
   }
@@ -49,7 +62,6 @@
     color: white;
     padding: 0.25rem;
     border-radius: 4px;
-    max-width: 100%;
     white-space: normal;
     word-wrap: break-word;
     z-index: 10;
