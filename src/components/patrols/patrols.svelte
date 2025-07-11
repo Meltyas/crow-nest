@@ -60,6 +60,7 @@
     if (!patrol.name) {
       patrol.name = `Patrulla de ${actor.name}`;
     }
+    patrols = [...patrols];
     persist();
   }
 
@@ -75,18 +76,21 @@
       ...patrol.soldiers,
       { id: actor.id ?? '', name: actor.name ?? '', img: actor.img ?? '' },
     ];
+    patrols = [...patrols];
     persist();
   }
 
   function addSkill(patrol: Patrol) {
     const skill: PatrolSkill = { name: '', description: '', img: '' };
     patrol.skills = [...patrol.skills, skill];
+    patrols = [...patrols];
     persist();
   }
 
   function removeSkill(patrol: Patrol, index: number) {
     patrol.skills.splice(index, 1);
     patrol.skills = [...patrol.skills];
+    patrols = [...patrols];
     persist();
   }
 
