@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { GuardStat, LogEntry } from '@/guard/stats';
-  import { getStats, getLog, saveStats } from '@/guard/stats';
+  import type { GuardStat, LogEntry, GuardModifier } from '@/guard/stats';
+  import {
+    getStats,
+    getLog,
+    saveStats,
+    getModifiers,
+    saveModifiers,
+  } from '@/guard/stats';
 
   interface Stat extends GuardStat {}
 
@@ -12,13 +18,23 @@
   let editing = false;
   let newStat: Stat = { key: '', name: '', value: 0 };
 
+  let modifiers: GuardModifier[] = [];
+  let addingModifier = false;
+  let editingMods = false;
+  let newModifier: GuardModifier = { key: '', name: '', mods: {} };
+
   onMount(() => {
     stats = getStats() as Stat[];
     log = getLog();
+    modifiers = getModifiers();
   });
 
   async function persist() {
     await saveStats(stats, log);
+  }
+
+  async function persistMods() {
+    await saveModifiers(modifiers);
   }
 
   function openAddStat() {
@@ -72,6 +88,44 @@
     await persist();
   }
 
+  function openAddModifier() {
+    newModifier = { key: crypto.randomUUID(), name: '', mods: {} };
+    addingModifier = true;
+  }
+
+  function cancelAddModifier() {
+    addingModifier = false;
+  }
+
+  async function confirmAddModifier() {
+    newModifier.mods = Object.fromEntries(
+      Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
+    );
+    modifiers = [...modifiers, { ...newModifier }];
+    await persistMods();
+    addingModifier = false;
+  }
+
+  async function removeModifier(index: number) {
+    modifiers.splice(index, 1);
+    modifiers = [...modifiers];
+    await persistMods();
+  }
+
+  async function updateModifier() {
+    modifiers = modifiers.map((m) => ({
+      ...m,
+      mods: Object.fromEntries(
+        Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
+      ),
+    }));
+    await persistMods();
+  }
+
+  function toggleEditingMods() {
+    editingMods = !editingMods;
+  }
+
   function toggleLog() {
     showLog = !showLog;
   }
@@ -85,7 +139,11 @@
       const input = document.getElementById(`file-${stat.key}`) as HTMLInputElement | null;
       input?.click();
     } else {
-      const r = new Roll(`1d20 + ${stat.value}`);
+      const bonus = modifiers.reduce(
+        (acc, m) => acc + (m.mods[stat.key] || 0),
+        0
+      );
+      const r = new Roll(`1d20 + ${stat.value + bonus}`);
       r.evaluate({ async: false });
       r.toMessage({ speaker: { alias: 'Guardia' }, flavor: stat.name });
     }
@@ -98,6 +156,24 @@
     reader.onload = () => {
       stat.img = String(reader.result);
       updateStat();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function onModImageClick(mod: GuardModifier) {
+    if (editingMods) {
+      const input = document.getElementById(`mod-file-${mod.key}`) as HTMLInputElement | null;
+      input?.click();
+    }
+  }
+
+  function onModFileChange(mod: GuardModifier, event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      mod.img = String(reader.result);
+      updateModifier();
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -142,6 +218,28 @@
     display: flex;
     gap: 0.25rem;
     margin: 0.5rem 0;
+  }
+  .add-mod-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.5rem 0;
+  }
+  .modifier {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .modifier-values {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .modifier-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
   .stats-editables {
     display: flex;
@@ -211,4 +309,51 @@
       {/each}
     </div>
   {/if}
+
+  <hr />
+  <h3>Modificaciones Situacionales</h3>
+  <button on:click={openAddModifier} disabled={!editingMods}>Añadir Modificador</button>
+  <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
+  {#if addingModifier}
+    <div class="add-mod-form">
+      <input placeholder="Nombre" bind:value={newModifier.name} />
+      {#each stats as stat}
+        <div class="modifier-values">
+          <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+          <input type="number" bind:value={newModifier.mods[stat.key]} />
+        </div>
+      {/each}
+      <button on:click={confirmAddModifier}>Agregar</button>
+      <button on:click={cancelAddModifier}>Cancelar</button>
+    </div>
+  {/if}
+
+  {#each modifiers as mod, i}
+    <div class="modifier">
+      <img src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+      <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
+      {#if editingMods}
+        <div class="modifier-edit">
+          <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
+          {#each stats as stat}
+            <div class="modifier-values">
+              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+              <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
+            </div>
+          {/each}
+          <button on:click={() => removeModifier(i)}>Quitar</button>
+        </div>
+      {:else}
+        <div>{mod.name}</div>
+        <div class="modifier-values">
+          {#each Object.entries(mod.mods) as [k,v]}
+            {#if stats.find(s => s.key === k)}
+              <img src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
+              <span>{v>0 ? '+' : ''}{v}</span>
+            {/if}
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/each}
 </div>

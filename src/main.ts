@@ -1,6 +1,11 @@
 import Hud from "@/components/hud/hud.svelte";
 import OrganizationStatsApp from "@/guard/organization-stats-app";
-import { MODULE_ID, SETTING_STATS, SETTING_LOG } from "@/constants";
+import {
+  MODULE_ID,
+  SETTING_STATS,
+  SETTING_LOG,
+  SETTING_MODIFIERS,
+} from "@/constants";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
@@ -12,6 +17,12 @@ Hooks.once("init", () => {
     default: [],
   });
   game.settings.register(MODULE_ID, SETTING_LOG, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, SETTING_MODIFIERS, {
     scope: "world",
     config: false,
     type: Array,
