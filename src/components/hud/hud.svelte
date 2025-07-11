@@ -90,8 +90,8 @@
   <Popup title="Crow Nest Ready" on:close={togglePopup}>
     <Guard />
     <Groups
-      {getAdmins}
-      {saveAdmins}
+      getGroups={getAdmins}
+      saveGroups={saveAdmins}
       labels={{
         groupSingular: 'Administrador',
         addGroup: 'Añadir Administrador',
@@ -101,8 +101,8 @@
       }}
     />
     <Groups
-      {getPatrols}
-      {savePatrols}
+      getGroups={getPatrols}
+      saveGroups={savePatrols}
       labels={{
         groupSingular: 'Patrulla',
         addGroup: 'Añadir Patrulla',
