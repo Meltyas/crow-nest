@@ -1,11 +1,20 @@
 import { MODULE_ID } from "@/constants";
-import { GuardStat, LogEntry, getLog, getStats, saveStats } from "./stats";
+import {
+  GuardStat,
+  LogEntry,
+  GuardModifier,
+  getLog,
+  getStats,
+  saveStats,
+  getModifiers,
+} from "./stats";
 
 declare const Sortable: any;
 
 export default class OrganizationStatsApp extends Application {
   stats: GuardStat[] = [];
   log: LogEntry[] = [];
+  modifiers: GuardModifier[] = [];
 
   static override get defaultOptions() {
     return mergeObject(super.defaultOptions, {
@@ -25,9 +34,11 @@ export default class OrganizationStatsApp extends Application {
   override async getData() {
     this.stats = duplicate(getStats());
     this.log = duplicate(getLog());
+    this.modifiers = duplicate(getModifiers());
     return {
       stats: this.stats,
       log: this.log,
+      modifiers: this.modifiers,
       isGM: game.user?.isGM,
     };
   }
@@ -53,7 +64,11 @@ export default class OrganizationStatsApp extends Application {
     const key = $(ev.currentTarget).data("key");
     const stat = this.stats.find((s) => s.key === key);
     if (!stat) return;
-    const r = new Roll(`1d20 + ${stat.value}`);
+    const bonus = this.modifiers.reduce(
+      (acc, m) => acc + (m.mods[key] || 0),
+      0
+    );
+    const r = new Roll(`1d20 + ${stat.value + bonus}`);
     r.evaluate({ async: false });
     r.toMessage({ speaker: { alias: "Guardia" }, flavor: stat.name });
   }

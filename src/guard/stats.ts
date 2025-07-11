@@ -1,4 +1,9 @@
-import { MODULE_ID, SETTING_STATS, SETTING_LOG } from "@/constants";
+import {
+  MODULE_ID,
+  SETTING_STATS,
+  SETTING_LOG,
+  SETTING_MODIFIERS,
+} from "@/constants";
 
 export interface GuardStat {
   key: string;
@@ -15,6 +20,13 @@ export interface LogEntry {
   next?: unknown;
 }
 
+export interface GuardModifier {
+  key: string;
+  name: string;
+  img?: string;
+  mods: Record<string, number>;
+}
+
 export function getStats(): GuardStat[] {
   return (game.settings.get(MODULE_ID, SETTING_STATS) as GuardStat[]) ?? [];
 }
@@ -23,7 +35,19 @@ export function getLog(): LogEntry[] {
   return (game.settings.get(MODULE_ID, SETTING_LOG) as LogEntry[]) ?? [];
 }
 
+export function getModifiers(): GuardModifier[] {
+  return (
+    game.settings.get(MODULE_ID, SETTING_MODIFIERS) as GuardModifier[]
+  ) ?? [];
+}
+
 export async function saveStats(stats: GuardStat[], log: LogEntry[]): Promise<void> {
   await game.settings.set(MODULE_ID, SETTING_STATS, stats);
   await game.settings.set(MODULE_ID, SETTING_LOG, log);
+}
+
+export async function saveModifiers(
+  modifiers: GuardModifier[]
+): Promise<void> {
+  await game.settings.set(MODULE_ID, SETTING_MODIFIERS, modifiers);
 }
