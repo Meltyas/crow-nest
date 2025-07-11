@@ -18,7 +18,8 @@
     const popup = containerEl.getBoundingClientRect();
 
     const center = wrap.left - popup.left + wrap.width / 2;
-    tooltipEl.style.maxWidth = `${popup.width - 8}px`;
+    const maxWidth = popup.width * 0.5;
+    tooltipEl.style.maxWidth = `${maxWidth}px`;
 
     const tip = tooltipEl.getBoundingClientRect();
     let desiredLeft = center - tip.width / 2;
@@ -67,11 +68,12 @@
     position: absolute;
     background: #333;
     color: white;
-    padding: 0.25rem;
+    padding: 0.25rem 16px;
     border-radius: 4px;
     white-space: normal;
     word-wrap: break-word;
     z-index: 10;
     pointer-events: none;
+    box-sizing: border-box;
   }
 </style>
