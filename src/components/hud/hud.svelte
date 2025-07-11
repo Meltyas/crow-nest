@@ -3,6 +3,7 @@
   import Popup from "@/components/popup/popup.svelte";
   import Guard from "@/components/guard/guard.svelte";
   import Patrols from "@/components/patrols/patrols.svelte";
+  import Admins from "@/components/admins/admins.svelte";
 
   let pos = { x: 0, y: 0 };
   let isDragging = false;
@@ -87,6 +88,7 @@
 {#if showPopup}
   <Popup title="Crow Nest Ready" on:close={togglePopup}>
     <Guard />
+    <Admins />
     <Patrols />
   </Popup>
 {/if}
