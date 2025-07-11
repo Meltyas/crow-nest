@@ -52,6 +52,14 @@
     event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
   }
 
+  function onDragDeploy(event: DragEvent, patrol: Patrol) {
+    const payload = {
+      type: 'CrowPatrol',
+      patrolId: patrol.id,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+  }
+
   async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
     event.preventDefault();
     const raw = event.dataTransfer?.getData("text/plain");
@@ -169,6 +177,10 @@
     align-items: center;
     gap: 0.25rem;
   }
+
+  .deploy {
+    margin-top: 0.25rem;
+  }
 </style>
 
 <div class="patrols">
@@ -186,7 +198,13 @@
             draggable="true"
             on:dragstart={(e) => onDragMember(e, patrol.officer)}
           >
-            <img src={patrol.officer.img} alt={patrol.officer.name} width="32" height="32" />
+            <img
+              src={patrol.officer.img}
+              alt={patrol.officer.name}
+              width="32"
+              height="32"
+              draggable="true"
+            />
             <span>{patrol.officer.name}</span>
             <button on:click={() => console.log(patrol.officer)}>Info</button>
           </div>
@@ -205,7 +223,14 @@
             draggable="true"
             on:dragstart={(e) => onDragMember(e, s)}
           >
-            <img src={s.img} alt={s.name} width="24" height="24" /> {s.name}
+            <img
+              src={s.img}
+              alt={s.name}
+              width="24"
+              height="24"
+              draggable="true"
+            />
+            {s.name}
             <button on:click={() => console.log(s)}>Info</button>
           </div>
         {/each}
@@ -238,6 +263,11 @@
         {/each}
         <button on:click={() => addSkill(patrol)}>Añadir Habilidad</button>
       </div>
+      <button
+        class="deploy"
+        draggable="true"
+        on:dragstart={(e) => onDragDeploy(e, patrol)}
+      >Desplegar</button>
       <button on:click={() => removePatrol(i)}>Eliminar Patrulla</button>
     </div>
   {/each}
