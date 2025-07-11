@@ -20,8 +20,7 @@
   let stats: GuardStat[] = [];
   let groups: Group[] = [];
   let modifiers: GuardModifier[] = [];
-  let editingMods = false;
-  let editingSkills = false;
+  let editing: Record<string, boolean> = {};
 
   onMount(() => {
     stats = getStats() as GuardStat[];
@@ -50,6 +49,23 @@
 
   function removeGroup(index: number) {
     groups.splice(index, 1);
+    groups = [...groups];
+    persist();
+  }
+
+  function toggleEditing(group: Group) {
+    editing[group.id] = !editing[group.id];
+  }
+
+  function removeOfficer(group: Group) {
+    group.officer = null;
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSoldier(group: Group, index: number) {
+    group.soldiers.splice(index, 1);
+    group.soldiers = [...group.soldiers];
     groups = [...groups];
     persist();
   }
@@ -251,6 +267,9 @@
   {#each groups as group, i}
     <div class="group">
       <strong>{group.name}</strong>
+      <button on:click={() => toggleEditing(group)}>
+        {editing[group.id] ? 'Guardar' : 'Editar'}
+      </button>
       <div
         class="drop-zone officer" role="button" aria-label={labels.officerDrop}
         on:dragover|preventDefault
@@ -270,6 +289,9 @@
               draggable="true"
             />
             <span>{group.officer.name}</span>
+            {#if editing[group.id]}
+              <button on:click={() => removeOfficer(group)}>X</button>
+            {/if}
             <button on:click={() => console.log(group.officer)}>Info</button>
           </div>
         {:else}
@@ -281,7 +303,7 @@
         on:dragover|preventDefault
         on:drop={(e) => onDropSoldier(e, group)}
       >
-        {#each group.soldiers as s}
+        {#each group.soldiers as s, j}
           <div
             class="member" role="button"
             draggable="true"
@@ -296,6 +318,9 @@
                 draggable="true"
               />
             </Tooltip>
+            {#if editing[group.id]}
+              <button on:click={() => removeSoldier(group, j)}>X</button>
+            {/if}
             <button on:click={() => console.log(s)}>Info</button>
           </div>
         {/each}
@@ -311,7 +336,7 @@
                 <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
               </button>
             </Tooltip>
-            {#if editingMods}
+            {#if editing[group.id]}
               <input type="number" bind:value={group.mods[stat.key]} on:change={persist} />
             {:else}
               <span>{group.mods[stat.key] || 0}</span>
@@ -320,15 +345,12 @@
           </div>
         {/each}
       </div>
-      <button on:click={() => (editingMods = !editingMods)}>
-        {editingMods ? 'Guardar Mods' : 'Editar Mods'}
-      </button>
       <div class="skills">
         <strong>Habilidades</strong>
           {#each group.skills as sk, j}
             <div class="skill">
-              <img src={sk.img} alt="" on:click={() => editingSkills && chooseSkillImage(sk)} />
-              {#if editingSkills}
+              <img src={sk.img} alt="" on:click={() => editing[group.id] && chooseSkillImage(sk)} />
+              {#if editing[group.id]}
                 <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
                 <textarea placeholder="Descripción" bind:value={sk.description} on:change={persist}></textarea>
                 <button on:click={() => removeSkill(group, j)}>Quitar</button>
@@ -340,17 +362,18 @@
               {/if}
             </div>
         {/each}
-        <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
-        <button on:click={() => (editingSkills = !editingSkills)}>
-          {editingSkills ? 'Guardar Habilidades' : 'Editar Habilidades'}
-        </button>
+        {#if editing[group.id]}
+          <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
+        {/if}
       </div>
       <button
         class="deploy"
         draggable="true"
         on:dragstart={(e) => onDragDeploy(e, group)}
       >Desplegar</button>
-      <button on:click={() => removeGroup(i)}>{labels.removeGroup}</button>
+      {#if editing[group.id]}
+        <button on:click={() => removeGroup(i)}>{labels.removeGroup}</button>
+      {/if}
     </div>
   {/each}
   <button on:click={addGroup}>{labels.addGroup}</button>
