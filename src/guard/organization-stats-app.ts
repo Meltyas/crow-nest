@@ -71,7 +71,7 @@ export default class OrganizationStatsApp extends Application {
     const r = new Roll(`1d20 + ${stat.value + bonus}`);
     r.evaluate({ async: false });
 
-    const lines: string[] = [];
+    const lines: string[] = [`Valor base de la guardia ${stat.value}`];
     for (const m of this.modifiers) {
       const v = m.mods[key];
       if (v) lines.push(`${m.name} ${v > 0 ? '+' : ''}${v}`);

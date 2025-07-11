@@ -180,7 +180,7 @@
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate({ async: false });
 
-    const lines: string[] = [stat.name];
+    const lines: string[] = [stat.name, `Valor base de la guardia ${stat.value}`];
     const guardMod = guardBonus(stat.key);
     if (guardMod) {
       lines.push(`Modificador de la guardia ${guardMod > 0 ? '+' : ''}${guardMod}`);
