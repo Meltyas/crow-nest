@@ -43,12 +43,20 @@
     persist();
   }
 
-  function onDropOfficer(event: DragEvent, patrol: Patrol) {
+  function actorFromDrop(event: DragEvent): Actor | null {
+    event.preventDefault();
     const uuid = event.dataTransfer?.getData('text/plain');
-    if (!uuid) return;
-    const doc = fromUuidSync(uuid as string);
-    if (!doc) return;
+    if (!uuid) return null;
+    const doc = fromUuidSync(uuid);
+    if (!doc) return null;
     const actor = doc instanceof Token ? doc.actor : doc;
+    if (!actor) return null;
+    console.log('Dropped actor', { uuid, actor });
+    return actor;
+  }
+
+  function onDropOfficer(event: DragEvent, patrol: Patrol) {
+    const actor = actorFromDrop(event);
     if (!actor) return;
 
     patrol.officer = {
@@ -65,11 +73,7 @@
   }
 
   function onDropSoldier(event: DragEvent, patrol: Patrol) {
-    const uuid = event.dataTransfer?.getData('text/plain');
-    if (!uuid) return;
-    const doc = fromUuidSync(uuid as string);
-    if (!doc) return;
-    const actor = doc instanceof Token ? doc.actor : doc;
+    const actor = actorFromDrop(event);
     if (!actor) return;
 
     patrol.soldiers = [
