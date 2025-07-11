@@ -1,0 +1,26 @@
+<form class="stat-app">
+  <div class="stat-list">
+  {{#each stats}}
+    <div class="stat" data-key="{{this.key}}">
+      <div class="drag-handle">&#x2630;</div>
+      <div class="stat-name">{{this.name}}</div>
+      <img src="icons/svg/d20.svg" class="roll-stat" data-key="{{this.key}}" />
+      <div class="stat-value">{{this.value}}</div>
+      {{#if ../isGM}}
+      <button type="button" class="edit-stat" data-key="{{this.key}}">Editar</button>
+      <button type="button" class="delete-stat" data-key="{{this.key}}">Borrar</button>
+      {{/if}}
+    </div>
+  {{/each}}
+  </div>
+  {{#if isGM}}
+  <button type="button" class="add-stat">Añadir Stat</button>
+  {{/if}}
+  <hr />
+  <h3>Log</h3>
+  <div class="log-list">
+    {{#each log}}
+    <div class="log-entry">{{time}} - {{user}}: {{action}}</div>
+    {{/each}}
+  </div>
+</form>

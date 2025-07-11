@@ -1,8 +1,22 @@
 import Hud from "@/components/hud/hud.svelte";
+import OrganizationStatsApp from "@/guard/organization-stats-app";
+import { MODULE_ID, SETTING_STATS, SETTING_LOG } from "@/constants";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
   console.log("Crow Nest | Initializing module");
+  game.settings.register(MODULE_ID, SETTING_STATS, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, SETTING_LOG, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
 });
 
 Hooks.once("ready", () => {
@@ -14,4 +28,15 @@ Hooks.once("ready", () => {
   container.style.position = "absolute";
   document.body.appendChild(container);
   new Hud({ target: container });
+});
+
+Hooks.on("getActorSheetHeaderButtons", (sheet: any, buttons: any[]) => {
+  if (sheet.actor?.type === "npc") {
+    buttons.unshift({
+      label: "Stats",
+      class: "crow-guard-stats",
+      icon: "fas fa-shield-alt",
+      onclick: () => new OrganizationStatsApp().render(true),
+    });
+  }
 });
