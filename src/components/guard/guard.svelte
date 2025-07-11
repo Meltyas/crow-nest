@@ -5,12 +5,14 @@
     id: string;
     name: string;
     value: number;
+    img?: string;
   }
 
   let stats: Stat[] = [];
   let log: string[] = [];
   let showLog = false;
   let addingStat = false;
+  let editing = false;
   let newStat: Stat = { id: '', name: '', value: 0 };
 
   onMount(() => {
@@ -55,6 +57,32 @@
 
   function toggleLog() {
     showLog = !showLog;
+  }
+
+  function toggleEditing() {
+    editing = !editing;
+  }
+
+  function onImageClick(stat: Stat) {
+    if (editing) {
+      const input = document.getElementById(`file-${stat.id}`) as HTMLInputElement | null;
+      input?.click();
+    } else {
+      const r = new Roll(`1d20 + ${stat.value}`);
+      r.evaluate({ async: false });
+      r.toMessage({ speaker: { alias: 'Guardia' }, flavor: stat.name });
+    }
+  }
+
+  function onFileChange(stat: Stat, event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      stat.img = String(reader.result);
+      updateStat();
+    };
+    reader.readAsDataURL(input.files[0]);
   }
 </script>
 
@@ -102,10 +130,15 @@
     display: flex;
     gap: 0.25rem;
   }
+
+  .stat-view {
+    font-weight: bold;
+  }
 </style>
 
 <div class="guard-container">
-  <button on:click={openAddStat}>Añadir Stat</button>
+  <button on:click={openAddStat} disabled={!editing}>Añadir Stat</button>
+  <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
   {#if addingStat}
     <div class="add-stat-form">
       <input placeholder="Nombre" bind:value={newStat.name} />
@@ -117,12 +150,36 @@
   <div class="stat-container">
       {#each stats as stat, i}
     <div class="stat">
-      <img src="icons/svg/shield.svg" alt="stat" />
-      <div class="stats-editables">
-              <input placeholder="Nombre" bind:value={stat.name} on:change={updateStat} />
-      <input type="number" placeholder="Valor" bind:value={stat.value} on:change={updateStat} />
-      <button on:click={() => removeStat(i)}>Quitar</button>
-      </div>
+      <img
+        src={stat.img || 'icons/svg/shield.svg'}
+        alt="stat"
+        on:click={() => onImageClick(stat)}
+      />
+      <input
+        id={`file-${stat.id}`}
+        type="file"
+        accept="image/*"
+        on:change={(e) => onFileChange(stat, e)}
+        style="display: none;"
+      />
+      {#if editing}
+        <div class="stats-editables">
+          <input
+            placeholder="Nombre"
+            bind:value={stat.name}
+            on:change={updateStat}
+          />
+          <input
+            type="number"
+            placeholder="Valor"
+            bind:value={stat.value}
+            on:change={updateStat}
+          />
+          <button on:click={() => removeStat(i)}>Quitar</button>
+        </div>
+      {:else}
+        <div class="stat-view">{stat.name}: {stat.value}</div>
+      {/if}
 
     </div>
   {/each}
