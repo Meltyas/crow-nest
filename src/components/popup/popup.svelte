@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 
   export let title = 'Crow Nest Popup';
   const dispatch = createEventDispatcher();
@@ -11,10 +11,26 @@
   let resizing = false;
   let startResize = { x: 0, y: 0, width: 0, height: 0 };
 
+  function clampToViewport() {
+    const margin = 20;
+    const maxWidth = window.innerWidth - margin;
+    const maxHeight = window.innerHeight - margin;
+    size.width = Math.min(size.width, maxWidth);
+    size.height = Math.min(size.height, maxHeight);
+    pos.x = Math.min(Math.max(0, pos.x), window.innerWidth - size.width);
+    pos.y = Math.min(Math.max(0, pos.y), window.innerHeight - size.height);
+  }
+
   onMount(() => {
     pos = { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 };
     const saved = localStorage.getItem('crowPopupSize');
     if (saved) size = JSON.parse(saved);
+    clampToViewport();
+    window.addEventListener('resize', clampToViewport);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('resize', clampToViewport);
   });
 
   function onHeaderDown(event: MouseEvent) {
