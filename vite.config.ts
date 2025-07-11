@@ -7,8 +7,13 @@ export default defineConfig({
   build: {
     outDir: "../dist",
     emptyOutDir: true,
+    assetsDir: "",
     rollupOptions: {
       input: "src/main.ts",
+      output: {
+        entryFileNames: "main.js",
+        assetFileNames: "[name][extname]",
+      },
     },
   },
   resolve: {
