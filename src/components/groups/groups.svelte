@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { GuardModifier, GuardStat } from '@/guard/stats';
-  import { getStats, getModifiers } from "@/guard/stats";
   import Tooltip from '@/components/tooltip.svelte';
-  import type { Group, GroupSkill, GroupMember } from "@/shared/group";
+  import type { GuardModifier, GuardStat } from '@/guard/stats';
+  import { getModifiers, getStats } from "@/guard/stats";
+  import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { onMount } from 'svelte';
 
   declare const FilePicker: any;
@@ -237,6 +237,14 @@
     width: 24px;
     height: 24px;
   }
+
+  .drop-zone.soldier {
+    display: flex;
+  }
+
+  .group-stat-container {
+    display: flex;
+  }
 </style>
 
 <div class="groups">
@@ -269,7 +277,7 @@
         {/if}
       </div>
       <div
-        class="drop-zone" role="button" aria-label={labels.soldierDrop}
+        class="drop-zone soldier" role="button" aria-label={labels.soldierDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropSoldier(e, group)}
       >
@@ -295,7 +303,7 @@
           <em>{labels.soldierDrop}</em>
         {/if}
       </div>
-      <div>
+      <div class="group-stat-container">
         {#each stats as stat}
           <div class="group-stat">
             <Tooltip content={`<span>${stat.name}</span>`}>
