@@ -21,6 +21,7 @@
   let groups: Group[] = [];
   let modifiers: GuardModifier[] = [];
   let editingMods = false;
+  let editingSkills = false;
 
   onMount(() => {
     stats = getStats() as GuardStat[];
@@ -200,6 +201,15 @@
     height: 32px;
   }
 
+  .skill .info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .skill textarea {
+    flex: 1;
+  }
+
   .member {
     display: flex;
     align-items: center;
@@ -309,14 +319,23 @@
         <strong>Habilidades</strong>
           {#each group.skills as sk, j}
             <div class="skill">
-              <img src={sk.img} alt="" on:click={() => chooseSkillImage(sk)} />
-              <input placeholder="Imagen" bind:value={sk.img} on:change={persist} />
-              <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
-              <input placeholder="Descripción" bind:value={sk.description} on:change={persist} />
-              <button on:click={() => removeSkill(group, j)}>Quitar</button>
+              <img src={sk.img} alt="" on:click={() => editingSkills && chooseSkillImage(sk)} />
+              {#if editingSkills}
+                <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
+                <textarea placeholder="Descripción" bind:value={sk.description} on:change={persist}></textarea>
+                <button on:click={() => removeSkill(group, j)}>Quitar</button>
+              {:else}
+                <div class="info">
+                  <strong>{sk.name}</strong>
+                  <p>{sk.description}</p>
+                </div>
+              {/if}
             </div>
         {/each}
         <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
+        <button on:click={() => (editingSkills = !editingSkills)}>
+          {editingSkills ? 'Guardar Habilidades' : 'Editar Habilidades'}
+        </button>
       </div>
       <button
         class="deploy"
