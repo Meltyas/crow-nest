@@ -1,25 +1,9 @@
 import { MODULE_ID, SETTING_PATROLS } from "@/constants";
+import type { Group, GroupMember, GroupSkill } from "@/shared/group";
 
-export interface PatrolSkill {
-  name: string;
-  description: string;
-  img: string;
-}
-
-export interface PatrolMember {
-  id: string;
-  name: string;
-  img: string;
-}
-
-export interface Patrol {
-  id: string;
-  name: string;
-  officer: PatrolMember | null;
-  soldiers: PatrolMember[];
-  mods: Record<string, number>;
-  skills: PatrolSkill[];
-}
+export type PatrolSkill = GroupSkill;
+export type PatrolMember = GroupMember;
+export type Patrol = Group;
 
 export function getPatrols(): Patrol[] {
   const stored =

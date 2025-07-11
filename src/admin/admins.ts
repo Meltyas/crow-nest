@@ -1,25 +1,9 @@
 import { MODULE_ID, SETTING_ADMINS } from "@/constants";
+import type { Group, GroupMember, GroupSkill } from "@/shared/group";
 
-export interface AdminSkill {
-  name: string;
-  description: string;
-  img: string;
-}
-
-export interface AdminMember {
-  id: string;
-  name: string;
-  img: string;
-}
-
-export interface Admin {
-  id: string;
-  name: string;
-  officer: AdminMember | null;
-  soldiers: AdminMember[];
-  mods: Record<string, number>;
-  skills: AdminSkill[];
-}
+export type AdminSkill = GroupSkill;
+export type AdminMember = GroupMember;
+export type Admin = Group;
 
 export function getAdmins(): Admin[] {
   const stored =

@@ -2,8 +2,9 @@
   import { onMount } from "svelte";
   import Popup from "@/components/popup/popup.svelte";
   import Guard from "@/components/guard/guard.svelte";
-  import Patrols from "@/components/patrols/patrols.svelte";
-  import Admins from "@/components/admins/admins.svelte";
+  import Groups from "@/components/groups/groups.svelte";
+  import { getPatrols, savePatrols } from "@/patrol/patrols";
+  import { getAdmins, saveAdmins } from "@/admin/admins";
 
   let pos = { x: 0, y: 0 };
   let isDragging = false;
@@ -88,7 +89,27 @@
 {#if showPopup}
   <Popup title="Crow Nest Ready" on:close={togglePopup}>
     <Guard />
-    <Admins />
-    <Patrols />
+    <Groups
+      {getAdmins}
+      {saveAdmins}
+      labels={{
+        groupSingular: 'Administrador',
+        addGroup: 'Añadir Administrador',
+        removeGroup: 'Eliminar Administrador',
+        officerDrop: 'Arrastra un oficial aquí',
+        soldierDrop: 'Arrastra civiles aquí',
+      }}
+    />
+    <Groups
+      {getPatrols}
+      {savePatrols}
+      labels={{
+        groupSingular: 'Patrulla',
+        addGroup: 'Añadir Patrulla',
+        removeGroup: 'Eliminar Patrulla',
+        officerDrop: 'Arrastra un oficial aquí',
+        soldierDrop: 'Arrastra soldados aquí',
+      }}
+    />
   </Popup>
 {/if}
