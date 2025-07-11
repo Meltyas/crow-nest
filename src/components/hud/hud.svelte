@@ -10,6 +10,7 @@
   let isDragging = false;
   let offset = { x: 0, y: 0 };
   let showPopup = false;
+  let activeTab = 'patrol';
 
   onMount(() => {
     const saved = localStorage.getItem("crowHudPos");
@@ -20,6 +21,10 @@
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       };
+    }
+    const savedTab = localStorage.getItem('crowActiveTab');
+    if (savedTab === 'admins' || savedTab === 'patrol') {
+      activeTab = savedTab;
     }
   });
 
@@ -51,6 +56,11 @@
   function togglePopup() {
     showPopup = !showPopup;
   }
+
+  function setTab(tab: 'patrol' | 'admins') {
+    activeTab = tab;
+    localStorage.setItem('crowActiveTab', tab);
+  }
 </script>
 
 <style>
@@ -75,6 +85,23 @@
     cursor: move;
     margin-bottom: 0.25rem;
   }
+
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tab {
+    background: #333;
+    border: 1px solid #555;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: #555;
+  }
 </style>
 
 <div
@@ -89,27 +116,46 @@
 {#if showPopup}
   <Popup title="Crow Nest Ready" on:close={togglePopup}>
     <Guard />
-    <Groups
-      getGroups={getAdmins}
-      saveGroups={saveAdmins}
-      labels={{
-        groupSingular: 'Administrador',
-        addGroup: 'Añadir Administrador',
-        removeGroup: 'Eliminar Administrador',
-        officerDrop: 'Arrastra un oficial aquí',
-        soldierDrop: 'Arrastra civiles aquí',
-      }}
-    />
-    <Groups
-      getGroups={getPatrols}
-      saveGroups={savePatrols}
-      labels={{
-        groupSingular: 'Patrulla',
-        addGroup: 'Añadir Patrulla',
-        removeGroup: 'Eliminar Patrulla',
-        officerDrop: 'Arrastra un oficial aquí',
-        soldierDrop: 'Arrastra soldados aquí',
-      }}
-    />
+    <div class="tabs" role="tablist">
+      <div
+        class="tab"
+        class:active={activeTab === 'patrol'}
+        role="tab"
+        aria-selected={activeTab === 'patrol'}
+        on:click={() => setTab('patrol')}
+      >Patrol</div>
+      <div
+        class="tab"
+        class:active={activeTab === 'admins'}
+        role="tab"
+        aria-selected={activeTab === 'admins'}
+        on:click={() => setTab('admins')}
+      >Admins</div>
+    </div>
+    {#if activeTab === 'admins'}
+      <Groups
+        getGroups={getAdmins}
+        saveGroups={saveAdmins}
+        labels={{
+          groupSingular: 'Administrador',
+          addGroup: 'Añadir Administrador',
+          removeGroup: 'Eliminar Administrador',
+          officerDrop: 'Arrastra un oficial aquí',
+          soldierDrop: 'Arrastra civiles aquí',
+        }}
+      />
+    {:else}
+      <Groups
+        getGroups={getPatrols}
+        saveGroups={savePatrols}
+        labels={{
+          groupSingular: 'Patrulla',
+          addGroup: 'Añadir Patrulla',
+          removeGroup: 'Eliminar Patrulla',
+          officerDrop: 'Arrastra un oficial aquí',
+          soldierDrop: 'Arrastra soldados aquí',
+        }}
+      />
+    {/if}
   </Popup>
 {/if}
