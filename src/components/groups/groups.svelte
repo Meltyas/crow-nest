@@ -180,16 +180,24 @@
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate({ async: false });
 
-    const lines: string[] = [];
-    for (const m of modifiers) {
-      const v = m.mods[stat.key];
-      if (v) lines.push(`${m.name} ${v > 0 ? '+' : ''}${v}`);
+    const lines: string[] = [stat.name];
+    const guardMod = guardBonus(stat.key);
+    if (guardMod) {
+      lines.push(`Modificador de la guardia ${guardMod > 0 ? '+' : ''}${guardMod}`);
     }
     const groupMod = group.mods[stat.key];
-    if (groupMod) lines.push(`Modificador de la patrulla ${groupMod > 0 ? '+' : ''}${groupMod}`);
+    if (groupMod) {
+      lines.push(`Modificador de la patrulla ${groupMod > 0 ? '+' : ''}${groupMod}`);
+    }
 
-    const flavor = [stat.name, ...lines].join('<br/>');
-    const alias = group.name || (group.officer ? `La Patrulla de ${group.officer.name}` : 'La Patrulla');
+    const alias =
+      group.name || (group.officer ? `La Patrulla de ${group.officer.name}` : 'La Patrulla');
+    const headerImg = group.officer
+      ? `<img src="${group.officer.img}" alt="${group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
+      : '';
+    const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${alias}</strong></div>`;
+
+    const flavor = `${header}<br/>${lines.join('<br/>')}`;
     r.toMessage({ speaker: { alias }, flavor });
   }
 </script>
