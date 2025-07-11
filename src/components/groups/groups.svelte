@@ -5,6 +5,8 @@
   import type { Group, GroupSkill, GroupMember } from "@/shared/group";
   import { onMount } from 'svelte';
 
+  declare const FilePicker: any;
+
   export let getGroups: () => Group[];
   export let saveGroups: (groups: Group[]) => Promise<void>;
   export let labels = {
@@ -119,7 +121,7 @@
   }
 
   function addSkill(group: Group) {
-    const skill: GroupSkill = { name: '', description: '', img: '' };
+    const skill: GroupSkill = { name: '', description: '', img: 'icons/svg/book.svg' };
     group.skills = [...group.skills, skill];
     groups = [...groups];
     persist();
@@ -130,6 +132,22 @@
     group.skills = [...group.skills];
     groups = [...groups];
     persist();
+  }
+
+  function chooseSkillImage(skill: GroupSkill) {
+    // Prefer Foundry's file picker when available
+    if (typeof FilePicker !== 'undefined') {
+      // @ts-ignore - FilePicker is provided by Foundry at runtime
+      FilePicker.create({
+        type: 'image',
+        current: skill.img,
+        callback: (path: string) => {
+          skill.img = path;
+          groups = [...groups];
+          persist();
+        },
+      }).render(true);
+    }
   }
 
   function guardBonus(key: string): number {
@@ -289,14 +307,14 @@
       </button>
       <div class="skills">
         <strong>Habilidades</strong>
-        {#each group.skills as sk, j}
-          <div class="skill">
-            <img src={sk.img} alt="" />
-            <input placeholder="Imagen" bind:value={sk.img} on:change={persist} />
-            <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
-            <input placeholder="Descripción" bind:value={sk.description} on:change={persist} />
-            <button on:click={() => removeSkill(group, j)}>Quitar</button>
-          </div>
+          {#each group.skills as sk, j}
+            <div class="skill">
+              <img src={sk.img} alt="" on:click={() => chooseSkillImage(sk)} />
+              <input placeholder="Imagen" bind:value={sk.img} on:change={persist} />
+              <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
+              <input placeholder="Descripción" bind:value={sk.description} on:change={persist} />
+              <button on:click={() => removeSkill(group, j)}>Quitar</button>
+            </div>
         {/each}
         <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
       </div>
