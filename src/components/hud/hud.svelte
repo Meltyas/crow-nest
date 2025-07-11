@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Popup from "@/components/popup/popup.svelte";
+  import Guard from "@/components/guard/guard.svelte";
 
   let pos = { x: 0, y: 0 };
   let isDragging = false;
@@ -83,5 +84,7 @@
 </div>
 
 {#if showPopup}
-  <Popup title="Crow Nest Ready" on:close={togglePopup} />
+  <Popup title="Crow Nest Ready" on:close={togglePopup}>
+    <Guard />
+  </Popup>
 {/if}

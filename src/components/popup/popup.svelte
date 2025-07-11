@@ -44,11 +44,17 @@
 <style>
   .window-app {
     position: absolute;
-    background: #222;
+    background: rgba(11, 10, 19, 0.9);
     color: white;
     border: 1px solid #555;
     border-radius: 4px;
-    width: 300px;
+    min-width: 800px;
+    box-shadow: rgb(0, 0, 0) 0px 0px 10px 0px;
+  }
+
+  .backdrop {
+    backdrop-filter: blur(4px);
+    border: 0.8px solid rgb(243, 194, 103);
   }
 
   header {
@@ -77,7 +83,9 @@
     <span>{title}</span>
     <a class="close" on:click={close}>×</a>
   </header>
-  <div class="content">
-    <slot />
+  <div class="backdrop">
+    <div class="content">
+      <slot />
+    </div>
   </div>
 </div>
