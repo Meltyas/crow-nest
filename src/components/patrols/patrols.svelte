@@ -5,7 +5,8 @@
     getPatrols,
     savePatrols,
     type Patrol,
-    type PatrolSkill
+    type PatrolSkill,
+    type PatrolMember
   } from "@/patrol/patrols";
   import { onMount } from 'svelte';
 
@@ -40,6 +41,15 @@
     patrols.splice(index, 1);
     patrols = [...patrols];
     persist();
+  }
+
+  function onDragMember(event: DragEvent, member: PatrolMember | null) {
+    if (!member) return;
+    const payload = {
+      type: 'Actor',
+      uuid: `Actor.${member.id}`,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
   }
 
   async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
@@ -153,6 +163,12 @@
     width: 32px;
     height: 32px;
   }
+
+  .member {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
 </style>
 
 <div class="patrols">
@@ -165,9 +181,15 @@
         on:drop={(e) => onDropOfficer(e, patrol)}
       >
         {#if patrol.officer}
-          <img src={patrol.officer.img} alt={patrol.officer.name} width="32" height="32" />
-          <span>{patrol.officer.name}</span>
-          <button on:click={() => console.log(patrol.officer)}>Info</button>
+          <div
+            class="member"
+            draggable="true"
+            on:dragstart={(e) => onDragMember(e, patrol.officer)}
+          >
+            <img src={patrol.officer.img} alt={patrol.officer.name} width="32" height="32" />
+            <span>{patrol.officer.name}</span>
+            <button on:click={() => console.log(patrol.officer)}>Info</button>
+          </div>
         {:else}
           <em>Arrastra un oficial aquí</em>
         {/if}
@@ -178,7 +200,11 @@
         on:drop={(e) => onDropSoldier(e, patrol)}
       >
         {#each patrol.soldiers as s}
-          <div>
+          <div
+            class="member"
+            draggable="true"
+            on:dragstart={(e) => onDragMember(e, s)}
+          >
             <img src={s.img} alt={s.name} width="24" height="24" /> {s.name}
             <button on:click={() => console.log(s)}>Info</button>
           </div>
