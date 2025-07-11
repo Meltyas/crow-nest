@@ -140,10 +140,10 @@
         const stat = stats.find((s) => s.key === k);
         if (!stat) return '';
         const val = Number(v) > 0 ? `+${v}` : `${v}`;
-        return `${stat.name}: ${val}`;
+        return `<div><strong>${stat.name}:</strong> ${val}</div>`;
       })
       .filter(Boolean)
-      .join(', ');
+      .join('');
   }
 
   function toggleEditingMods() {
@@ -437,7 +437,7 @@
   <div class="modifier-container">
   {#each modifiers as mod, i}
     <div class="modifier">
-      <Tooltip content={`${mod.name}: ${mod.description ?? ''}`}> 
+      <Tooltip content={`<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>`}>
         <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
       </Tooltip>
       <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />

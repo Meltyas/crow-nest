@@ -253,7 +253,7 @@
             draggable="true"
             on:dragstart={(e) => onDragMember(e, s)}
           >
-            <Tooltip content={s.name}>
+            <Tooltip content={`<span>${s.name}</span>`}>
               <img
                 src={s.img}
                 alt={s.name}
@@ -272,7 +272,7 @@
       <div>
         {#each stats as stat}
           <div class="patrol-stat">
-            <Tooltip content={stat.name}>
+            <Tooltip content={`<span>${stat.name}</span>`}>
               <button class="stat-icon" on:click={() => roll(stat, patrol)}>
                 <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
               </button>

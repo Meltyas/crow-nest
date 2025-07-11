@@ -32,7 +32,9 @@
 <div class="tooltip-wrapper" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>
   <slot></slot>
   {#if show}
-    <div class="tooltip" bind:this={tooltipEl}>{content}</div>
+    <div class="tooltip" bind:this={tooltipEl}>
+      {@html content}
+    </div>
   {/if}
 </div>
 
