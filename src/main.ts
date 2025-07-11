@@ -10,6 +10,7 @@ Hooks.once("ready", () => {
 
 Hooks.once("ready", () => {
   const container = document.createElement("div");
+  container.style.position = "absolute";
   document.body.appendChild(container);
   new Hud({ target: container });
 });
