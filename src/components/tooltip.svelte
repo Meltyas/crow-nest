@@ -49,7 +49,9 @@
     color: white;
     padding: 0.25rem;
     border-radius: 4px;
-    white-space: nowrap;
+    max-width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
     z-index: 10;
     pointer-events: none;
   }
