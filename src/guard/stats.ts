@@ -4,6 +4,7 @@ export interface GuardStat {
   key: string;
   name: string;
   value: number;
+  img?: string;
 }
 
 export interface LogEntry {
