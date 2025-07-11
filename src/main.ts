@@ -1,4 +1,4 @@
-import Popup from "@/components/popup/popup.svelte";
+import Hud from "@/components/hud/hud.svelte";
 
 Hooks.once("init", () => {
   console.log("Crow Nest | Initializing module");
@@ -11,5 +11,5 @@ Hooks.once("ready", () => {
 Hooks.once("ready", () => {
   const container = document.createElement("div");
   document.body.appendChild(container);
-  new Popup({ target: container, props: { title: "Crow Nest Ready" } });
+  new Hud({ target: container });
 });

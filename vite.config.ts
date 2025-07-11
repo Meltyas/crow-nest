@@ -21,7 +21,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
-  plugins: [svelte()],
+  plugins: [
+    svelte({ configFile: path.resolve(__dirname, "svelte.config.js") }),
+  ],
   css: {
     postcss: "../postcss.config.cjs",
   },
