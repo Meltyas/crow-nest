@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
     getLog,
@@ -10,7 +11,6 @@
     saveStats,
   } from '@/guard/stats';
   import { onMount } from 'svelte';
-  import Tooltip from '@/components/tooltip.svelte';
 
   interface Stat extends GuardStat {}
 
@@ -248,7 +248,6 @@
   .guard-container {
     padding: 0.5rem;
     color: white;
-    max-height: 400px;
     overflow-y: auto;
   }
 
