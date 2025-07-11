@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { GuardStat } from '@/guard/stats';
-  import { getStats } from "@/guard/stats";
+  import type { GuardModifier, GuardStat } from '@/guard/stats';
+  import { getStats, getModifiers } from "@/guard/stats";
   import {
     getPatrols,
     savePatrols,
@@ -12,10 +12,12 @@
 
   let stats: GuardStat[] = [];
   let patrols: Patrol[] = [];
+  let modifiers: GuardModifier[] = [];
 
   onMount(() => {
     stats = getStats() as GuardStat[];
     patrols = getPatrols();
+    modifiers = getModifiers();
   });
 
   async function persist() {
@@ -130,8 +132,16 @@
     persist();
   }
 
+  function guardBonus(key: string): number {
+    return modifiers.reduce((acc, m) => acc + (m.mods[key] || 0), 0);
+  }
+
+  function totalStat(stat: GuardStat, patrol: Patrol): number {
+    return stat.value + guardBonus(stat.key) + patrol.modifier;
+  }
+
   function roll(stat: GuardStat, patrol: Patrol) {
-    const total = stat.value + patrol.modifier;
+    const total = totalStat(stat, patrol);
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate({ async: false });
     r.toMessage({ speaker: { alias: patrol.officer || 'Patrol' }, flavor: stat.name });
@@ -178,8 +188,46 @@
     gap: 0.25rem;
   }
 
+  .patrol-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
   .deploy {
     margin-top: 0.25rem;
+  }
+
+  .stat-icon {
+    position: relative;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .stat-icon img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .stat-icon .tooltip {
+    visibility: hidden;
+    background: #333;
+    color: white;
+    text-align: center;
+    border-radius: 4px;
+    padding: 0.25rem;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .stat-icon:hover .tooltip {
+    visibility: visible;
   }
 </style>
 
@@ -244,9 +292,13 @@
       </div>
       <div>
         {#each stats as stat}
-          <div>
-            <button on:click={() => roll(stat, patrol)}>{stat.name}</button>
-            <span>({stat.value + patrol.modifier})</span>
+          <div class="patrol-stat">
+            <button class="stat-icon" on:click={() => roll(stat, patrol)}>
+              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+              <span class="tooltip">{stat.name}</span>
+            </button>
+            <span>{patrol.modifier}</span>
+            <span>({totalStat(stat, patrol)})</span>
           </div>
         {/each}
       </div>
