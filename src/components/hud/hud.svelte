@@ -51,7 +51,7 @@
 
 <style>
   .hud-crow {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     background: rgba(0, 0, 0, 0.5);
@@ -83,5 +83,5 @@
 </div>
 
 {#if showPopup}
-  <Popup title="Crow Nest Ready" />
+  <Popup title="Crow Nest Ready" on:close={togglePopup} />
 {/if}
