@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2021",
+    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
@@ -12,7 +13,7 @@
     "checkJs": false,
     "jsx": "preserve",
     "outDir": "./dist",
-    "types": ["vite/client", "svelte", "foundryvtt-types"]
+    "types": ["vite/client", "svelte", "fvtt-types"]
   },
-  "include": ["src", "node_modules/foundryvtt-types"]
+  "include": ["src"]
 }

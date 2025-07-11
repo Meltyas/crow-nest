@@ -1,4 +1,4 @@
-import Popup from "@/components/popup/Popup.svelte";
+import Popup from "@/components/popup/popup.svelte";
 
 Hooks.once("init", () => {
   console.log("Crow Nest | Initializing module");
