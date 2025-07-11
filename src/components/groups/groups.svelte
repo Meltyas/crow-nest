@@ -216,13 +216,13 @@
     <div class="group">
       <strong>{group.name}</strong>
       <div
-        class="drop-zone officer"
+        class="drop-zone officer" role="button" aria-label={labels.officerDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropOfficer(e, group)}
       >
         {#if group.officer}
           <div
-            class="member"
+            class="member" role="button"
             draggable="true"
             on:dragstart={(e) => onDragMember(e, group.officer)}
           >
@@ -241,13 +241,13 @@
         {/if}
       </div>
       <div
-        class="drop-zone"
+        class="drop-zone" role="button" aria-label={labels.soldierDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropSoldier(e, group)}
       >
         {#each group.soldiers as s}
           <div
-            class="member"
+            class="member" role="button"
             draggable="true"
             on:dragstart={(e) => onDragMember(e, s)}
           >
