@@ -355,18 +355,9 @@
   <div class="stat-container">
       {#each stats as stat, i}
     <div class="stat">
-<<<<<<< Updated upstream
       <button class="stat-img" on:click={() => onImageClick(stat)}>
-        <img src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+        <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
       </button>
-=======
-      <img
-        class="standard-image"
-        src={stat.img || 'icons/svg/shield.svg'}
-        alt="stat"
-        on:click={() => onImageClick(stat)}
-      />
->>>>>>> Stashed changes
       <input
         id={`file-${stat.key}`}
         type="file"
