@@ -998,7 +998,6 @@
             <h3>Patrullas</h3>
             <Groups
               groups={patrols}
-              getGroups={getPatrols}
               saveGroups={savePatrols}
               labels={{
                 groupSingular: 'Patrulla',
