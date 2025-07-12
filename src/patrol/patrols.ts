@@ -13,7 +13,12 @@ export function getPatrols(): Patrol[] {
 }
 
 export async function savePatrols(patrols: Patrol[]): Promise<void> {
-  console.log("� Patrols: Saving patrols for user:", game.user?.name, "- Count:", patrols.length);
+  console.log(
+    "� Patrols: Saving patrols for user:",
+    game.user?.name,
+    "- Count:",
+    patrols.length
+  );
   await game.settings.set(MODULE_ID, SETTING_PATROLS, patrols);
 
   // Broadcast changes to all players

@@ -1,6 +1,6 @@
+import { MODULE_ID } from "@/constants";
 import type { Group } from "@/shared/group";
 import { createSyncEvent, SyncManager, type SyncEvent } from "@/utils/sync";
-import { MODULE_ID } from "@/constants";
 import PatrolSheetPopup from "./patrol-sheet-popup.svelte";
 
 export class PatrolSheetManager {
@@ -21,7 +21,7 @@ export class PatrolSheetManager {
       `🚀 PatrolSheetManager: Inicializando gestor de fichas de patrulla`
     );
     this.restoreOpenSheets();
-    
+
     // Delay sync handlers registration to ensure SyncManager is fully initialized
     setTimeout(() => {
       this.registerSyncHandlers();
@@ -29,28 +29,30 @@ export class PatrolSheetManager {
   }
   private registerSyncHandlers() {
     const syncManager = SyncManager.getInstance();
-    
+
     console.log("🔧 PatrolSheetManager: Registering sync handlers");
-    
+
     // Register handler for patrol sheet events
     syncManager.registerEventHandler("patrol-sheet", (event: SyncEvent) => {
       console.log("📋 PatrolSheetManager: Received sync event", event);
       console.log("🎯 Current user isGM:", game.user?.isGM);
       console.log("🎯 Event action:", event.action);
-      
+
       if (event.action === "show") {
         console.log("📋 PatrolSheetManager: Processing show event");
-        
+
         if (!game.user?.isGM) {
           console.log("✅ PatrolSheetManager: Showing patrol sheet to player");
           const { group, labels } = event.data;
           this.showPatrolSheet(group, labels);
         } else {
-          console.log("🚫 PatrolSheetManager: Skipping show for GM (GM initiated the action)");
+          console.log(
+            "🚫 PatrolSheetManager: Skipping show for GM (GM initiated the action)"
+          );
         }
       }
     });
-    
+
     console.log("✅ PatrolSheetManager: Sync handlers registered");
   }
 
@@ -61,32 +63,37 @@ export class PatrolSheetManager {
       return;
     }
 
-    console.log("📤 forceShowPatrolSheetToAll: GM initiating broadcast for group:", group.id);
+    console.log(
+      "📤 forceShowPatrolSheetToAll: GM initiating broadcast for group:",
+      group.id
+    );
 
     // Mostrar al GM también
     this.showPatrolSheet(group, labels);
 
     // Usar el sistema de sincronización para enviar a todos los usuarios
     const syncManager = SyncManager.getInstance();
-    
+
     // Create a simplified group object to avoid serialization issues
     const simplifiedGroup = {
       id: group.id,
       name: group.name,
-      officer: group.officer ? {
-        id: group.officer.id,
-        name: group.officer.name,
-        img: group.officer.img
-      } : null,
+      officer: group.officer
+        ? {
+            id: group.officer.id,
+            name: group.officer.name,
+            img: group.officer.img,
+          }
+        : null,
       soldiers: group.soldiers || [],
-      mods: group.mods || {}
+      mods: group.mods || {},
     };
-    
+
     const event = createSyncEvent("patrol-sheet", "show", {
       group: simplifiedGroup,
       labels: labels,
     });
-    
+
     console.log("📡 forceShowPatrolSheetToAll: Broadcasting event:", event);
     await syncManager.broadcast(event);
     console.log("✅ forceShowPatrolSheetToAll: Broadcast completed");
@@ -496,15 +503,15 @@ export class PatrolSheetManager {
     const syncManager = SyncManager.getInstance();
     console.log("🔍 PatrolSheetManager: Debug sync handlers");
     console.log("SyncManager instance:", syncManager);
-    
+
     // Try to trigger a test handler
     syncManager.registerEventHandler("test", (event) => {
       console.log("✅ Test handler working:", event);
     });
-    
+
     return {
       syncManager: !!syncManager,
-      isReady: true
+      isReady: true,
     };
   }
 
@@ -514,16 +521,19 @@ export class PatrolSheetManager {
       console.log("🚫 testSyncCommunication: Only GM can test sync");
       return;
     }
-    
+
     console.log("🧪 testSyncCommunication: Starting test");
     const syncManager = SyncManager.getInstance();
-    
+
     const testEvent = createSyncEvent("patrol-sheet", "show", {
       group: { id: "test", name: "Test Patrol" },
-      labels: { groupSingular: "Patrulla" }
+      labels: { groupSingular: "Patrulla" },
     });
-    
-    console.log("📡 testSyncCommunication: Broadcasting test event:", testEvent);
+
+    console.log(
+      "📡 testSyncCommunication: Broadcasting test event:",
+      testEvent
+    );
     await syncManager.broadcast(testEvent);
     console.log("✅ testSyncCommunication: Test completed");
   }
@@ -536,38 +546,41 @@ export class PatrolSheetManager {
       userId: game.user?.id,
       userName: game.user?.name,
       isGM: game.user?.isGM,
-      moduleId: MODULE_ID
+      moduleId: MODULE_ID,
     });
-    
+
     // Check if our handlers are registered
     const syncManager = SyncManager.getInstance();
     console.log("🎯 SyncManager instance:", syncManager);
-    console.log("📋 Event handlers registered:", syncManager.getEventHandlerCount());
-    
+    console.log(
+      "📋 Event handlers registered:",
+      syncManager.getEventHandlerCount()
+    );
+
     return {
       socket: !!game.socket,
       user: game.user?.name,
       isGM: game.user?.isGM,
-      handlersRegistered: syncManager.getEventHandlerCount()
+      handlersRegistered: syncManager.getEventHandlerCount(),
     };
   }
 
   // Test socket connectivity directly
   testSocketDirectly() {
     console.log("🧪 testSocketDirectly: Testing raw socket functionality");
-    
+
     if (!game.socket) {
       console.error("❌ No socket available");
       return;
     }
-    
+
     const testChannel = `module.${MODULE_ID}-direct-test`;
     const testData = {
       test: "direct socket test",
       timestamp: Date.now(),
-      from: game.user?.name
+      from: game.user?.name,
     };
-    
+
     console.log(`📡 Emitting to: ${testChannel}`, testData);
     game.socket.emit(testChannel, testData);
     console.log("✅ Direct socket test emission completed");

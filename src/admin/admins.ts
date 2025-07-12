@@ -13,7 +13,12 @@ export function getAdmins(): Admin[] {
 }
 
 export async function saveAdmins(admins: Admin[]): Promise<void> {
-  console.log("� Admins: Saving admins for user:", game.user?.name, "- Count:", admins.length);
+  console.log(
+    "� Admins: Saving admins for user:",
+    game.user?.name,
+    "- Count:",
+    admins.length
+  );
   await game.settings.set(MODULE_ID, SETTING_ADMINS, admins);
 
   // Broadcast changes to all players
