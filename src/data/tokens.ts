@@ -18,20 +18,16 @@ export function getTokens(): GameTokens {
 
 export async function saveTokens(tokens: GameTokens): Promise<void> {
   if (game.settings && game.user?.isGM) {
-    console.log("💾 Tokens: Saving tokens as GM", tokens);
     await game.settings.set(MODULE_ID, "gameTokens", tokens);
 
     // Broadcast change to all players
     const syncManager = SyncManager.getInstance();
     await syncManager.broadcast(createSyncEvent("tokens", "update", tokens));
-  } else if (!game.user?.isGM) {
-    console.log("🚫 Tokens: Skipping save - not GM");
   }
 }
 
 export async function adjustDespair(delta: number): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Tokens: Only GM can adjust despair");
     return;
   }
 
@@ -42,7 +38,6 @@ export async function adjustDespair(delta: number): Promise<void> {
 
 export async function adjustCheers(delta: number): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Tokens: Only GM can adjust cheers");
     return;
   }
 
