@@ -1,8 +1,10 @@
 <script context="module" lang="ts">
   declare const FilePicker: any;
+  declare const game: any;
 </script>
 
 <script lang="ts">
+  import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
@@ -256,6 +258,17 @@
       content: content,
       whisper: null // Mensaje público
     });
+  }
+
+  function showPatrolSheet(group: Group) {
+    // Usar el sistema independiente de fichas de patrulla (individual)
+    patrolSheetManager.showPatrolSheet(group, labels);
+  }
+
+  function forceShowPatrolSheetToAll(group: Group) {
+    // Solo GM puede forzar la ficha a todos
+    if (!game.user?.isGM) return;
+    patrolSheetManager.forceShowPatrolSheetToAll(group, labels);
   }
 
   function guardBonus(key: string): number {
@@ -854,6 +867,18 @@
           <button class="header-button" on:click={() => toggleEditing(group)}>
             {editing[group.id] ? 'Save' : 'Edit'}
           </button>
+          {#if game.user?.isGM}
+            <button class="header-button" on:click={() => showPatrolSheet(group)} style="background: #4a90e2; color: white;" title="Abrir ficha para mí">
+              Ficha
+            </button>
+            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} style="background: #dc2626; color: white;" title="Mostrar ficha a todos los jugadores">
+              Ficha→All
+            </button>
+          {:else}
+            <button class="header-button" on:click={() => showPatrolSheet(group)}>
+              Ficha
+            </button>
+          {/if}
           <button
             class="header-button"
             draggable="true"

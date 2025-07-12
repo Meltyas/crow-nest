@@ -1,4 +1,5 @@
 import Hud from "@/components/hud/hud.svelte";
+import { patrolSheetManager } from "@/components/patrol-sheet/patrol-sheet";
 import {
   MODULE_ID,
   SETTING_ADMINS,
@@ -72,6 +73,35 @@ Hooks.once("ready", () => {
   // Initialize real-time synchronization
   console.log("Crow Nest | Initializing sync system");
   initializeSync();
+
+  // Initialize patrol sheet manager
+  console.log("Crow Nest | Initializing patrol sheet system");
+  patrolSheetManager; // Esto inicializa la instancia
+
+  // Expose API for external access
+  (game.modules.get(MODULE_ID) as any).api = {
+    getGroups: () => getPatrols(),
+    patrolSheetManager: patrolSheetManager,
+    debugPatrolSheets: () => patrolSheetManager.debugState(),
+    clearPatrolPositions: () => patrolSheetManager.clearStoredPositions(),
+    checkLocalStorage: () => {
+      const activeSheets = localStorage.getItem("crow-nest-open-patrol-sheets");
+      const positions = localStorage.getItem("crow-nest-patrol-positions");
+      console.log("🔍 LocalStorage Debug:");
+      console.log(
+        "Active sheets:",
+        activeSheets ? JSON.parse(activeSheets) : null
+      );
+      console.log(
+        "Position history:",
+        positions ? JSON.parse(positions) : null
+      );
+      return {
+        activeSheets: activeSheets ? JSON.parse(activeSheets) : null,
+        positions: positions ? JSON.parse(positions) : null,
+      };
+    },
+  };
 
   // Create HUD
   console.log("Crow Nest | Creating HUD");
