@@ -4,7 +4,7 @@ import PatrolSheetPopup from "./patrol-sheet-popup.svelte";
 
 export class PatrolSheetManager {
   private static instance: PatrolSheetManager;
-  public activeSheets: Map<string, any> = new Map(); // Made public for main.ts access
+  private activeSheets: Map<string, any> = new Map();
   private storageKey = "crow-nest-open-patrol-sheets";
   private positionsKey = "crow-nest-patrol-positions"; // Nueva clave para posiciones históricas
 
@@ -24,7 +24,7 @@ export class PatrolSheetManager {
 
   // Función para que el GM fuerce la ficha a todos (UPDATED: now uses settings!)
   async forceShowPatrolSheetToAll(group: Group, labels: any) {
-    console.log("� forceShowPatrolSheetToAll: Redirecting to settings-based method");
+    console.log("📤 forceShowPatrolSheetToAll: Using settings-based method");
     return this.forceShowPatrolSheetToAllViaSettings(group, labels, { showToGM: true });
   }
 
@@ -466,17 +466,10 @@ export class PatrolSheetManager {
         this.showPatrolSheetFromSetting(sheetData);
       }
     });
-    
-    // Note: We don't automatically close sheets when they're removed from the list
-    // This allows for better UX - sheets stay open until manually closed
-    console.log("📋 Finished processing active sheets update");
   }
   
   // Check if current user should show this patrol sheet
   private shouldShowPatrolSheet(sheetData: any): boolean {
-    console.log("🔍 shouldShowPatrolSheet: Checking sheet data:", sheetData);
-    console.log("🔍 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-    
     // Don't show to GM if they initiated it (unless specifically requested)
     if (game.user?.isGM && sheetData.initiatedBy === game.user.id && !sheetData.showToGM) {
       console.log("🚫 Skipping show for GM who initiated it");
@@ -495,26 +488,19 @@ export class PatrolSheetManager {
       return false;
     }
     
-    console.log("✅ Should show patrol sheet - all checks passed");
     return true;
   }
   
   // Show patrol sheet from setting data
   private showPatrolSheetFromSetting(sheetData: any) {
-    console.log("🎯 showPatrolSheetFromSetting: Starting with data:", sheetData);
-    
     // Get the group data
     const groups = (game.modules?.get("crow-nest") as any)?.api?.getGroups?.();
-    console.log("🎯 Available groups:", groups?.length || 0);
-    
     if (!groups) {
       console.error("❌ No groups available");
       return;
     }
     
     const group = groups.find((g: any) => g.id === sheetData.groupId);
-    console.log("🎯 Found group:", group ? group.name || group.id : "NOT FOUND");
-    
     if (!group) {
       console.error("❌ Group not found:", sheetData.groupId);
       return;
@@ -522,11 +508,9 @@ export class PatrolSheetManager {
     
     // Use default labels or provided ones
     const labels = sheetData.labels || { groupSingular: "Patrol" };
-    console.log("🎯 Using labels:", labels);
     
     console.log("✅ Opening patrol sheet from setting for group:", group.name || group.id);
     this.showPatrolSheet(group, labels);
-    console.log("✅ showPatrolSheet call completed");
   }
   
   // NEW: Settings-based method to show patrol sheet to all users
@@ -543,16 +527,10 @@ export class PatrolSheetManager {
       this.showPatrolSheet(group, labels);
     }
 
-    // STEP 1: Clear the list first (so all players register it's empty)
-    console.log("🧹 Step 1: Clearing active patrol sheets list to reset state");
-    await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
+    // Get current active sheets
+    const currentSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets") as any[];
     
-    // STEP 2: Wait a bit for all clients to process the empty list
-    console.log("⏳ Step 2: Waiting for clients to process empty list...");
-    await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
-    
-    // STEP 3: Add the new patrol sheet entry
-    console.log("📋 Step 3: Adding new patrol sheet to list");
+    // Create new sheet entry
     const newSheetEntry = {
       groupId: group.id,
       groupName: group.name,
@@ -563,15 +541,16 @@ export class PatrolSheetManager {
       targetUsers: options.targetUsers || null, // null means all users
     };
     
-    // Set the list with just this new entry
-    const updatedSheets = [newSheetEntry];
+    // Remove any existing entry for this group and add the new one
+    const updatedSheets = currentSheets.filter(sheet => sheet.groupId !== group.id);
+    updatedSheets.push(newSheetEntry);
     
-    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with fresh entry:", updatedSheets);
+    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with:", updatedSheets);
     
     // Update the setting - this will automatically sync to all users!
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
     
-    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully with clear-wait-refill strategy");
+    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully");
   }
   
   // Method to remove a patrol sheet from active list (when closed)

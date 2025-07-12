@@ -51,12 +51,41 @@ export class SyncManager {
 
   // Register a handler for specific event types
   registerEventHandler(type: string, handler: (event: SyncEvent) => void) {
+    console.log(`🔧 SyncManager: Registering handler for type: ${type}`);
     this.eventHandlers.set(type, handler);
+  }
+
+  // Clear a specific event handler
+  clearEventHandler(type: string) {
+    console.log(`🧹 SyncManager: Clearing handler for type: ${type}`);
+    this.eventHandlers.delete(type);
+  }
+
+  // Clear all event handlers
+  clearAllEventHandlers() {
+    console.log("🧹 SyncManager: Clearing all event handlers");
+    this.eventHandlers.clear();
   }
 
   // Get number of registered event handlers (for debugging)
   getEventHandlerCount(): number {
     return this.eventHandlers.size;
+  }
+
+  // Debug methods to inspect sync state
+  getListeners() {
+    return this.listeners;
+  }
+
+  getEventHandlers() {
+    return this.eventHandlers;
+  }
+
+  getListenerCount(type?: string): number {
+    if (type) {
+      return this.listeners.get(type)?.length || 0;
+    }
+    return Array.from(this.listeners.values()).reduce((total, callbacks) => total + callbacks.length, 0);
   }
 
   // Register a listener for sync events
@@ -176,6 +205,37 @@ export function createSyncEvent(
   };
 }
 
+// Test function specifically for patrol-sheet events
+export function testPatrolSheetSync() {
+  console.log("🧪 Testing patrol-sheet sync communication...");
+  console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+
+  if (!game.socket) {
+    console.error("❌ No socket available!");
+    return;
+  }
+
+  const testEvent: SyncEvent = {
+    type: "patrol-sheet",
+    action: "show",
+    data: {
+      group: {
+        id: "test-patrol",
+        name: "Test Patrol",
+        officer: null,
+        soldiers: [],
+        mods: {}
+      },
+      labels: { test: "patrol sheet test" }
+    },
+    timestamp: Date.now(),
+    user: game.user?.name || "unknown"
+  };
+
+  console.log("📤 Sending test patrol-sheet event:", testEvent);
+  game.socket.emit(`module.crow-nest`, testEvent);
+}
+
 // Initialize socket listener
 export function initializeSync() {
   console.log("🚀 SyncManager: Initializing synchronization system");
@@ -186,19 +246,15 @@ export function initializeSync() {
     console.log("✅ SyncManager: Socket available, setting up listener");
     console.log("🔌 Socket object:", game.socket);
 
-    // Test if socket is actually working
-    const testChannel = `module.${MODULE_ID}-test`;
-    game.socket.on(testChannel, (data) => {
-      console.log("🧪 Test socket received:", data);
-    });
-
     // Setup the main listener
     const mainChannel = `module.${MODULE_ID}`;
     console.log(`🎯 Setting up listener for: ${mainChannel}`);
 
-    // Remove any existing listener first
+    // IMPORTANT: Remove any existing listener first to prevent duplicates
+    console.log("🧹 Cleaning up existing listeners...");
     game.socket.off(mainChannel);
 
+    // Register the main socket listener
     game.socket.on(mainChannel, (event: SyncEvent) => {
       console.log("📨 SyncManager: Socket received event", event);
       console.log(
@@ -227,16 +283,17 @@ export function initializeSync() {
 
     console.log(`🎯 SyncManager: Listening on ${mainChannel}`);
     console.log("✅ SyncManager: Socket listener fully configured");
-
-    // Test the socket immediately
-    setTimeout(() => {
-      console.log("🧪 Testing socket emission...");
-      game.socket?.emit(testChannel, {
-        test: "initialization test",
-        user: game.user?.name,
-      });
-    }, 1000);
   } else {
     console.error("❌ SyncManager: No socket available during initialization");
+  }
+}
+
+// Cleanup function to remove all listeners
+export function cleanupSync() {
+  console.log("� SyncManager: Cleaning up sync system");
+  if (game.socket) {
+    const mainChannel = `module.${MODULE_ID}`;
+    game.socket.off(mainChannel);
+    console.log(`✅ SyncManager: Removed listeners for ${mainChannel}`);
   }
 }

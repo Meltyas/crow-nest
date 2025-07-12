@@ -4,7 +4,7 @@ import PatrolSheetPopup from "./patrol-sheet-popup.svelte";
 
 export class PatrolSheetManager {
   private static instance: PatrolSheetManager;
-  public activeSheets: Map<string, any> = new Map(); // Made public for main.ts access
+  private activeSheets: Map<string, any> = new Map();
   private storageKey = "crow-nest-open-patrol-sheets";
   private positionsKey = "crow-nest-patrol-positions"; // Nueva clave para posiciones históricas
 
@@ -427,9 +427,232 @@ export class PatrolSheetManager {
     }
   }
 
-  // ==============================================
+  // Debug method to check if sync handlers are registered
+  debugSyncHandlers() {
+    const syncManager = SyncManager.getInstance();
+    console.log("🔍 PatrolSheetManager: Debug sync handlers");
+    console.log("SyncManager instance:", syncManager);
+    
+    // Try to trigger a test handler
+    syncManager.registerEventHandler("test", (event) => {
+      console.log("✅ Test handler working:", event);
+    });
+    
+    return {
+      syncManager: !!syncManager,
+      isReady: true
+    };
+  }
+
+  // Test method to verify sync communication
+  async testSyncCommunication() {
+    if (!game.user?.isGM) {
+      console.log("🚫 testSyncCommunication: Only GM can test sync");
+      return;
+    }
+    
+    console.log("🧪 testSyncCommunication: Starting test");
+    const syncManager = SyncManager.getInstance();
+    
+    const testEvent = createSyncEvent("patrol-sheet", "show", {
+      group: { id: "test", name: "Test Patrol" },
+      labels: { groupSingular: "Patrulla" }
+    });
+    
+    console.log("📡 testSyncCommunication: Broadcasting test event:", testEvent);
+    await syncManager.broadcast(testEvent);
+    console.log("✅ testSyncCommunication: Test completed");
+  }
+
+  // Test method for players to verify they can receive events
+  testSocketReception() {
+    console.log("🔍 testSocketReception: Player testing socket reception");
+    console.log("📊 Socket info:", {
+      socketExists: !!game.socket,
+      userId: game.user?.id,
+      userName: game.user?.name,
+      isGM: game.user?.isGM,
+      moduleId: MODULE_ID
+    });
+    
+    // Check if our handlers are registered
+    const syncManager = SyncManager.getInstance();
+    console.log("🎯 SyncManager instance:", syncManager);
+    console.log("📋 Event handlers registered:", syncManager.getEventHandlerCount());
+    
+    return {
+      socket: !!game.socket,
+      user: game.user?.name,
+      isGM: game.user?.isGM,
+      handlersRegistered: syncManager.getEventHandlerCount()
+    };
+  }
+
+  // Test socket connectivity directly
+  testSocketDirectly() {
+    console.log("🧪 testSocketDirectly: Testing raw socket functionality");
+    
+    if (!game.socket) {
+      console.error("❌ No socket available");
+      return;
+    }
+    
+    const testChannel = `module.${MODULE_ID}-direct-test`;
+    const testData = {
+      test: "direct socket test",
+      timestamp: Date.now(),
+      from: game.user?.name
+    };
+    
+    console.log(`📡 Emitting to: ${testChannel}`, testData);
+    game.socket.emit(testChannel, testData);
+    console.log("✅ Direct socket test emission completed");
+  }
+
+  // Manual cleanup function for sync issues
+  manualCleanupSync() {
+    console.log("🧹 Manual cleanup: Clearing sync system");
+    
+    // Clear socket listeners
+    if (game.socket) {
+      const mainChannel = `module.${MODULE_ID}`;
+      game.socket.off(mainChannel);
+      console.log(`✅ Removed socket listeners for ${mainChannel}`);
+    }
+    
+    // Clear sync manager handlers
+    const syncManager = SyncManager.getInstance();
+    syncManager.clearEventHandler("patrol-sheet");
+    console.log("✅ Cleared patrol-sheet event handlers");
+    
+    return {
+      success: true,
+      message: "Sync system cleaned up manually"
+    };
+  }
+
+  // Comprehensive socket debugging method
+  debugSocketSystem() {
+    console.log("🔍 debugSocketSystem: Comprehensive socket analysis");
+    
+    // Basic socket availability
+    console.log("📊 Basic Socket Info:");
+    console.log("  - game.socket exists:", !!game.socket);
+    console.log("  - game.socket type:", typeof game.socket);
+    console.log("  - game.socket constructor:", game.socket?.constructor?.name);
+    
+    if (!game.socket) {
+      console.error("❌ No socket available - this is the root problem!");
+      return {
+        error: "No socket available",
+        diagnosis: "Socket system not initialized in Foundry"
+      };
+    }
+    
+    // Socket properties analysis
+    console.log("🔧 Socket Properties:");
+    const socketProps = Object.getOwnPropertyNames(game.socket);
+    console.log("  - Socket properties:", socketProps);
+    
+    // Check for _callbacks or similar
+    console.log("  - _callbacks:", (game.socket as any)._callbacks);
+    console.log("  - callbacks:", (game.socket as any).callbacks);
+    console.log("  - listeners:", (game.socket as any).listeners);
+    console.log("  - events:", (game.socket as any).events);
+    console.log("  - _events:", (game.socket as any)._events);
+    
+    // Check socket connection status
+    console.log("🌐 Socket Connection:");
+    console.log("  - connected:", (game.socket as any).connected);
+    console.log("  - disconnected:", (game.socket as any).disconnected);
+    console.log("  - id:", (game.socket as any).id);
+    
+    // Test basic socket methods
+    console.log("🔨 Socket Methods:");
+    console.log("  - emit method:", typeof game.socket.emit);
+    console.log("  - on method:", typeof game.socket.on);
+    console.log("  - off method:", typeof game.socket.off);
+    
+    // Try to register a test listener
+    try {
+      const testChannel = `module.${MODULE_ID}-socket-test`;
+      console.log(`🧪 Testing listener registration on: ${testChannel}`);
+      
+      const testHandler = (data: any) => {
+        console.log("✅ Test listener received data:", data);
+      };
+      
+      game.socket.on(testChannel, testHandler);
+      console.log("✅ Test listener registered successfully");
+      
+      // Check if it's now in callbacks
+      console.log("  - _callbacks after registration:", (game.socket as any)._callbacks);
+      console.log(`  - Specific channel callbacks:`, (game.socket as any)._callbacks?.[testChannel]);
+      
+      // Test emit
+      setTimeout(() => {
+        console.log("📡 Emitting test data...");
+        game.socket.emit(testChannel, { test: "socket system test", timestamp: Date.now() });
+      }, 100);
+      
+      // Clean up after test
+      setTimeout(() => {
+        game.socket.off(testChannel, testHandler);
+        console.log("🧹 Test listener cleaned up");
+      }, 1000);
+      
+    } catch (error) {
+      console.error("❌ Error during socket test:", error);
+    }
+    
+    return {
+      socketExists: !!game.socket,
+      socketType: typeof game.socket,
+      hasCallbacks: !!(game.socket as any)._callbacks,
+      connected: (game.socket as any).connected,
+      methods: {
+        emit: typeof game.socket.emit,
+        on: typeof game.socket.on,
+        off: typeof game.socket.off
+      }
+    };
+  }
+
+  // Method to force socket reinitialization
+  forceSocketReinitialization() {
+    console.log("🔄 forceSocketReinitialization: Attempting to reinitialize socket connection");
+    
+    if (!game.socket) {
+      console.error("❌ No socket to reinitialize");
+      return false;
+    }
+    
+    try {
+      // Try to disconnect and reconnect if methods exist
+      if (typeof (game.socket as any).disconnect === 'function') {
+        console.log("🔌 Disconnecting socket...");
+        (game.socket as any).disconnect();
+      }
+      
+      if (typeof (game.socket as any).connect === 'function') {
+        console.log("🔌 Reconnecting socket...");
+        (game.socket as any).connect();
+      }
+      
+      // Wait a bit and then test
+      setTimeout(() => {
+        console.log("🧪 Testing socket after reconnection...");
+        this.debugSocketSystem();
+      }, 500);
+      
+      return true;
+    } catch (error) {
+      console.error("❌ Error during socket reinitialization:", error);
+      return false;
+    }
+  }
+
   // NEW: Settings-based patrol sheet sync (much simpler than sockets!)
-  // ==============================================
   
   // Method to handle active patrol sheets updates from settings
   handleActivePatrolSheetsUpdate(activeSheets: any, updatedByUserId: string) {
@@ -466,17 +689,10 @@ export class PatrolSheetManager {
         this.showPatrolSheetFromSetting(sheetData);
       }
     });
-    
-    // Note: We don't automatically close sheets when they're removed from the list
-    // This allows for better UX - sheets stay open until manually closed
-    console.log("📋 Finished processing active sheets update");
   }
   
   // Check if current user should show this patrol sheet
   private shouldShowPatrolSheet(sheetData: any): boolean {
-    console.log("🔍 shouldShowPatrolSheet: Checking sheet data:", sheetData);
-    console.log("🔍 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-    
     // Don't show to GM if they initiated it (unless specifically requested)
     if (game.user?.isGM && sheetData.initiatedBy === game.user.id && !sheetData.showToGM) {
       console.log("🚫 Skipping show for GM who initiated it");
@@ -495,26 +711,19 @@ export class PatrolSheetManager {
       return false;
     }
     
-    console.log("✅ Should show patrol sheet - all checks passed");
     return true;
   }
   
   // Show patrol sheet from setting data
   private showPatrolSheetFromSetting(sheetData: any) {
-    console.log("🎯 showPatrolSheetFromSetting: Starting with data:", sheetData);
-    
     // Get the group data
     const groups = (game.modules?.get("crow-nest") as any)?.api?.getGroups?.();
-    console.log("🎯 Available groups:", groups?.length || 0);
-    
     if (!groups) {
       console.error("❌ No groups available");
       return;
     }
     
     const group = groups.find((g: any) => g.id === sheetData.groupId);
-    console.log("🎯 Found group:", group ? group.name || group.id : "NOT FOUND");
-    
     if (!group) {
       console.error("❌ Group not found:", sheetData.groupId);
       return;
@@ -522,11 +731,9 @@ export class PatrolSheetManager {
     
     // Use default labels or provided ones
     const labels = sheetData.labels || { groupSingular: "Patrol" };
-    console.log("🎯 Using labels:", labels);
     
     console.log("✅ Opening patrol sheet from setting for group:", group.name || group.id);
     this.showPatrolSheet(group, labels);
-    console.log("✅ showPatrolSheet call completed");
   }
   
   // NEW: Settings-based method to show patrol sheet to all users
@@ -543,16 +750,10 @@ export class PatrolSheetManager {
       this.showPatrolSheet(group, labels);
     }
 
-    // STEP 1: Clear the list first (so all players register it's empty)
-    console.log("🧹 Step 1: Clearing active patrol sheets list to reset state");
-    await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
+    // Get current active sheets
+    const currentSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets") as any[];
     
-    // STEP 2: Wait a bit for all clients to process the empty list
-    console.log("⏳ Step 2: Waiting for clients to process empty list...");
-    await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
-    
-    // STEP 3: Add the new patrol sheet entry
-    console.log("📋 Step 3: Adding new patrol sheet to list");
+    // Create new sheet entry
     const newSheetEntry = {
       groupId: group.id,
       groupName: group.name,
@@ -563,15 +764,16 @@ export class PatrolSheetManager {
       targetUsers: options.targetUsers || null, // null means all users
     };
     
-    // Set the list with just this new entry
-    const updatedSheets = [newSheetEntry];
+    // Remove any existing entry for this group and add the new one
+    const updatedSheets = currentSheets.filter(sheet => sheet.groupId !== group.id);
+    updatedSheets.push(newSheetEntry);
     
-    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with fresh entry:", updatedSheets);
+    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with:", updatedSheets);
     
     // Update the setting - this will automatically sync to all users!
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
     
-    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully with clear-wait-refill strategy");
+    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully");
   }
   
   // Method to remove a patrol sheet from active list (when closed)

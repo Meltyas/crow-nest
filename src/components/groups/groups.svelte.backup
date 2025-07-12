@@ -10,10 +10,10 @@
   import { getModifiers, getStats } from "@/guard/stats";
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { SyncManager, type SyncEvent } from '@/utils/sync';
-  import { groupsStore, persistGroups, loadGroups } from '@/stores/groups';
   import { onDestroy, onMount } from 'svelte';
 
-  export let saveGroups: (groups: Group[]) => Promise<void>; // Legacy prop, not used anymore
+  export let groups: Group[] = [];
+  export let saveGroups: (groups: Group[]) => Promise<void>;
   export let labels = {
     groupSingular: 'Patrol',
     addGroup: 'Add Patrol',
@@ -21,9 +21,6 @@
     officerDrop: 'Drag an officer here',
     soldierDrop: 'Drag soldiers here',
   };
-
-  // Use store instead of prop
-  $: groups = $groupsStore;
 
   let stats: GuardStat[] = [];
   let modifiers: GuardModifier[] = [];
@@ -37,22 +34,20 @@
     stats = getStats() as GuardStat[];
     modifiers = getModifiers();
 
-    // Setup real-time synchronization only for stats and modifiers
+    // Setup real-time synchronization
     syncManager = SyncManager.getInstance();
 
     // Listen for stats and modifiers updates (for UI updates)
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
-    
-    // Groups sync is handled globally, no need to subscribe here
-    console.log("📋 Groups component mounted, using global groups store");
+    syncManager.subscribe('groups', handleGroupsSync);
   });
 
   onDestroy(() => {
     if (syncManager) {
       syncManager.unsubscribe('stats', handleStatsSync);
       syncManager.unsubscribe('modifiers', handleModifiersSync);
-      // No need to unsubscribe from groups - it's global
+      syncManager.unsubscribe('groups', handleGroupsSync);
     }
   });
 
@@ -69,16 +64,57 @@
     }
   }
 
-  async function persist() {
-    console.log("💾 Groups: Persisting changes via global store for user:", game.user?.name);
-    await persistGroups(groups);
+  function handleGroupsSync(event: SyncEvent) {
+    if (event.type === 'groups') {
+      // If this is a command (from a player) and current user is GM, process it
+      // Handle groups sync events - simplified to allow all users to sync directly
+      console.log("📥 Receiving groups update from", event.user);
+      groups = event.data;
+    }
   }
 
-  // Helper function to update groups and sync
-  function updateGroups(newGroups: Group[]) {
-    groups = newGroups;
-    groupsStore.set(groups); // Update store immediately for reactive UI
-    persist();
+  async function persist() {
+    console.log("💾 Groups: Persisting changes for user:", game.user?.name);
+    await saveGroups(groups);
+
+    // Broadcast groups changes to other players
+    if (syncManager) {
+      syncManager.broadcast({
+        type: 'groups',
+        action: 'update',
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      });
+    }
+  }
+
+  // Test function for groups sync
+  function testGroupsSync() {
+    console.log("🧪 Testing groups sync...");
+    console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+    console.log("Current groups count:", groups.length);
+    console.log("SyncManager available:", !!syncManager);
+    
+    if (syncManager) {
+      const testEvent = {
+        type: 'groups' as const,
+        action: 'update' as const,
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      };
+      
+      console.log("📤 Broadcasting test groups sync event...");
+      syncManager.broadcast(testEvent);
+    } else {
+      console.error("❌ No syncManager available!");
+    }
+  }
+
+  // Export test function to window for console access
+  if (typeof window !== 'undefined') {
+    (window as any).testGroupsSync = testGroupsSync;
   }
 
   function addGroup() {
@@ -375,6 +411,682 @@
 
     const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
     ui.notifications?.info(`${groupName} deployed on the map (${members.length} members, ${tokensToMove.length} moved, ${tokensToCreate.length} created)`);
+  }
+
+  // Test function for groups sync
+  function testGroupsSync() {
+    console.log("🧪 Testing groups sync...");
+    console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+    console.log("Current groups count:", groups.length);
+    console.log("SyncManager available:", !!syncManager);
+    
+    if (syncManager) {
+      const testEvent = {
+        type: 'groups' as const,
+        action: 'update' as const,
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      };
+      
+      console.log("📤 Broadcasting test groups sync event...");
+      syncManager.broadcast(testEvent);
+    } else {
+      console.error("❌ No syncManager available!");
+    }
+  }
+
+  // Export test function to window for console access
+  if (typeof window !== 'undefined') {
+    (window as any).testGroupsSync = testGroupsSync;
+  }
+
+  function addGroup() {
+    groups = [
+      ...groups,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        officer: null,
+        soldiers: [],
+        mods: {},
+        skills: [],
+      },
+    ];
+    persist();
+  }
+
+  function removeGroup(index: number) {
+    groups.splice(index, 1);
+    groups = [...groups];
+    persist();
+  }
+
+  function toggleEditing(group: Group) {
+    editing[group.id] = !editing[group.id];
+    editing = { ...editing }; // Trigger reactivity
+  }
+
+  function toggleCollapsed(group: Group) {
+    collapsed[group.id] = !collapsed[group.id];
+    collapsed = { ...collapsed }; // Trigger reactivity
+  }
+
+  function removeOfficer(group: Group) {
+    group.officer = null;
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSoldier(group: Group, soldier: GroupMember) {
+    const index = group.soldiers.indexOf(soldier);
+    if (index > -1) {
+      group.soldiers.splice(index, 1);
+      group.soldiers = [...group.soldiers];
+      groups = [...groups];
+      persist();
+    }
+  }
+
+  function onDragMember(event: DragEvent, member: GroupMember | null) {
+    if (!member) return;
+    const payload = {
+      type: 'Actor',
+      uuid: `Actor.${member.id}`,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+  }
+
+  function onDragDeploy(event: DragEvent, group: Group) {
+    const payload = {
+      type: 'CrowPatrol',
+      patrolId: group.id,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+  }
+
+  async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
+    event.preventDefault();
+    const raw = event.dataTransfer?.getData("text/plain");
+    if (!raw) return null;
+
+    try {
+      const data = JSON.parse(raw);
+      if (data?.uuid) {
+        const droppedActor = await fromUuid(data.uuid);
+        if (droppedActor instanceof Actor) {
+          return droppedActor;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse drop data:", err);
+    }
+
+    return null;
+  }
+
+  async function onDropOfficer(event: DragEvent, group: Group) {
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    group.officer = {
+      id: actor.id || '',
+      name: actor.name || '',
+      img: actor.img || '',
+    };
+
+    if (!group.name) {
+      group.name = `${labels.groupSingular} de ${actor.name}`;
+    }
+
+    groups = [...groups];
+    persist();
+  }
+
+  async function onDropSoldier(event: DragEvent, group: Group) {
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    group.soldiers = [
+      ...group.soldiers,
+      { id: actor.id || '', name: actor.name || '', img: actor.img || '' },
+    ];
+    groups = [...groups];
+    persist();
+  }
+
+  function addSkill(group: Group) {
+    const skill: GroupSkill = { name: '', description: '', img: 'icons/svg/book.svg' };
+    group.skills = [...group.skills, skill];
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSkill(group: Group, index: number) {
+    group.skills.splice(index, 1);
+    group.skills = [...group.skills];
+    groups = [...groups];
+    persist();
+  }
+
+  function chooseSkillImage(skill: GroupSkill) {
+    // Prefer Foundry's file picker when available
+    if (typeof FilePicker !== 'undefined') {
+      // @ts-ignore - FilePicker is provided by Foundry at runtime
+      new FilePicker({
+        type: 'image',
+        current: skill.img,
+        callback: (path: string) => {
+          skill.img = path;
+          groups = [...groups];
+          persist();
+        },
+      }).render(true);
+    }
+  }
+
+  function showSkillInChat(skill: GroupSkill, group: Group) {
+    if (editing[group.id]) return; // No mostrar en modo edición
+
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'Grupo');
+    const groupColor = '#4a90e2'; // Color azul para las habilidades de patrulla
+
+    const content = `
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 2px solid ${groupColor}; border-radius: 8px; background: rgba(0,0,0,0.1);">
+        <img src="${skill.img || 'icons/svg/book.svg'}" alt="${skill.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid ${groupColor};" />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 0.5rem 0; color: ${groupColor}; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${skill.name}</h3>
+          <div style="color: #000; font-size: 0.9em; line-height: 1.4;">${skill.description || 'Sin descripción disponible'}</div>
+          <div style="margin-top: 0.5rem; font-size: 0.8em; color: #666; font-style: italic;">— ${groupName}</div>
+        </div>
+      </div>
+    `;
+
+    // Enviar mensaje al chat
+    ChatMessage.create({
+      speaker: { alias: `${groupName} - Habilidad` },
+      content: content,
+      whisper: null // Mensaje público
+    });
+  }
+
+  function showPatrolSheet(group: Group) {
+    // Usar el sistema independiente de fichas de patrulla (individual)
+    patrolSheetManager.showPatrolSheet(group, labels);
+  }
+
+  function forceShowPatrolSheetToAll(group: Group) {
+    // Solo GM puede forzar la ficha a todos
+    if (!game.user?.isGM) return;
+    patrolSheetManager.forceShowPatrolSheetToAll(group, labels);
+  }
+
+  function guardBonus(key: string): number {
+    return modifiers.reduce((acc, m) => acc + (m.mods[key] || 0), 0);
+  }
+
+  function totalStat(stat: GuardStat, group: Group): number {
+    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0);
+  }
+
+  function roll(stat: GuardStat, group: Group) {
+    const total = totalStat(stat, group);
+    const r = new Roll(`1d20 + ${total}`);
+    r.evaluate();
+
+    const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
+    const guardMod = guardBonus(stat.key);
+    if (guardMod) {
+      lines.push(`Guard modifier ${guardMod > 0 ? '+' : ''}${guardMod}`);
+    }
+    const groupMod = group.mods[stat.key];
+    if (groupMod) {
+      lines.push(`Patrol modifier ${groupMod > 0 ? '+' : ''}${groupMod}`);
+    }
+
+    const alias =
+      group.name || (group.officer ? `The Patrol of ${group.officer.name}` : 'The Patrol');
+    const headerImg = group.officer
+      ? `<img src="${group.officer.img}" alt="${group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
+      : '';
+    const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${alias}</strong></div>`;
+
+    const flavor = `${header}<br/>${lines.join('<br/>')}`;
+    r.toMessage({ speaker: { alias }, flavor });
+  }
+
+  async function deployGroup(group: Group) {
+    if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
+      ui.notifications?.warn("No members in the group to deploy");
+      return;
+    }
+
+    const members = [] as GroupMember[];
+    if (group.officer) members.push(group.officer);
+    members.push(...group.soldiers);
+
+    // Get canvas position (center of canvas view)
+    const canvas = game.canvas as any;
+    if (!canvas) {
+      ui.notifications?.error("Cannot access canvas");
+      return;
+    }
+
+    const viewPosition = canvas.stage.pivot;
+    const grid = canvas.grid.size;
+    let offsetX = 0;
+    let offsetY = 0;
+    const tokensToCreate = [] as any[];
+    const tokensToMove = [] as any[];
+    const movedTokenIds = new Set<string>(); // Track which specific tokens we've already moved
+
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+      const actor = game.actors?.get(member.id);
+      if (!actor) continue;
+
+      // Find ALL tokens of this actor on canvas that we haven't moved yet
+      const existingTokens = canvas.tokens.placeables.filter(
+        (token: any) => token.document.actorId === actor.id && !movedTokenIds.has(token.document.id)
+      );
+
+      const newX = viewPosition.x + offsetX;
+      const newY = viewPosition.y + offsetY;
+
+      if (existingTokens.length > 0) {
+        // Move only the first token we haven't moved yet
+        const token = existingTokens[0];
+        movedTokenIds.add(token.document.id); // Mark this specific token as moved
+
+        tokensToMove.push({
+          _id: token.document.id,
+          x: newX,
+          y: newY,
+        });
+      } else {
+        // No unmoved tokens found, create new token
+        const doc = await actor.getTokenDocument({
+          x: newX,
+          y: newY,
+        });
+        tokensToCreate.push(doc.toObject());
+      }
+
+      offsetX += grid;
+      if ((i + 1) % 5 === 0) {
+        offsetX = 0;
+        offsetY += grid;
+      }
+    }
+
+    // Execute operations
+    if (tokensToMove.length) {
+      for (const tokenUpdate of tokensToMove) {
+        const token = canvas.tokens.get(tokenUpdate._id);
+        if (token) {
+          await token.document.update({ x: tokenUpdate.x, y: tokenUpdate.y });
+        }
+      }
+    }
+
+    if (tokensToCreate.length) {
+      await canvas.scene.createEmbeddedDocuments("Token", tokensToCreate);
+    }
+
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
+    ui.notifications?.info(`${groupName} deployed on the map (${members.length} members, ${tokensToMove.length} moved, ${tokensToCreate.length} created)`);
+  }
+
+  // Test function for groups sync
+  function testGroupsSync() {
+    console.log("🧪 Testing groups sync...");
+    console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+    console.log("Current groups count:", groups.length);
+    console.log("SyncManager available:", !!syncManager);
+    
+    if (syncManager) {
+      const testEvent = {
+        type: 'groups' as const,
+        action: 'update' as const,
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      };
+      
+      console.log("📤 Broadcasting test groups sync event...");
+      syncManager.broadcast(testEvent);
+    } else {
+      console.error("❌ No syncManager available!");
+    }
+  }
+
+  // Export test function to window for console access
+  if (typeof window !== 'undefined') {
+    (window as any).testGroupsSync = testGroupsSync;
+  }
+
+  function addGroup() {
+    groups = [
+      ...groups,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        officer: null,
+        soldiers: [],
+        mods: {},
+        skills: [],
+      },
+    ];
+    persist();
+  }
+
+  function removeGroup(index: number) {
+    groups.splice(index, 1);
+    groups = [...groups];
+    persist();
+  }
+
+  function toggleEditing(group: Group) {
+    editing[group.id] = !editing[group.id];
+    editing = { ...editing }; // Trigger reactivity
+  }
+
+  function toggleCollapsed(group: Group) {
+    collapsed[group.id] = !collapsed[group.id];
+    collapsed = { ...collapsed }; // Trigger reactivity
+  }
+
+  function removeOfficer(group: Group) {
+    group.officer = null;
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSoldier(group: Group, soldier: GroupMember) {
+    const index = group.soldiers.indexOf(soldier);
+    if (index > -1) {
+      group.soldiers.splice(index, 1);
+      group.soldiers = [...group.soldiers];
+      groups = [...groups];
+      persist();
+    }
+  }
+
+  function onDragMember(event: DragEvent, member: GroupMember | null) {
+    if (!member) return;
+    const payload = {
+      type: 'Actor',
+      uuid: `Actor.${member.id}`,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+  }
+
+  function onDragDeploy(event: DragEvent, group: Group) {
+    const payload = {
+      type: 'CrowPatrol',
+      patrolId: group.id,
+    };
+    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+  }
+
+  async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
+    event.preventDefault();
+    const raw = event.dataTransfer?.getData("text/plain");
+    if (!raw) return null;
+
+    try {
+      const data = JSON.parse(raw);
+      if (data?.uuid) {
+        const droppedActor = await fromUuid(data.uuid);
+        if (droppedActor instanceof Actor) {
+          return droppedActor;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse drop data:", err);
+    }
+
+    return null;
+  }
+
+  async function onDropOfficer(event: DragEvent, group: Group) {
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    group.officer = {
+      id: actor.id || '',
+      name: actor.name || '',
+      img: actor.img || '',
+    };
+
+    if (!group.name) {
+      group.name = `${labels.groupSingular} de ${actor.name}`;
+    }
+
+    groups = [...groups];
+    persist();
+  }
+
+  async function onDropSoldier(event: DragEvent, group: Group) {
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    group.soldiers = [
+      ...group.soldiers,
+      { id: actor.id || '', name: actor.name || '', img: actor.img || '' },
+    ];
+    groups = [...groups];
+    persist();
+  }
+
+  function addSkill(group: Group) {
+    const skill: GroupSkill = { name: '', description: '', img: 'icons/svg/book.svg' };
+    group.skills = [...group.skills, skill];
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSkill(group: Group, index: number) {
+    group.skills.splice(index, 1);
+    group.skills = [...group.skills];
+    groups = [...groups];
+    persist();
+  }
+
+  function chooseSkillImage(skill: GroupSkill) {
+    // Prefer Foundry's file picker when available
+    if (typeof FilePicker !== 'undefined') {
+      // @ts-ignore - FilePicker is provided by Foundry at runtime
+      new FilePicker({
+        type: 'image',
+        current: skill.img,
+        callback: (path: string) => {
+          skill.img = path;
+          groups = [...groups];
+          persist();
+        },
+      }).render(true);
+    }
+  }
+
+  function showSkillInChat(skill: GroupSkill, group: Group) {
+    if (editing[group.id]) return; // No mostrar en modo edición
+
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'Grupo');
+    const groupColor = '#4a90e2'; // Color azul para las habilidades de patrulla
+
+    const content = `
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 2px solid ${groupColor}; border-radius: 8px; background: rgba(0,0,0,0.1);">
+        <img src="${skill.img || 'icons/svg/book.svg'}" alt="${skill.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid ${groupColor};" />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 0.5rem 0; color: ${groupColor}; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${skill.name}</h3>
+          <div style="color: #000; font-size: 0.9em; line-height: 1.4;">${skill.description || 'Sin descripción disponible'}</div>
+          <div style="margin-top: 0.5rem; font-size: 0.8em; color: #666; font-style: italic;">— ${groupName}</div>
+        </div>
+      </div>
+    `;
+
+    // Enviar mensaje al chat
+    ChatMessage.create({
+      speaker: { alias: `${groupName} - Habilidad` },
+      content: content,
+      whisper: null // Mensaje público
+    });
+  }
+
+  function showPatrolSheet(group: Group) {
+    // Usar el sistema independiente de fichas de patrulla (individual)
+    patrolSheetManager.showPatrolSheet(group, labels);
+  }
+
+  function forceShowPatrolSheetToAll(group: Group) {
+    // Solo GM puede forzar la ficha a todos
+    if (!game.user?.isGM) return;
+    patrolSheetManager.forceShowPatrolSheetToAll(group, labels);
+  }
+
+  function guardBonus(key: string): number {
+    return modifiers.reduce((acc, m) => acc + (m.mods[key] || 0), 0);
+  }
+
+  function totalStat(stat: GuardStat, group: Group): number {
+    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0);
+  }
+
+  function roll(stat: GuardStat, group: Group) {
+    const total = totalStat(stat, group);
+    const r = new Roll(`1d20 + ${total}`);
+    r.evaluate();
+
+    const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
+    const guardMod = guardBonus(stat.key);
+    if (guardMod) {
+      lines.push(`Guard modifier ${guardMod > 0 ? '+' : ''}${guardMod}`);
+    }
+    const groupMod = group.mods[stat.key];
+    if (groupMod) {
+      lines.push(`Patrol modifier ${groupMod > 0 ? '+' : ''}${groupMod}`);
+    }
+
+    const alias =
+      group.name || (group.officer ? `The Patrol of ${group.officer.name}` : 'The Patrol');
+    const headerImg = group.officer
+      ? `<img src="${group.officer.img}" alt="${group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
+      : '';
+    const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${alias}</strong></div>`;
+
+    const flavor = `${header}<br/>${lines.join('<br/>')}`;
+    r.toMessage({ speaker: { alias }, flavor });
+  }
+
+  async function deployGroup(group: Group) {
+    if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
+      ui.notifications?.warn("No members in the group to deploy");
+      return;
+    }
+
+    const members = [] as GroupMember[];
+    if (group.officer) members.push(group.officer);
+    members.push(...group.soldiers);
+
+    // Get canvas position (center of canvas view)
+    const canvas = game.canvas as any;
+    if (!canvas) {
+      ui.notifications?.error("Cannot access canvas");
+      return;
+    }
+
+    const viewPosition = canvas.stage.pivot;
+    const grid = canvas.grid.size;
+    let offsetX = 0;
+    let offsetY = 0;
+    const tokensToCreate = [] as any[];
+    const tokensToMove = [] as any[];
+    const movedTokenIds = new Set<string>(); // Track which specific tokens we've already moved
+
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+      const actor = game.actors?.get(member.id);
+      if (!actor) continue;
+
+      // Find ALL tokens of this actor on canvas that we haven't moved yet
+      const existingTokens = canvas.tokens.placeables.filter(
+        (token: any) => token.document.actorId === actor.id && !movedTokenIds.has(token.document.id)
+      );
+
+      const newX = viewPosition.x + offsetX;
+      const newY = viewPosition.y + offsetY;
+
+      if (existingTokens.length > 0) {
+        // Move only the first token we haven't moved yet
+        const token = existingTokens[0];
+        movedTokenIds.add(token.document.id); // Mark this specific token as moved
+
+        tokensToMove.push({
+          _id: token.document.id,
+          x: newX,
+          y: newY,
+        });
+      } else {
+        // No unmoved tokens found, create new token
+        const doc = await actor.getTokenDocument({
+          x: newX,
+          y: newY,
+        });
+        tokensToCreate.push(doc.toObject());
+      }
+
+      offsetX += grid;
+      if ((i + 1) % 5 === 0) {
+        offsetX = 0;
+        offsetY += grid;
+      }
+    }
+
+    // Execute operations
+    if (tokensToMove.length) {
+      for (const tokenUpdate of tokensToMove) {
+        const token = canvas.tokens.get(tokenUpdate._id);
+        if (token) {
+          await token.document.update({ x: tokenUpdate.x, y: tokenUpdate.y });
+        }
+      }
+    }
+
+    if (tokensToCreate.length) {
+      await canvas.scene.createEmbeddedDocuments("Token", tokensToCreate);
+    }
+
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
+    ui.notifications?.info(`${groupName} deployed on the map (${members.length} members, ${tokensToMove.length} moved, ${tokensToCreate.length} created)`);
+  }
+
+  // Test function for groups sync
+  function testGroupsSync() {
+    console.log("🧪 Testing groups sync...");
+    console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+    console.log("Current groups count:", groups.length);
+    console.log("SyncManager available:", !!syncManager);
+    
+    if (syncManager) {
+      const testEvent = {
+        type: 'groups' as const,
+        action: 'update' as const,
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      };
+      
+      console.log("📤 Broadcasting test groups sync event...");
+      syncManager.broadcast(testEvent);
+    } else {
+      console.error("❌ No syncManager available!");
+    }
+  }
+
+  // Export test function to window for console access
+  if (typeof window !== 'undefined') {
+    (window as any).testGroupsSync = testGroupsSync;
   }
 </script>
 
