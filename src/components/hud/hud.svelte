@@ -31,31 +31,23 @@
     gameTokens = getTokens();
 
     // Setup real-time synchronization
-    console.log("🔌 HUD: Setting up sync manager");
     syncManager = SyncManager.getInstance();
 
     // Listen for token updates
-    console.log("👂 HUD: Subscribing to tokens events");
     syncManager.subscribe('tokens', handleTokenSync);
     // Listen for all sync events to refresh UI
-    console.log("👂 HUD: Subscribing to all events");
     syncManager.subscribe('all', handleAllSync);
 
-    console.log("✅ HUD: Sync setup complete");
 
     // Also listen for direct game settings changes as backup
-    console.log("👂 HUD: Setting up game settings listener");
     Hooks.on('updateSetting', (setting: any) => {
-      console.log("⚙️ HUD: Game setting changed", setting.key, setting.value);
       if (setting.key === `${MODULE_ID}.gameTokens`) {
-        console.log("🎯 HUD: Game tokens setting changed, updating UI");
         gameTokens = setting.value;
       }
     });
   });
 
   onDestroy(() => {
-    console.log("🧹 HUD: Cleaning up sync subscriptions");
     if (syncManager) {
       syncManager.unsubscribe('tokens', handleTokenSync);
       syncManager.unsubscribe('all', handleAllSync);
@@ -64,7 +56,6 @@
 
   // Handle token synchronization events
   function handleTokenSync(event: SyncEvent) {
-    console.log("🎯 HUD: Token sync event received", event);
     if (event.type === 'tokens') {
       gameTokens = event.data;
       console.log("🔄 HUD: Updated gameTokens", gameTokens);

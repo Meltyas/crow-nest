@@ -73,17 +73,9 @@ export async function saveStats(
   log: LogEntry[]
 ): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Stats: Only GM can save stats");
     return;
   }
 
-  console.log(
-    "💾 Stats: Saving stats as GM",
-    stats.length,
-    "stats,",
-    log.length,
-    "log entries"
-  );
   await game.settings.set(MODULE_ID, SETTING_STATS, stats);
   await game.settings.set(MODULE_ID, SETTING_LOG, log);
 
@@ -96,15 +88,9 @@ export async function saveStats(
 
 export async function saveModifiers(modifiers: GuardModifier[]): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Modifiers: Only GM can save modifiers");
     return;
   }
 
-  console.log(
-    "💾 Modifiers: Saving modifiers as GM",
-    modifiers.length,
-    "modifiers"
-  );
   await game.settings.set(MODULE_ID, SETTING_MODIFIERS, modifiers);
 
   // Broadcast changes to all players
@@ -122,15 +108,9 @@ export function getResources(): GuardResource[] {
 
 export async function saveResources(resources: GuardResource[]): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Resources: Only GM can save resources");
     return;
   }
 
-  console.log(
-    "💾 Resources: Saving resources as GM",
-    resources.length,
-    "resources"
-  );
   await game.settings.set(MODULE_ID, SETTING_RESOURCES, resources);
 
   // Broadcast changes to all players
@@ -151,15 +131,9 @@ export async function saveReputation(
   reputation: GuardReputation[]
 ): Promise<void> {
   if (!game.user?.isGM) {
-    console.log("🚫 Reputation: Only GM can save reputation");
     return;
   }
 
-  console.log(
-    "💾 Reputation: Saving reputation as GM",
-    reputation.length,
-    "reputation entries"
-  );
   await game.settings.set(MODULE_ID, SETTING_REPUTATION, reputation);
 
   // Broadcast changes to all players

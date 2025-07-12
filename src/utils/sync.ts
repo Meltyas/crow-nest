@@ -122,12 +122,6 @@ export class SyncManager {
 
   // Handle incoming sync events from other players
   handleRemoteEvent(event: SyncEvent) {
-    console.log(
-      "📥 SyncManager: Received remote event",
-      event.type,
-      event.action,
-      event.data
-    );
     this.notifyLocalListeners(event);
   }
 
@@ -194,8 +188,6 @@ export function testPatrolSheetSync() {
 
 // Initialize socket listener
 export function initializeSync() {
-  console.log("🚀 SyncManager: Initializing synchronization system");
-  console.log("🎯 Current user:", game.user?.name, "isGM:", game.user?.isGM);
   const syncManager = SyncManager.getInstance();
 
   if (game.socket) {
@@ -214,10 +206,8 @@ export function initializeSync() {
 
 // Cleanup function to remove all listeners
 export function cleanupSync() {
-  console.log("� SyncManager: Cleaning up sync system");
   if (game.socket) {
     const mainChannel = `module.${MODULE_ID}`;
     game.socket.off(mainChannel);
-    console.log(`✅ SyncManager: Removed listeners for ${mainChannel}`);
   }
 }

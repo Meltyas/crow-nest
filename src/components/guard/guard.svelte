@@ -154,7 +154,6 @@
     syncManager = SyncManager.getInstance();
 
     // Listen for different types of updates
-    console.log("👂 Guard: Setting up sync subscriptions");
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
     syncManager.subscribe('resources', handleResourcesSync);
@@ -163,48 +162,36 @@
     syncManager.subscribe('admins', handleAdminsSync);
 
     // Also listen for direct game settings changes as backup
-    console.log("👂 Guard: Setting up game settings listener");
     Hooks.on('updateSetting', (setting: any) => {
-      console.log("⚙️ Guard: Game setting changed", setting.key, setting.value);
-
       if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
-        console.log("📊 Guard: Stats setting changed, updating UI");
         stats = setting.value || [];
       }
 
       if (setting.key === `${MODULE_ID}.${SETTING_LOG}`) {
-        console.log("📋 Guard: Log setting changed, updating UI");
         log = setting.value || [];
       }
 
       if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
-        console.log("🔧 Guard: Modifiers setting changed, updating UI");
         modifiers = setting.value || [];
         sortModifiersByState(); // Sort modifiers when loaded from settings
       }
 
       if (setting.key === `${MODULE_ID}.${SETTING_RESOURCES}`) {
-        console.log("📦 Guard: Resources setting changed, updating UI");
         resources = setting.value || [];
       }
 
       if (setting.key === `${MODULE_ID}.${SETTING_REPUTATION}`) {
-        console.log("🏆 Guard: Reputation setting changed, updating UI");
         reputation = setting.value || [];
       }
 
       if (setting.key === `${MODULE_ID}.patrols`) {
-        console.log("👥 Guard: Patrols setting changed, updating UI");
         patrols = setting.value || [];
       }
 
       if (setting.key === `${MODULE_ID}.admins`) {
-        console.log("⚙️ Guard: Admins setting changed, updating UI");
         admins = setting.value || [];
       }
     });
-
-    console.log("✅ Guard: All sync setup complete");
   });
 
   onDestroy(() => {
@@ -220,88 +207,64 @@
 
   // Sync event handlers
   function handleStatsSync(event: SyncEvent) {
-    console.log("📊 Guard: Stats sync event received", event);
     if (event.type === 'stats' && event.data) {
       stats = event.data.stats || getStats();
       log = event.data.log || getLog();
-      console.log("✅ Guard: Stats updated", stats.length, "stats,", log.length, "log entries");
     }
   }
 
   function handleModifiersSync(event: SyncEvent) {
-    console.log("🔧 Guard: Modifiers sync event received", event);
     if (event.type === 'modifiers') {
       modifiers = event.data || getModifiers();
       sortModifiersByState(); // Sort modifiers when received from sync
-      console.log("✅ Guard: Modifiers updated", modifiers.length, "modifiers");
     }
   }
 
   function handleResourcesSync(event: SyncEvent) {
-    console.log("📦 Guard: Resources sync event received", event);
     if (event.type === 'resources') {
       resources = event.data || getResources();
-      console.log("✅ Guard: Resources updated", resources.length, "resources");
     }
   }
 
   function handleReputationSync(event: SyncEvent) {
-    console.log("🏆 Guard: Reputation sync event received", event);
     if (event.type === 'reputation') {
       reputation = event.data || getReputation();
-      console.log("✅ Guard: Reputation updated", reputation.length, "reputation entries");
     }
   }
 
   function handlePatrolsSync(event: SyncEvent) {
-    console.log("👥 Guard: Patrols sync event received", event);
     if (event.type === 'patrols') {
       patrols = event.data || getPatrols();
-      console.log("✅ Guard: Patrols updated", patrols.length, "patrols");
     }
   }
 
   function handleAdminsSync(event: SyncEvent) {
-    console.log("⚙️ Guard: Admins sync event received", event);
     if (event.type === 'admins') {
       admins = event.data || getAdmins();
-      console.log("✅ Guard: Admins updated", admins.length, "admins");
     }
   }
 
   async function persist() {
     if (game.user?.isGM) {
-      console.log("💾 Guard: Persisting stats as GM");
       await saveStats(stats, log);
-    } else {
-      console.log("🚫 Guard: Skipping stats persist - not GM");
     }
   }
 
   async function persistMods() {
     if (game.user?.isGM) {
-      console.log("💾 Guard: Persisting modifiers as GM");
       await saveModifiers(modifiers);
-    } else {
-      console.log("🚫 Guard: Skipping modifiers persist - not GM");
     }
   }
 
   async function persistRes() {
     if (game.user?.isGM) {
-      console.log("💾 Guard: Persisting resources as GM");
       await saveResources(resources);
-    } else {
-      console.log("🚫 Guard: Skipping resources persist - not GM");
     }
   }
 
   async function persistRep() {
     if (game.user?.isGM) {
-      console.log("💾 Guard: Persisting reputation as GM");
       await saveReputation(reputation);
-    } else {
-      console.log("🚫 Guard: Skipping reputation persist - not GM");
     }
   }
 
