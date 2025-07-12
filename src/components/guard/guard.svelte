@@ -337,6 +337,17 @@
     display: flex;
     gap: 0.25rem;
   }
+  .modifier-values-edit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+
+    & input {
+      height: 32px;
+      width: 32px;
+    }
+  }
   .modifier-edit {
     display: flex;
     flex-direction: column;
@@ -387,15 +398,13 @@
   }
   .modifier-container {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
   }
-  .modifier {
-    max-width: 125px;
-  }
   .standard-image {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
   }
   .resource-container {
     display: flex;
@@ -415,6 +424,11 @@
   }
   .stat-name {
     margin-bottom: 0.25rem;
+  }
+  .modifier-values-contain {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
   }
 </style>
 <h3>Los Cuervos</h3>
@@ -518,26 +532,27 @@
       {#if editingMods}
         <div class="modifier-edit">
           <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
-          <input placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+          <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+          <div class="modifier-values-contain">
           {#each stats as stat}
-            <div class="modifier-values">
+            <div class="modifier-values modifier-values-edit">
               <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
               <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
             </div>
           {/each}
+          </div>
           <button on:click={() => removeModifier(i)}>X</button>
         </div>
       {:else}
-        <Tooltip content={modChanges(mod)}>
-          <div class="modifier-values">
-            {#each Object.entries(mod.mods) as [k,v]}
-              {#if stats.find(s => s.key === k)}
-                <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
-                <span>{v>0 ? '+' : ''}{v}</span>
-              {/if}
-            {/each}
-          </div>
-        </Tooltip>
+        <Tooltip content={modChanges(mod)} />
+        <div class="modifier-values">
+          {#each Object.entries(mod.mods) as [k,v]}
+            {#if stats.find(s => s.key === k)}
+              <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
+              <span>{v>0 ? '+' : ''}{v}</span>
+            {/if}
+          {/each}
+        </div>
       {/if}
     </div>
   {/each}
