@@ -58,13 +58,11 @@
   function handleTokenSync(event: SyncEvent) {
     if (event.type === 'tokens') {
       gameTokens = event.data;
-      console.log("🔄 HUD: Updated gameTokens", gameTokens);
     }
   }
 
   // Handle all synchronization events for general UI refresh
   function handleAllSync(event: SyncEvent) {
-    console.log("📡 HUD: General sync event received", event.type, event.action);
     // This can be used to trigger general UI updates
     // For now, we'll just handle specific cases
   }
@@ -100,31 +98,23 @@
 
   // Game tokens functions
   async function increaseDespair() {
-    console.log("🔺 HUD: Increasing despair");
     await adjustDespair(1);
     gameTokens = getTokens();
-    console.log("📊 HUD: New tokens after increase", gameTokens);
   }
 
   async function decreaseDespair() {
-    console.log("🔻 HUD: Decreasing despair");
     await adjustDespair(-1);
     gameTokens = getTokens();
-    console.log("📊 HUD: New tokens after decrease", gameTokens);
   }
 
   async function increaseCheers() {
-    console.log("🔺 HUD: Increasing cheers");
     await adjustCheers(1);
     gameTokens = getTokens();
-    console.log("📊 HUD: New tokens after increase", gameTokens);
   }
 
   async function decreaseCheers() {
-    console.log("🔻 HUD: Decreasing cheers");
     await adjustCheers(-1);
     gameTokens = getTokens();
-    console.log("📊 HUD: New tokens after decrease", gameTokens);
   }
 </script>
 
