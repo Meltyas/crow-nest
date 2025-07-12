@@ -269,29 +269,33 @@
     let offsetY = 0;
     const tokensToCreate = [] as any[];
     const tokensToMove = [] as any[];
+    const movedTokenIds = new Set<string>(); // Track which specific tokens we've already moved
 
     for (let i = 0; i < members.length; i++) {
       const member = members[i];
       const actor = game.actors?.get(member.id);
       if (!actor) continue;
 
-      // Check if token already exists on canvas
-      const existingToken = canvas.tokens.placeables.find(
-        (token: any) => token.document.actorId === actor.id
+      // Find ALL tokens of this actor on canvas that we haven't moved yet
+      const existingTokens = canvas.tokens.placeables.filter(
+        (token: any) => token.document.actorId === actor.id && !movedTokenIds.has(token.document.id)
       );
 
       const newX = viewPosition.x + offsetX;
       const newY = viewPosition.y + offsetY;
 
-      if (existingToken) {
-        // Move existing token
+      if (existingTokens.length > 0) {
+        // Move only the first token we haven't moved yet
+        const token = existingTokens[0];
+        movedTokenIds.add(token.document.id); // Mark this specific token as moved
+
         tokensToMove.push({
-          _id: existingToken.document.id,
+          _id: token.document.id,
           x: newX,
           y: newY,
         });
       } else {
-        // Create new token
+        // No unmoved tokens found, create new token
         const doc = await actor.getTokenDocument({
           x: newX,
           y: newY,
@@ -321,7 +325,7 @@
     }
 
     const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
-    ui.notifications?.info(`${groupName} deployed on the map (${members.length} members)`);
+    ui.notifications?.info(`${groupName} deployed on the map (${members.length} members, ${tokensToMove.length} moved, ${tokensToCreate.length} created)`);
   }
 </script>
 
@@ -391,6 +395,7 @@
     border: 1px solid #666;
     border-radius: 3px;
     padding: 0.25rem 0.5rem;
+    height: 24px;
     font-weight: bold;
     font-size: 1em;
     color: #000;
@@ -720,6 +725,13 @@
           {/if}
         </div>
         <div class="group-header-buttons">
+                    {#if editing[group.id]}
+
+          <button class="header-button" on:click={() => removeGroup(i)} style="background: #ff4444; color: white;">
+            X
+          </button>
+                    {/if}
+
           <button class="header-button" on:click={() => toggleEditing(group)}>
             {editing[group.id] ? 'Save' : 'Edit'}
           </button>
@@ -731,11 +743,6 @@
           >
             Deploy
           </button>
-          {#if editing[group.id]}
-            <button class="header-button" on:click={() => removeGroup(i)} style="background: #ff4444; color: white;">
-              X
-            </button>
-          {/if}
           <button class="header-button" on:click={() => toggleCollapsed(group)}>
             {collapsed[group.id] ? '▼' : '▲'}
           </button>
@@ -777,13 +784,6 @@
                 <div class="stat-separator"></div>
               {/if}
             {/each}
-          </div>
-
-          <!-- Edit Button separated on the right -->
-          <div class="edit-button-container">
-            <button on:click={() => toggleEditing(group)}>
-              {editing[group.id] ? 'Save' : 'Edit'}
-            </button>
           </div>
 
           <!-- Soldiers in collapsed view -->
@@ -834,7 +834,12 @@
 
         <!-- Skills -->
         <div class="skills">
-          <strong>Skills</strong>
+          <div style="display: flex; justify-content: space-between; align-items: center; height: 28px; margin-bottom: 0.5rem;">
+            <strong style="margin: 0; line-height: 28px;">Skills</strong>
+            {#if editing[group.id]}
+              <button on:click={() => addSkill(group)}>Add Skill</button>
+            {/if}
+          </div>
           {#each group.skills as sk, j}
             <div class="skill">
               <button type="button" class="skill-image-button" on:click={() => editing[group.id] && chooseSkillImage(sk)}>
@@ -852,14 +857,8 @@
               {/if}
             </div>
           {/each}
-          {#if editing[group.id]}
-            <button on:click={() => addSkill(group)}>Add Skill</button>
-          {/if}
         </div>
 
-        {#if editing[group.id]}
-          <button on:click={() => removeGroup(i)}>{labels.removeGroup}</button>
-        {/if}
         {/if}
       </div>
     </div>
