@@ -44,6 +44,7 @@ export interface GuardReputation {
   name: string;
   value: number; // 0-10
   img?: string;
+  details?: string; // Campo para detalles/notas sobre la reputación
 }
 
 export function getStats(): GuardStat[] {

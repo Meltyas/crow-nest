@@ -51,9 +51,10 @@
   let reputation: GuardReputation[] = [];
   let addingReputation = false;
   let editingReputation = false;
-  let newReputation: GuardReputation = { key: '', name: '', value: 0, img: 'icons/svg/aura.svg' };
+  let newReputation: GuardReputation = { key: '', name: '', value: 0, img: 'icons/svg/aura.svg', details: '' };
   let collapsedReputation = false;
   let collapsedResources = false;
+  let expandedReputationDetails: Record<string, boolean> = {};
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
@@ -581,8 +582,13 @@
   }
 
   function openAddReputation() {
-    newReputation = { key: crypto.randomUUID(), name: '', value: 0, img: 'icons/svg/aura.svg' };
+    newReputation = { key: crypto.randomUUID(), name: '', value: 0, img: 'icons/svg/aura.svg', details: '' };
     addingReputation = true;
+  }
+
+  function toggleReputationDetails(repKey: string) {
+    expandedReputationDetails[repKey] = !expandedReputationDetails[repKey];
+    expandedReputationDetails = { ...expandedReputationDetails }; // Trigger reactivity
   }
 
   function cancelAddReputation() {
@@ -620,6 +626,8 @@
           },
         }).render(true);
       }
+    } else {
+      showReputationInChat(rep);
     }
   }
 
@@ -647,6 +655,48 @@
       updateReputation();
     };
     reader.readAsDataURL(input.files[0]);
+  }
+
+  function showReputationInChat(rep: GuardReputation) {
+    if (editingReputation) return; // No mostrar en modo edición
+
+    // Calcular el color basado en el valor de reputación (0-10)
+    const hue = (rep.value / 10) * 120; // De rojo (0) a verde (120)
+    const reputationColor = `hsl(${hue}, 70%, 50%)`;
+
+    // Crear barras de progreso visual
+    const totalBars = 10;
+    const filledBars = Math.floor(rep.value);
+    const progressBars = Array(totalBars).fill(0).map((_, i) => {
+      if (i < filledBars) {
+        return `<span style="color: ${reputationColor};">█</span>`;
+      } else {
+        return `<span style="color: #444;">█</span>`;
+      }
+    }).join('');
+
+    // Agregar detalles si existen
+    const detailsSection = rep.details && rep.details.trim()
+      ? `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid ${reputationColor}; font-style: italic; color: #000;">${rep.details}</div>`
+      : '';
+
+    const content = `
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 2px solid ${reputationColor}; border-radius: 8px; background: rgba(0,0,0,0.1);">
+        <img src="${rep.img || 'icons/svg/aura.svg'}" alt="${rep.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid ${reputationColor};" />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 0.5rem 0; color: ${reputationColor}; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${rep.name}</h3>
+          <div style="font-family: monospace; font-size: 1.2em; letter-spacing: 1px; color: #000;">${progressBars}</div>
+          ${detailsSection}
+        </div>
+      </div>
+    `;
+
+    // Enviar mensaje al chat
+    ChatMessage.create({
+      speaker: { alias: 'Los Cuervos - Reputación' },
+      content: content,
+      whisper: null // Mensaje público
+    });
   }
 </script>
 
@@ -1149,12 +1199,20 @@
     border: 1px solid #374151;
     border-radius: 8px;
     background: transparent;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
   }
 
   .reputation-display:hover {
     transform: translateY(-2px);
     border-color: #6b7280;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .reputation-display:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
   .reputation-image {
@@ -1286,6 +1344,22 @@
     color: #9ca3af;
   }
 
+  .add-reputation-form textarea {
+    flex: 1;
+    min-height: 60px;
+    padding: 0.5rem;
+    border: 1px solid #6b7280;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .add-reputation-form textarea::placeholder {
+    color: #9ca3af;
+  }
+
   .collapse-button {
     font-size: 0.8em;
     padding: 0.25rem 0.5rem;
@@ -1350,6 +1424,65 @@
   .reputation-edit-image-button {
     width: 100%;
     height: 56px;
+  }
+
+  /* Reputation details styles */
+  .reputation-details-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #6b7280;
+    border-radius: 50%;
+    color: #f9fafb;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: all 0.2s ease;
+  }
+
+  .reputation-details-toggle:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+  }
+
+  .reputation-details {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid #374151;
+    border-radius: 6px;
+    font-size: 0.85em;
+    line-height: 1.4;
+    color: #d1d5db;
+  }
+
+  .reputation-details p {
+    margin: 0;
+  }
+
+  .reputation-display {
+    position: relative;
+  }
+
+  .reputation-edit textarea {
+    min-height: 60px;
+    resize: vertical;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: inherit;
+  }
+
+  .reputation-edit textarea::placeholder {
+    color: #9ca3af;
   }
 </style>
 {#if showPopup}
@@ -1570,6 +1703,7 @@
                     </button>
                     <input placeholder="Nombre de la facción" bind:value={newReputation.name} />
                     <input type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
+                    <textarea placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
                     <button on:click={confirmAddReputation}>Agregar</button>
                     <button on:click={cancelAddReputation}>Cancelar</button>
                   </div>
@@ -1581,18 +1715,21 @@
                       {#if editingReputation}
 
                         <div class="reputation-edit">
-                                                  <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
-                          <img class="reputation-image-edit" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
-                        </button>
-                        <input id={`rep-file-${rep.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onRepFileChange(rep,e)} />
+                          <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
+                            <img class="reputation-image-edit" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
+                          </button>
+                          <input id={`rep-file-${rep.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onRepFileChange(rep,e)} />
                           <input placeholder="Nombre" bind:value={rep.name} on:change={updateReputation} />
+                          <textarea placeholder="Detalles sobre la relación..." bind:value={rep.details} on:change={updateReputation}></textarea>
                           <div class="rep-actions">
-                          <input type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
-                          <button on:click={() => removeReputation(i)}>✕</button>
+                            <input type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
+                            <button on:click={() => removeReputation(i)}>✕</button>
                           </div>
                         </div>
                       {:else}
-                        <div class="reputation-display">
+                        <div class="reputation-display" role="button" tabindex="0"
+                             on:click={() => showReputationInChat(rep)}
+                             on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showReputationInChat(rep); } }}>
                           <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
                           <div class="reputation-info">
                             <div class="reputation-name">{rep.name}</div>
@@ -1609,7 +1746,17 @@
                               </div>
                             </div>
                           </div>
+                          {#if rep.details && rep.details.trim()}
+                            <button class="reputation-details-toggle" on:click|stopPropagation={() => toggleReputationDetails(rep.key)}>
+                              📝
+                            </button>
+                          {/if}
                         </div>
+                        {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
+                          <div class="reputation-details">
+                            <p>{rep.details}</p>
+                          </div>
+                        {/if}
                       {/if}
                     </div>
                   {/each}
@@ -1619,7 +1766,7 @@
               <hr />
               <h3 style="display: flex; justify-content: space-between; align-items: center;">
                 Recursos
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div style="display: flex, gap: 0.5rem, align-items: center;">
                   <button class="edit-button" on:click={toggleEditingResources}>
                     {editingResources ? 'Finalizar Edición' : 'Editar Recursos'}
                   </button>
