@@ -134,6 +134,7 @@
     stats = getStats() as Stat[];
     log = getLog();
     modifiers = getModifiers();
+    sortModifiersByState(); // Sort modifiers on initial load
     resources = getResources();
     patrols = getPatrols();
     admins = getAdmins();
@@ -167,6 +168,7 @@
       if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
         console.log("🔧 Guard: Modifiers setting changed, updating UI");
         modifiers = setting.value || [];
+        sortModifiersByState(); // Sort modifiers when loaded from settings
       }
 
       if (setting.key === `${MODULE_ID}.${SETTING_RESOURCES}`) {
@@ -212,6 +214,7 @@
     console.log("🔧 Guard: Modifiers sync event received", event);
     if (event.type === 'modifiers') {
       modifiers = event.data || getModifiers();
+      sortModifiersByState(); // Sort modifiers when received from sync
       console.log("✅ Guard: Modifiers updated", modifiers.length, "modifiers");
     }
   }
@@ -265,6 +268,11 @@
     } else {
       console.log("🚫 Guard: Skipping resources persist - not GM");
     }
+  }
+
+  function getTotalStatValue(stat: Stat): number {
+    const modifierBonus = modifiers.reduce((acc, m) => acc + (m.mods[stat.key] || 0), 0);
+    return stat.value + modifierBonus;
   }
 
   function openAddStat() {
@@ -328,11 +336,22 @@
     addingModifier = false;
   }
 
+  function sortModifiersByState() {
+    // Sort modifiers by state: positive -> neutral -> negative
+    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
+    modifiers.sort((a, b) => {
+      const stateA = stateOrder[a.state] ?? 1; // Default to neutral if state is undefined
+      const stateB = stateOrder[b.state] ?? 1;
+      return stateA - stateB;
+    });
+  }
+
   async function confirmAddModifier() {
     newModifier.mods = Object.fromEntries(
       Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
     );
     modifiers = [...modifiers, { ...newModifier }];
+    sortModifiersByState();
     await persistMods();
     addingModifier = false;
   }
@@ -351,6 +370,7 @@
         Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
       ),
     }));
+    sortModifiersByState();
     await persistMods();
   }
 
@@ -373,6 +393,10 @@
 
   function toggleEditingMods() {
     editingMods = !editingMods;
+    // If we're stopping editing, sort the modifiers
+    if (!editingMods) {
+      sortModifiersByState();
+    }
   }
 
   function toggleLog() {
@@ -699,6 +723,40 @@
     flex-wrap: wrap;
   }
 
+  .stats-and-modifiers-container {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .stats-section {
+    flex: 0 0 60%;
+    min-width: 60%;
+  }
+
+  .modifiers-section {
+    flex: 1;
+    min-width: 35%;
+  }
+
+  .modifiers-section h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Responsive design for smaller screens */
+  @media (max-width: 768px) {
+    .stats-and-modifiers-container {
+      flex-direction: column;
+    }
+
+    .stats-section,
+    .modifiers-section {
+      flex: 1;
+      min-width: 100%;
+    }
+  }
+
   .log {
     background: #333;
     padding: 0.25rem;
@@ -966,146 +1024,151 @@
           {#if activeTab === 'guardia'}
             <h3>Los Cuervos</h3>
             <div class="guard-container">
-              <div class="button-holder">
-                {#if editing}
-                  <button on:click={openAddStat}>Añadir Stat</button>
-                {/if}
-                <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
-              </div>
-
-              {#if addingStat}
-                <div class="add-stat-form">
-                  <input placeholder="Nombre" bind:value={newStat.name} />
-                  <input type="number" placeholder="Valor" bind:value={newStat.value} />
-                  <button on:click={confirmAddStat}>Agregar</button>
-                  <button on:click={cancelAddStat}>Cancelar</button>
-                </div>
-              {/if}
-
-              <div class="stat-container">
-                {#each stats as stat, i}
-                  <div class="stat">
-                    <button class="stat-img" on:click={() => onImageClick(stat)}>
-                      <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
-                    </button>
-                    <input
-                      id={`file-${stat.key}`}
-                      type="file"
-                      accept="image/*"
-                      on:change={(e) => onFileChange(stat, e)}
-                      style="display: none;"
-                    />
+              <div class="stats-and-modifiers-container">
+                <div class="stats-section">
+                  <div class="button-holder">
                     {#if editing}
-                      <div class="stats-editables">
-                        <input
-                          class="stat-name-input"
-                          placeholder="Nombre"
-                          bind:value={stat.name}
-                          on:change={updateStat}
-                        />
-                      </div>
-                      <div class="stat-number">
-                        <input
-                          class="stat-number-input"
-                          type="number"
-                          placeholder="Valor"
-                          bind:value={stat.value}
-                          on:change={updateStat}
-                        />
-                        <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
-                      </div>
-                    {:else}
-                      <div class="stat-view">
-                        <div class="stat-name">{stat.name}</div>
-                        <div class="stat-value">{stat.value}</div>
-                      </div>
+                      <button on:click={openAddStat}>Añadir Stat</button>
                     {/if}
+                    <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
                   </div>
-                {/each}
-              </div>
 
-              <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
-              {#if showLog}
-                <div class="log">
-                  {#each log as entry}
-                    <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
-                  {/each}
-                </div>
-              {/if}
+                  {#if addingStat}
+                    <div class="add-stat-form">
+                      <input placeholder="Nombre" bind:value={newStat.name} />
+                      <input type="number" placeholder="Valor" bind:value={newStat.value} />
+                      <button on:click={confirmAddStat}>Agregar</button>
+                      <button on:click={cancelAddStat}>Cancelar</button>
+                    </div>
+                  {/if}
 
-              <hr />
-              <h4>Modificaciones Situacionales</h4>
-              {#if editingMods}
-                <button on:click={openAddModifier}>Añadir Modificador</button>
-              {/if}
-              <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
-              {#if addingModifier}
-                <div class="add-mod-form">
-                  <div class="modifier-image-section">
-                    <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
-                      <img src={newModifier.img} alt="Modifier Image" />
-                    </button>
-                  </div>
-                  <input placeholder="Nombre" bind:value={newModifier.name} />
-                  <textarea placeholder="Descripción" bind:value={newModifier.description}></textarea>
-                  <div class="state-selector">
-                    <label for="new-modifier-state">Estado:</label>
-                    <select id="new-modifier-state" bind:value={newModifier.state}>
-                      <option value="positive">Positive</option>
-                      <option value="neutral">Neutral</option>
-                      <option value="negative">Negative</option>
-                    </select>
-                  </div>
-                  <div class="modifier-stats-container">
-                    {#each stats as stat}
-                      <div class="modifier-values">
-                        <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="32" height="32" />
-                        <input type="number" bind:value={newModifier.mods[stat.key]} />
+                  <div class="stat-container">
+                    {#each stats as stat, i}
+                      <div class="stat">
+                        <button class="stat-img" on:click={() => onImageClick(stat)}>
+                          <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+                        </button>
+                        <input
+                          id={`file-${stat.key}`}
+                          type="file"
+                          accept="image/*"
+                          on:change={(e) => onFileChange(stat, e)}
+                          style="display: none;"
+                        />
+                        {#if editing}
+                          <div class="stats-editables">
+                            <input
+                              class="stat-name-input"
+                              placeholder="Nombre"
+                              bind:value={stat.name}
+                              on:change={updateStat}
+                            />
+                          </div>
+                          <div class="stat-number">
+                            <input
+                              class="stat-number-input"
+                              type="number"
+                              placeholder="Valor"
+                              bind:value={stat.value}
+                              on:change={updateStat}
+                            />
+                            <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
+                          </div>
+                        {:else}
+                          <div class="stat-view">
+                            <div class="stat-name">{stat.name}</div>
+                            <div class="stat-value">{stat.value} ({getTotalStatValue(stat)})</div>
+                          </div>
+                        {/if}
                       </div>
                     {/each}
                   </div>
-                  <div class="form-buttons">
-                    <button on:click={confirmAddModifier}>Agregar</button>
-                    <button on:click={cancelAddModifier}>Cancelar</button>
+
+                  <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
+                  {#if showLog}
+                    <div class="log">
+                      {#each log as entry}
+                        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="modifiers-section">
+                  <h4>Modificaciones Situacionales</h4>
+                  {#if editingMods}
+                    <button on:click={openAddModifier}>Añadir Modificador</button>
+                  {/if}
+                  <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
+                  {#if addingModifier}
+                    <div class="add-mod-form">
+                      <div class="modifier-image-section">
+                        <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
+                          <img src={newModifier.img} alt="Modifier Image" />
+                        </button>
+                      </div>
+                      <input placeholder="Nombre" bind:value={newModifier.name} />
+                      <textarea placeholder="Descripción" bind:value={newModifier.description}></textarea>
+                      <div class="state-selector">
+                        <label for="new-modifier-state">Estado:</label>
+                        <select id="new-modifier-state" bind:value={newModifier.state}>
+                          <option value="positive">Positive</option>
+                          <option value="neutral">Neutral</option>
+                          <option value="negative">Negative</option>
+                        </select>
+                      </div>
+                      <div class="modifier-stats-container">
+                        {#each stats as stat}
+                          <div class="modifier-values">
+                            <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="32" height="32" />
+                            <input type="number" bind:value={newModifier.mods[stat.key]} />
+                          </div>
+                        {/each}
+                      </div>
+                      <div class="form-buttons">
+                        <button on:click={confirmAddModifier}>Agregar</button>
+                        <button on:click={cancelAddModifier}>Cancelar</button>
+                      </div>
+                    </div>
+                  {/if}
+                  <div class="modifier-container">
+                    {#each modifiers as mod, i}
+                      <div class="modifier modifier-{mod.state || 'neutral'}">
+                        <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
+                          <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
+                            <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
+                          </button>
+                        </Tooltip>
+                        <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
+                        {#if editingMods}
+                          <div class="modifier-edit">
+                            <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
+                            <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+                            <div class="state-selector">
+                              <label for="edit-modifier-state-{i}">Estado:</label>
+                              <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
+                                <option value="positive">Positive</option>
+                                <option value="neutral">Neutral</option>
+                                <option value="negative">Negative</option>
+                              </select>
+                            </div>
+                            <div class="modifier-values-contain">
+                              {#each stats as stat}
+                                <div class="modifier-values modifier-values-edit">
+                                  <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+                                  <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
+                                </div>
+                              {/each}
+                            </div>
+                            <button on:click={() => removeModifier(i)}>X</button>
+                          </div>
+                        {:else}
+                          <!-- content moved into tooltip -->
+                        {/if}
+                      </div>
+                    {/each}
                   </div>
                 </div>
-              {/if}
-              <div class="modifier-container">
-                {#each modifiers as mod, i}
-                  <div class="modifier modifier-{mod.state || 'neutral'}">
-                    <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
-                      <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
-                        <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
-                      </button>
-                    </Tooltip>
-                    <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
-                    {#if editingMods}
-                      <div class="modifier-edit">
-                        <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
-                        <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
-                        <div class="state-selector">
-                          <label for="edit-modifier-state-{i}">Estado:</label>
-                          <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
-                            <option value="positive">Positive</option>
-                            <option value="neutral">Neutral</option>
-                            <option value="negative">Negative</option>
-                          </select>
-                        </div>
-                        <div class="modifier-values-contain">
-                          {#each stats as stat}
-                            <div class="modifier-values modifier-values-edit">
-                              <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-                              <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
-                            </div>
-                          {/each}
-                        </div>
-                        <button on:click={() => removeModifier(i)}>X</button>
-                      </div>
-                    {:else}
-                      <!-- content moved into tooltip -->
-                    {/if}
-                  </div>
-                {/each}
               </div>
 
               <hr />
