@@ -138,16 +138,21 @@
     await persistMods();
   }
 
-  function modChanges(mod: GuardModifier): string {
-    return Object.entries(mod.mods)
+  function modTooltip(mod: GuardModifier): string {
+    const header = `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>`;
+    const mods = Object.entries(mod.mods)
       .map(([k, v]) => {
         const stat = stats.find((s) => s.key === k);
         if (!stat) return '';
         const val = Number(v) > 0 ? `+${v}` : `${v}`;
-        return `<div><strong>${stat.name}:</strong> ${val}</div>`;
+        return `<div style="display:flex;align-items:center;gap:0.25rem;">
+          <img src="${stat.img || 'icons/svg/shield.svg'}" alt="${stat.name}" width="16" height="16" />
+          <span>${val}</span>
+        </div>`;
       })
       .filter(Boolean)
       .join('');
+    return header + mods;
   }
 
   function toggleEditingMods() {
@@ -525,7 +530,7 @@
   <div class="modifier-container">
   {#each modifiers as mod, i}
     <div class="modifier">
-      <Tooltip content={`<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>`}>
+      <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
         <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
       </Tooltip>
       <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
@@ -544,15 +549,7 @@
           <button on:click={() => removeModifier(i)}>X</button>
         </div>
       {:else}
-        <Tooltip content={modChanges(mod)} />
-        <div class="modifier-values">
-          {#each Object.entries(mod.mods) as [k,v]}
-            {#if stats.find(s => s.key === k)}
-              <img class="standard-image" src={(stats.find(s => s.key === k)?.img) || 'icons/svg/shield.svg'} alt="stat" width="16" height="16" />
-              <span>{v>0 ? '+' : ''}{v}</span>
-            {/if}
-          {/each}
-        </div>
+        <!-- content moved into tooltip -->
       {/if}
     </div>
   {/each}
