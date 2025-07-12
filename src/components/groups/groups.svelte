@@ -9,8 +9,8 @@
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
+  import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
-  import { groupsStore, persistGroups, loadGroups } from '@/stores/groups';
   import { onDestroy, onMount } from 'svelte';
 
   export let saveGroups: (groups: Group[]) => Promise<void>; // Legacy prop, not used anymore
@@ -43,7 +43,7 @@
     // Listen for stats and modifiers updates (for UI updates)
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
-    
+
     // Groups sync is handled globally, no need to subscribe here
     console.log("📋 Groups component mounted, using global groups store");
   });

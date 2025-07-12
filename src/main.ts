@@ -14,8 +14,13 @@ import {
   SETTING_STATS,
 } from "@/constants";
 import { getPatrols } from "@/patrol/patrols";
-import { initializeSync, SyncManager, testPatrolSheetSync, cleanupSync } from "@/utils/sync";
 import { initializeGroupsSync } from "@/stores/groups";
+import {
+  cleanupSync,
+  initializeSync,
+  SyncManager,
+  testPatrolSheetSync,
+} from "@/utils/sync";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
@@ -69,7 +74,7 @@ Hooks.once("init", () => {
     type: Object,
     default: { despair: 0, cheers: 0 },
   });
-  
+
   // Active patrol sheets - synchronized across all users
   game.settings.register(MODULE_ID, "activePatrolSheets", {
     scope: "world",
@@ -80,110 +85,83 @@ Hooks.once("init", () => {
 });
 
 // Function to handle patrol sheet setting changes directly
-function handlePatrolSheetSettingChange(activeSheets: any, updatedByUserId: string) {
-  console.log("🎯🎯🎯 FUNCTION CALLED: handlePatrolSheetSettingChange");
-  console.log("🎯 main.ts: Handling patrol sheet setting change");
-  console.log("🎯 Raw activeSheets data:", activeSheets, "type:", typeof activeSheets);
-  console.log("🎯 Updated by user:", updatedByUserId);
-  console.log("🎯 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-  
+function handlePatrolSheetSettingChange(
+  activeSheets: any,
+  updatedByUserId: string
+) {
   // Ensure activeSheets is an array
   let sheetsArray: any[] = [];
   if (Array.isArray(activeSheets)) {
     sheetsArray = activeSheets;
-  } else if (activeSheets && typeof activeSheets === 'object' && activeSheets.value) {
+  } else if (
+    activeSheets &&
+    typeof activeSheets === "object" &&
+    activeSheets.value
+  ) {
     // Foundry passes {value: "JSON_STRING"} structure - need to parse the JSON string!
-    console.log("🎯 Found value property, parsing JSON string:", activeSheets.value);
     try {
       const parsedValue = JSON.parse(activeSheets.value);
       if (Array.isArray(parsedValue)) {
         sheetsArray = parsedValue;
-        console.log("✅ Successfully parsed JSON string to array");
-      } else {
-        console.log("🚫 Parsed value is not an array:", parsedValue);
       }
     } catch (error) {
-      console.error("❌ Error parsing JSON string:", error);
       return;
     }
   } else {
-    console.log("🚫 activeSheets is not an array and has no parseable value, skipping processing");
     return;
   }
-  
-  console.log("🎯 Processed sheets array:", sheetsArray);
-  
+
   // Don't process updates from our own user (to avoid loops)
   if (updatedByUserId === game.user?.id) {
-    console.log("🚫 Ignoring update from self to avoid loops");
     return;
   }
-  
+
   // Get available groups
   const groups = (game.modules?.get("crow-nest") as any)?.api?.getGroups?.();
   if (!groups) {
-    console.error("❌ No groups available in main.ts handler");
     return;
   }
-  
-  console.log("🎯 Available groups:", groups.length);
-  
+
   // Process each active sheet
   sheetsArray.forEach((sheetData: any) => {
-    console.log("🎯 Processing sheet data:", sheetData);
-    
     // Check if we should show this sheet to current user
     const shouldShow = shouldShowPatrolSheetToCurrentUser(sheetData);
-    console.log("🎯 Should show to current user:", shouldShow);
-    
+
     if (shouldShow) {
       // Find the group
       const group = groups.find((g: any) => g.id === sheetData.groupId);
       if (group) {
-        console.log("✅ Opening patrol sheet directly from main.ts for group:", group.name || group.id);
-        
         // Use default labels or provided ones
         const labels = sheetData.labels || { groupSingular: "Patrol" };
-        
+
         // Open the patrol sheet directly - same way the button does it!
-        console.log("🚀 CALLING patrolSheetManager.showPatrolSheet...");
         patrolSheetManager.showPatrolSheet(group, labels);
-        console.log("✅ Patrol sheet opened successfully from main.ts");
-      } else {
-        console.error("❌ Group not found:", sheetData.groupId);
       }
-    } else {
-      console.log("🚫 Not showing patrol sheet for this user");
     }
   });
-  
-  console.log("🎯 Finished processing patrol sheet setting change in main.ts");
 }
 
 // Helper function to check if current user should see the patrol sheet
 function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
-  console.log("🔍🔍🔍 FUNCTION CALLED: shouldShowPatrolSheetToCurrentUser");
-  console.log("🔍 main.ts: Checking if should show patrol sheet:", sheetData);
-  
   // Don't show to GM if they initiated it (unless specifically requested)
-  if (game.user?.isGM && sheetData.initiatedBy === game.user.id && !sheetData.showToGM) {
-    console.log("🚫 Skipping show for GM who initiated it");
+  if (
+    game.user?.isGM &&
+    sheetData.initiatedBy === game.user.id &&
+    !sheetData.showToGM
+  ) {
     return false;
   }
-  
+
   // Don't show if already open
   if (patrolSheetManager.activeSheets?.has(sheetData.groupId)) {
-    console.log("🚫 Sheet already open:", sheetData.groupId);
     return false;
   }
-  
+
   // Check if sheet is meant for current user (optional targeting)
   if (sheetData.targetUsers && !sheetData.targetUsers.includes(game.user?.id)) {
-    console.log("🚫 Sheet not targeted for current user");
     return false;
   }
-  
-  console.log("✅ Should show patrol sheet to current user - all checks passed");
+
   return true;
 }
 
@@ -209,31 +187,21 @@ Hooks.once("ready", () => {
   // Set up patrol sheet setting watcher (much simpler than sockets!)
   console.log("Crow Nest | Setting up patrol sheet setting watcher");
   game.settings.sheet.render(); // Ensure settings are ready
-  
+
   // Watch for changes in activePatrolSheets setting
   Hooks.on("updateSetting", (setting, value, options, userId) => {
-    console.log("🎣 HOOK FIRED: updateSetting - setting key:", setting.key);
-    
     if (setting.key === `${MODULE_ID}.activePatrolSheets`) {
-      console.log("✅ CORRECT SETTING DETECTED: activePatrolSheets");
-      console.log("📡 Patrol sheet setting changed:", value, "by user:", userId);
-      
-      // Handle patrol sheet opening directly in main.ts (simpler approach)
-      console.log("🚀 CALLING handlePatrolSheetSettingChange...");
       handlePatrolSheetSettingChange(value, userId);
-      console.log("✅ handlePatrolSheetSettingChange call completed");
-    } else {
-      console.log("❌ Different setting, ignoring:", setting.key);
     }
   });
 
   // Initialize patrol sheet sync handlers (always active for all users)
   console.log("Crow Nest | Registering patrol sheet sync handlers");
   const syncManager = SyncManager.getInstance();
-  
+
   // Clear any existing patrol-sheet handlers first
   syncManager.clearEventHandler("patrol-sheet");
-  
+
   syncManager.registerEventHandler("patrol-sheet", (event) => {
     patrolSheetManager.handleSyncEvent(event);
   });
@@ -244,7 +212,8 @@ Hooks.once("ready", () => {
     getGroups: () => getPatrols(),
     patrolSheetManager: patrolSheetManager,
     // Explicitly expose the forceShowPatrolSheetToAll method
-    forceShowPatrolSheetToAll: (group: any, labels: any) => patrolSheetManager.forceShowPatrolSheetToAll(group, labels),
+    forceShowPatrolSheetToAll: (group: any, labels: any) =>
+      patrolSheetManager.forceShowPatrolSheetToAll(group, labels),
     testPatrolSheetSync: testPatrolSheetSync,
     debugPatrolSheets: () => patrolSheetManager.debugState(),
     debugSyncHandlers: () => patrolSheetManager.debugSyncHandlers(),
@@ -252,12 +221,23 @@ Hooks.once("ready", () => {
     testSocketReception: () => patrolSheetManager.testSocketReception(),
     testSocketDirectly: () => patrolSheetManager.testSocketDirectly(),
     debugSocketSystem: () => patrolSheetManager.debugSocketSystem(),
-    forceSocketReinitialization: () => patrolSheetManager.forceSocketReinitialization(),
+    forceSocketReinitialization: () =>
+      patrolSheetManager.forceSocketReinitialization(),
     // NEW: Settings-based patrol sheet methods
-    forceShowPatrolSheetToAllViaSettings: (group: any, labels: any, options: any = {}) => 
-      patrolSheetManager.forceShowPatrolSheetToAllViaSettings(group, labels, options),
-    clearAllActivePatrolSheets: () => patrolSheetManager.clearAllActivePatrolSheets(),
-    debugActiveSheetsSetting: () => patrolSheetManager.debugActiveSheetsSetting(),
+    forceShowPatrolSheetToAllViaSettings: (
+      group: any,
+      labels: any,
+      options: any = {}
+    ) =>
+      patrolSheetManager.forceShowPatrolSheetToAllViaSettings(
+        group,
+        labels,
+        options
+      ),
+    clearAllActivePatrolSheets: () =>
+      patrolSheetManager.clearAllActivePatrolSheets(),
+    debugActiveSheetsSetting: () =>
+      patrolSheetManager.debugActiveSheetsSetting(),
     clearPatrolPositions: () => patrolSheetManager.clearStoredPositions(),
     // Cleanup functions for sync issues
     cleanupSync: () => patrolSheetManager.manualCleanupSync(),
@@ -280,9 +260,17 @@ Hooks.once("ready", () => {
       const testEvent = {
         type: "groups" as const,
         action: "update" as const,
-        data: [{ id: "test", name: "Test Group", officer: null, soldiers: [], mods: {} }],
+        data: [
+          {
+            id: "test",
+            name: "Test Group",
+            officer: null,
+            soldiers: [],
+            mods: {},
+          },
+        ],
         timestamp: Date.now(),
-        user: game.user?.name || "unknown"
+        user: game.user?.name || "unknown",
       };
       console.log("📤 Broadcasting test groups event:", testEvent);
       syncManager.broadcast(testEvent);
@@ -293,22 +281,24 @@ Hooks.once("ready", () => {
       console.log("SyncManager instance:", syncManager);
       console.log("Total listeners:", syncManager.getListenerCount());
       console.log("Event handlers count:", syncManager.getEventHandlerCount());
-      console.log("Groups listeners:", syncManager.getListenerCount('groups'));
+      console.log("Groups listeners:", syncManager.getListenerCount("groups"));
       console.log("All listeners by type:");
-      
+
       const listeners = syncManager.getListeners();
       for (const [type, callbacks] of listeners.entries()) {
         console.log(`  ${type}: ${callbacks.length} listeners`);
       }
-      
+
       return {
         totalListeners: syncManager.getListenerCount(),
         eventHandlersCount: syncManager.getEventHandlerCount(),
-        groupsListeners: syncManager.getListenerCount('groups'),
-        listenersByType: Array.from(listeners.entries()).map(([type, callbacks]) => ({
-          type,
-          count: callbacks.length
-        }))
+        groupsListeners: syncManager.getListenerCount("groups"),
+        listenersByType: Array.from(listeners.entries()).map(
+          ([type, callbacks]) => ({
+            type,
+            count: callbacks.length,
+          })
+        ),
       };
     },
     checkLocalStorage: () => {

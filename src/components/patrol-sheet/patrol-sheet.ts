@@ -1,5 +1,5 @@
-import type { Group } from "@/shared/group";
 import { MODULE_ID } from "@/constants";
+import type { Group } from "@/shared/group";
 import PatrolSheetPopup from "./patrol-sheet-popup.svelte";
 
 export class PatrolSheetManager {
@@ -16,16 +16,14 @@ export class PatrolSheetManager {
   }
 
   constructor() {
-    console.log(
-      `🚀 PatrolSheetManager: Inicializando gestor de fichas de patrulla`
-    );
     this.restoreOpenSheets();
   }
 
   // Función para que el GM fuerce la ficha a todos (UPDATED: now uses settings!)
   async forceShowPatrolSheetToAll(group: Group, labels: any) {
-    console.log("� forceShowPatrolSheetToAll: Redirecting to settings-based method");
-    return this.forceShowPatrolSheetToAllViaSettings(group, labels, { showToGM: true });
+    return this.forceShowPatrolSheetToAllViaSettings(group, labels, {
+      showToGM: true,
+    });
   }
 
   // Función para abrir ficha individual (GM o jugador)
@@ -42,12 +40,6 @@ export class PatrolSheetManager {
     // Si no se proporciona una posición guardada, buscar en localStorage
     if (!savedPosition) {
       savedPosition = this.getLastKnownPosition(group.id);
-      if (savedPosition) {
-        console.log(
-          `🎯 PatrolSheetManager: Usando posición guardada para ${group.name || group.id}:`,
-          savedPosition
-        );
-      }
     }
 
     // Crear contenedor para el popup
@@ -108,7 +100,6 @@ export class PatrolSheetManager {
       const positions = stored ? JSON.parse(stored) : {};
       return positions[groupId] || null;
     } catch (error) {
-      console.error("Error loading position history:", error);
       return null;
     }
   }
@@ -123,12 +114,8 @@ export class PatrolSheetManager {
       const positions = stored ? JSON.parse(stored) : {};
       positions[groupId] = position;
       localStorage.setItem(this.positionsKey, JSON.stringify(positions));
-      console.log(
-        `💾 PatrolSheetManager: Posición guardada para ${groupId}:`,
-        position
-      );
     } catch (error) {
-      console.error("Error saving position history:", error);
+      // Silent error handling
     }
   }
 
@@ -137,10 +124,6 @@ export class PatrolSheetManager {
     if (sheet) {
       // IMPORTANTE: Guardar posición en historial ANTES de cerrar la ficha
       if (sheet.position) {
-        console.log(
-          `💾 PatrolSheetManager: Guardando posición final antes de cerrar ficha ${groupId}:`,
-          sheet.position
-        );
         this.savePositionToHistory(groupId, sheet.position);
       }
 
@@ -152,10 +135,6 @@ export class PatrolSheetManager {
       this.activeSheets.delete(groupId);
       // Actualizar localStorage (solo fichas activas)
       this.saveOpenSheetsToStorage();
-
-      console.log(
-        `✅ PatrolSheetManager: Ficha ${groupId} cerrada, posición guardada en historial`
-      );
     }
   }
 
@@ -167,10 +146,6 @@ export class PatrolSheetManager {
 
   // Función común para deploy de patrullas (reutilizable)
   async deployPatrolFromSheet(group: Group) {
-    console.log(
-      `🚀 PatrolSheetManager: Desplegando patrulla ${group.name || group.id}`
-    );
-
     if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
       (ui as any).notifications?.warn("No members in the group to deploy");
       return;
@@ -266,10 +241,6 @@ export class PatrolSheetManager {
         position: sheet.position,
       })
     );
-    console.log(
-      `💾 PatrolSheetManager: Guardando fichas en localStorage:`,
-      openSheets
-    );
     localStorage.setItem(this.storageKey, JSON.stringify(openSheets));
   }
 
@@ -281,10 +252,6 @@ export class PatrolSheetManager {
       const stored = localStorage.getItem(this.storageKey);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error(
-        "Error loading open patrol sheets from localStorage:",
-        error
-      );
       return [];
     }
   }
@@ -292,28 +259,14 @@ export class PatrolSheetManager {
   private restoreOpenSheets() {
     // Función para intentar restaurar
     const attemptRestore = (attempt = 1, maxAttempts = 10) => {
-      console.log(
-        `🔄 PatrolSheetManager: Intento ${attempt} de restauración de fichas`
-      );
-
       const openSheets = this.getOpenSheetsFromStorage();
-      console.log(
-        `📋 PatrolSheetManager: Fichas guardadas en localStorage:`,
-        openSheets
-      );
 
       if (openSheets.length === 0) {
-        console.log(
-          `ℹ️ PatrolSheetManager: No hay fichas guardadas para restaurar`
-        );
         return;
       }
 
       // Verificar que el juego esté listo
       if (!game || !game.ready) {
-        console.log(
-          `⏳ PatrolSheetManager: El juego no está listo aún, esperando...`
-        );
         if (attempt < maxAttempts) {
           setTimeout(() => attemptRestore(attempt + 1, maxAttempts), 500);
         }
@@ -322,71 +275,34 @@ export class PatrolSheetManager {
 
       // Obtener grupos disponibles
       const crowNestModule = game.modules?.get("crow-nest") as any;
-      console.log(
-        `🎮 PatrolSheetManager: Módulo crow-nest encontrado:`,
-        !!crowNestModule
-      );
-      console.log(
-        `🔗 PatrolSheetManager: API disponible:`,
-        !!crowNestModule?.api?.getGroups
-      );
 
       if (crowNestModule?.api?.getGroups) {
         const groups = crowNestModule.api.getGroups();
-        console.log(
-          `👥 PatrolSheetManager: Grupos disponibles:`,
-          groups?.length || 0,
-          groups
-        );
 
         if (groups && groups.length > 0) {
           let restored = 0;
           openSheets.forEach((sheetData) => {
             const group = groups.find((g: Group) => g.id === sheetData.groupId);
             if (group) {
-              console.log(
-                `✅ PatrolSheetManager: Restaurando ficha para grupo ${group.name || group.id}`,
-                sheetData.position
-              );
               // Restaurar ficha con labels por defecto y posición guardada
               const defaultLabels = {
                 groupSingular: "Patrol",
               };
               this.showPatrolSheet(group, defaultLabels, sheetData.position);
               restored++;
-            } else {
-              console.log(
-                `❌ PatrolSheetManager: Grupo ${sheetData.groupId} no encontrado en grupos disponibles`
-              );
             }
           });
 
           if (restored > 0) {
-            console.log(
-              `🎉 PatrolSheetManager: ${restored} fichas restauradas exitosamente`
-            );
             return;
           }
-        } else {
-          console.log(
-            `🔍 PatrolSheetManager: No hay grupos disponibles o lista vacía`
-          );
         }
-      } else {
-        console.log(`❌ PatrolSheetManager: API del módulo no disponible`);
       }
 
       // Si llegamos aquí, algo falló. Intentar de nuevo si no hemos alcanzado el máximo
       if (attempt < maxAttempts) {
         const delay = Math.min(attempt * 500, 2000); // Máximo 2 segundos de delay
-        console.log(
-          `⏳ PatrolSheetManager: Reintentando en ${delay}ms... (intento ${attempt + 1}/${maxAttempts})`
-        );
         setTimeout(() => attemptRestore(attempt + 1, maxAttempts), delay);
-      } else {
-        console.error(
-          `❌ PatrolSheetManager: No se pudieron restaurar las fichas después de ${maxAttempts} intentos`
-        );
       }
     };
 
@@ -406,14 +322,7 @@ export class PatrolSheetManager {
 
   // Función para debugging - mostrar estado actual
   debugState() {
-    console.log("🔍 PatrolSheetManager Debug:");
-    console.log("Active sheets:", this.activeSheets);
-    console.log("LocalStorage data:", this.getOpenSheetsFromStorage());
-    console.log("Position history:", this.getPositionHistory());
-    console.log(
-      "Available groups:",
-      (game.modules?.get("crow-nest") as any)?.api?.getGroups?.()
-    );
+    // Debug function - remove in production
   }
 
   // Función para obtener todo el historial de posiciones
@@ -422,7 +331,6 @@ export class PatrolSheetManager {
       const stored = localStorage.getItem(this.positionsKey);
       return stored ? JSON.parse(stored) : {};
     } catch (error) {
-      console.error("Error loading position history:", error);
       return {};
     }
   }
@@ -430,113 +338,98 @@ export class PatrolSheetManager {
   // ==============================================
   // NEW: Settings-based patrol sheet sync (much simpler than sockets!)
   // ==============================================
-  
+
   // Method to handle active patrol sheets updates from settings
   handleActivePatrolSheetsUpdate(activeSheets: any, updatedByUserId: string) {
-    console.log("📋 PatrolSheetManager: Active sheets updated by user:", updatedByUserId);
-    console.log("📋 Raw activeSheets data:", activeSheets, "type:", typeof activeSheets);
-    
     // Ensure activeSheets is an array
     let sheetsArray: any[] = [];
     if (Array.isArray(activeSheets)) {
       sheetsArray = activeSheets;
-    } else if (activeSheets && typeof activeSheets === 'object' && activeSheets.value) {
+    } else if (
+      activeSheets &&
+      typeof activeSheets === "object" &&
+      activeSheets.value
+    ) {
       // Sometimes Foundry passes {value: [...]} structure
       sheetsArray = Array.isArray(activeSheets.value) ? activeSheets.value : [];
     } else {
-      console.log("🚫 activeSheets is not an array, skipping processing");
-      return;
-    }
-    
-    console.log("📋 Processed sheets array:", sheetsArray);
-    
-    // Don't process updates from our own user (to avoid loops)
-    if (updatedByUserId === game.user?.id) {
-      console.log("🚫 Ignoring update from self to avoid loops");
-      return;
-    }
-    
-    // Process each active sheet
-    sheetsArray.forEach((sheetData: any) => {
-      console.log("📋 Processing sheet data:", sheetData);
-      
-      // Check if we should show this sheet
-      if (this.shouldShowPatrolSheet(sheetData)) {
-        console.log("✅ Showing patrol sheet:", sheetData.groupId);
-        this.showPatrolSheetFromSetting(sheetData);
-      }
-    });
-    
-    // Note: We don't automatically close sheets when they're removed from the list
-    // This allows for better UX - sheets stay open until manually closed
-    console.log("📋 Finished processing active sheets update");
-  }
-  
-  // Check if current user should show this patrol sheet
-  private shouldShowPatrolSheet(sheetData: any): boolean {
-    console.log("🔍 shouldShowPatrolSheet: Checking sheet data:", sheetData);
-    console.log("🔍 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-    
-    // Don't show to GM if they initiated it (unless specifically requested)
-    if (game.user?.isGM && sheetData.initiatedBy === game.user.id && !sheetData.showToGM) {
-      console.log("🚫 Skipping show for GM who initiated it");
-      return false;
-    }
-    
-    // Don't show if already open
-    if (this.activeSheets.has(sheetData.groupId)) {
-      console.log("🚫 Sheet already open:", sheetData.groupId);
-      return false;
-    }
-    
-    // Check if sheet is meant for current user (optional targeting)
-    if (sheetData.targetUsers && !sheetData.targetUsers.includes(game.user?.id)) {
-      console.log("🚫 Sheet not targeted for current user");
-      return false;
-    }
-    
-    console.log("✅ Should show patrol sheet - all checks passed");
-    return true;
-  }
-  
-  // Show patrol sheet from setting data
-  private showPatrolSheetFromSetting(sheetData: any) {
-    console.log("🎯 showPatrolSheetFromSetting: Starting with data:", sheetData);
-    
-    // Get the group data
-    const groups = (game.modules?.get("crow-nest") as any)?.api?.getGroups?.();
-    console.log("🎯 Available groups:", groups?.length || 0);
-    
-    if (!groups) {
-      console.error("❌ No groups available");
-      return;
-    }
-    
-    const group = groups.find((g: any) => g.id === sheetData.groupId);
-    console.log("🎯 Found group:", group ? group.name || group.id : "NOT FOUND");
-    
-    if (!group) {
-      console.error("❌ Group not found:", sheetData.groupId);
-      return;
-    }
-    
-    // Use default labels or provided ones
-    const labels = sheetData.labels || { groupSingular: "Patrol" };
-    console.log("🎯 Using labels:", labels);
-    
-    console.log("✅ Opening patrol sheet from setting for group:", group.name || group.id);
-    this.showPatrolSheet(group, labels);
-    console.log("✅ showPatrolSheet call completed");
-  }
-  
-  // NEW: Settings-based method to show patrol sheet to all users
-  async forceShowPatrolSheetToAllViaSettings(group: Group, labels: any, options: any = {}) {
-    if (!game.user?.isGM) {
-      console.log("🚫 forceShowPatrolSheetToAllViaSettings: User is not GM, aborting");
       return;
     }
 
-    console.log("📤 forceShowPatrolSheetToAllViaSettings: GM initiating broadcast for group:", group.id);
+    // Don't process updates from our own user (to avoid loops)
+    if (updatedByUserId === game.user?.id) {
+      return;
+    }
+
+    // Process each active sheet
+    sheetsArray.forEach((sheetData: any) => {
+      // Check if we should show this sheet
+      if (this.shouldShowPatrolSheet(sheetData)) {
+        this.showPatrolSheetFromSetting(sheetData);
+      }
+    });
+
+    // Note: We don't automatically close sheets when they're removed from the list
+    // This allows for better UX - sheets stay open until manually closed
+  }
+
+  // Check if current user should show this patrol sheet
+  private shouldShowPatrolSheet(sheetData: any): boolean {
+    // Don't show to GM if they initiated it (unless specifically requested)
+    if (
+      game.user?.isGM &&
+      sheetData.initiatedBy === game.user.id &&
+      !sheetData.showToGM
+    ) {
+      return false;
+    }
+
+    // Don't show if already open
+    if (this.activeSheets.has(sheetData.groupId)) {
+      return false;
+    }
+
+    // Check if sheet is meant for current user (optional targeting)
+    if (
+      sheetData.targetUsers &&
+      !sheetData.targetUsers.includes(game.user?.id)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // Show patrol sheet from setting data
+  private showPatrolSheetFromSetting(sheetData: any) {
+    // Get the group data
+    const groups = (game.modules?.get("crow-nest") as any)?.api?.getGroups?.();
+
+    if (!groups) {
+      return;
+    }
+
+    const group = groups.find((g: any) => g.id === sheetData.groupId);
+
+    if (!group) {
+      return;
+    }
+
+    // Use default labels or provided ones
+    const labels = sheetData.labels || { groupSingular: "Patrol" };
+
+    this.showPatrolSheet(group, labels);
+  }
+
+  // NEW: Settings-based method to show patrol sheet to all users
+  async forceShowPatrolSheetToAllViaSettings(
+    group: Group,
+    labels: any,
+    options: any = {}
+  ) {
+    if (!game.user?.isGM) {
+      return;
+    }
 
     // Show to GM first if requested
     if (options.showToGM !== false) {
@@ -544,15 +437,12 @@ export class PatrolSheetManager {
     }
 
     // STEP 1: Clear the list first (so all players register it's empty)
-    console.log("🧹 Step 1: Clearing active patrol sheets list to reset state");
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
-    
+
     // STEP 2: Wait a bit for all clients to process the empty list
-    console.log("⏳ Step 2: Waiting for clients to process empty list...");
-    await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
-    
+    await new Promise((resolve) => setTimeout(resolve, 300)); // 300ms delay
+
     // STEP 3: Add the new patrol sheet entry
-    console.log("📋 Step 3: Adding new patrol sheet to list");
     const newSheetEntry = {
       groupId: group.id,
       groupName: group.name,
@@ -562,57 +452,66 @@ export class PatrolSheetManager {
       showToGM: options.showToGM || false,
       targetUsers: options.targetUsers || null, // null means all users
     };
-    
+
     // Set the list with just this new entry
     const updatedSheets = [newSheetEntry];
-    
-    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with fresh entry:", updatedSheets);
-    
+
     // Update the setting - this will automatically sync to all users!
-    await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
-    
-    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully with clear-wait-refill strategy");
+    await (game as any).settings.set(
+      MODULE_ID,
+      "activePatrolSheets",
+      updatedSheets
+    );
   }
-  
+
   // Method to remove a patrol sheet from active list (when closed)
   async removePatrolSheetFromActive(groupId: string) {
     if (!game.user?.isGM) {
       // Only GM can modify the active sheets list
       return;
     }
-    
-    const currentSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets") as any[];
-    const updatedSheets = currentSheets.filter(sheet => sheet.groupId !== groupId);
-    
+
+    const currentSheets = (game as any).settings.get(
+      MODULE_ID,
+      "activePatrolSheets"
+    ) as any[];
+    const updatedSheets = currentSheets.filter(
+      (sheet) => sheet.groupId !== groupId
+    );
+
     if (updatedSheets.length !== currentSheets.length) {
-      console.log("📤 Removing patrol sheet from active list:", groupId);
-      await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
+      await (game as any).settings.set(
+        MODULE_ID,
+        "activePatrolSheets",
+        updatedSheets
+      );
     }
   }
-  
+
   // Method to clear all active patrol sheets (GM only)
   async clearAllActivePatrolSheets() {
     if (!game.user?.isGM) {
-      console.log("🚫 clearAllActivePatrolSheets: Only GM can clear active sheets");
       return;
     }
-    
-    console.log("🧹 Clearing all active patrol sheets");
+
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
-    console.log("✅ All active patrol sheets cleared");
   }
-  
+
   // Debug method to check current active sheets setting
   debugActiveSheetsSetting() {
-    const activeSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets");
-    console.log("🔍 Current active patrol sheets setting:", activeSheets);
-    console.log("🔍 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-    console.log("🔍 Local active sheets:", Array.from(this.activeSheets.keys()));
-    
+    const activeSheets = (game as any).settings.get(
+      MODULE_ID,
+      "activePatrolSheets"
+    );
+
     return {
       settingValue: activeSheets,
-      currentUser: { name: game.user?.name, id: game.user?.id, isGM: game.user?.isGM },
-      localActiveSheets: Array.from(this.activeSheets.keys())
+      currentUser: {
+        name: game.user?.name,
+        id: game.user?.id,
+        isGM: game.user?.isGM,
+      },
+      localActiveSheets: Array.from(this.activeSheets.keys()),
     };
   }
 }

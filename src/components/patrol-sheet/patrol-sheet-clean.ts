@@ -1,5 +1,5 @@
-import type { Group } from "@/shared/group";
 import { MODULE_ID } from "@/constants";
+import type { Group } from "@/shared/group";
 import PatrolSheetPopup from "./patrol-sheet-popup.svelte";
 
 export class PatrolSheetManager {
@@ -25,7 +25,9 @@ export class PatrolSheetManager {
   // Función para que el GM fuerce la ficha a todos (UPDATED: now uses settings!)
   async forceShowPatrolSheetToAll(group: Group, labels: any) {
     console.log("📤 forceShowPatrolSheetToAll: Using settings-based method");
-    return this.forceShowPatrolSheetToAllViaSettings(group, labels, { showToGM: true });
+    return this.forceShowPatrolSheetToAllViaSettings(group, labels, {
+      showToGM: true,
+    });
   }
 
   // Función para abrir ficha individual (GM o jugador)
@@ -430,36 +432,48 @@ export class PatrolSheetManager {
   // ==============================================
   // NEW: Settings-based patrol sheet sync (much simpler than sockets!)
   // ==============================================
-  
+
   // Method to handle active patrol sheets updates from settings
   handleActivePatrolSheetsUpdate(activeSheets: any, updatedByUserId: string) {
-    console.log("📋 PatrolSheetManager: Active sheets updated by user:", updatedByUserId);
-    console.log("📋 Raw activeSheets data:", activeSheets, "type:", typeof activeSheets);
-    
+    console.log(
+      "📋 PatrolSheetManager: Active sheets updated by user:",
+      updatedByUserId
+    );
+    console.log(
+      "📋 Raw activeSheets data:",
+      activeSheets,
+      "type:",
+      typeof activeSheets
+    );
+
     // Ensure activeSheets is an array
     let sheetsArray: any[] = [];
     if (Array.isArray(activeSheets)) {
       sheetsArray = activeSheets;
-    } else if (activeSheets && typeof activeSheets === 'object' && activeSheets.value) {
+    } else if (
+      activeSheets &&
+      typeof activeSheets === "object" &&
+      activeSheets.value
+    ) {
       // Sometimes Foundry passes {value: [...]} structure
       sheetsArray = Array.isArray(activeSheets.value) ? activeSheets.value : [];
     } else {
       console.log("🚫 activeSheets is not an array, skipping processing");
       return;
     }
-    
+
     console.log("📋 Processed sheets array:", sheetsArray);
-    
+
     // Don't process updates from our own user (to avoid loops)
     if (updatedByUserId === game.user?.id) {
       console.log("🚫 Ignoring update from self to avoid loops");
       return;
     }
-    
+
     // Process each active sheet
     sheetsArray.forEach((sheetData: any) => {
       console.log("📋 Processing sheet data:", sheetData);
-      
+
       // Check if we should show this sheet
       if (this.shouldShowPatrolSheet(sheetData)) {
         console.log("✅ Showing patrol sheet:", sheetData.groupId);
@@ -467,30 +481,37 @@ export class PatrolSheetManager {
       }
     });
   }
-  
+
   // Check if current user should show this patrol sheet
   private shouldShowPatrolSheet(sheetData: any): boolean {
     // Don't show to GM if they initiated it (unless specifically requested)
-    if (game.user?.isGM && sheetData.initiatedBy === game.user.id && !sheetData.showToGM) {
+    if (
+      game.user?.isGM &&
+      sheetData.initiatedBy === game.user.id &&
+      !sheetData.showToGM
+    ) {
       console.log("🚫 Skipping show for GM who initiated it");
       return false;
     }
-    
+
     // Don't show if already open
     if (this.activeSheets.has(sheetData.groupId)) {
       console.log("🚫 Sheet already open:", sheetData.groupId);
       return false;
     }
-    
+
     // Check if sheet is meant for current user (optional targeting)
-    if (sheetData.targetUsers && !sheetData.targetUsers.includes(game.user?.id)) {
+    if (
+      sheetData.targetUsers &&
+      !sheetData.targetUsers.includes(game.user?.id)
+    ) {
       console.log("🚫 Sheet not targeted for current user");
       return false;
     }
-    
+
     return true;
   }
-  
+
   // Show patrol sheet from setting data
   private showPatrolSheetFromSetting(sheetData: any) {
     // Get the group data
@@ -499,28 +520,40 @@ export class PatrolSheetManager {
       console.error("❌ No groups available");
       return;
     }
-    
+
     const group = groups.find((g: any) => g.id === sheetData.groupId);
     if (!group) {
       console.error("❌ Group not found:", sheetData.groupId);
       return;
     }
-    
+
     // Use default labels or provided ones
     const labels = sheetData.labels || { groupSingular: "Patrol" };
-    
-    console.log("✅ Opening patrol sheet from setting for group:", group.name || group.id);
+
+    console.log(
+      "✅ Opening patrol sheet from setting for group:",
+      group.name || group.id
+    );
     this.showPatrolSheet(group, labels);
   }
-  
+
   // NEW: Settings-based method to show patrol sheet to all users
-  async forceShowPatrolSheetToAllViaSettings(group: Group, labels: any, options: any = {}) {
+  async forceShowPatrolSheetToAllViaSettings(
+    group: Group,
+    labels: any,
+    options: any = {}
+  ) {
     if (!game.user?.isGM) {
-      console.log("🚫 forceShowPatrolSheetToAllViaSettings: User is not GM, aborting");
+      console.log(
+        "🚫 forceShowPatrolSheetToAllViaSettings: User is not GM, aborting"
+      );
       return;
     }
 
-    console.log("📤 forceShowPatrolSheetToAllViaSettings: GM initiating broadcast for group:", group.id);
+    console.log(
+      "📤 forceShowPatrolSheetToAllViaSettings: GM initiating broadcast for group:",
+      group.id
+    );
 
     // Show to GM first if requested
     if (options.showToGM !== false) {
@@ -528,8 +561,11 @@ export class PatrolSheetManager {
     }
 
     // Get current active sheets
-    const currentSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets") as any[];
-    
+    const currentSheets = (game as any).settings.get(
+      MODULE_ID,
+      "activePatrolSheets"
+    ) as any[];
+
     // Create new sheet entry
     const newSheetEntry = {
       groupId: group.id,
@@ -540,58 +576,97 @@ export class PatrolSheetManager {
       showToGM: options.showToGM || false,
       targetUsers: options.targetUsers || null, // null means all users
     };
-    
+
     // Remove any existing entry for this group and add the new one
-    const updatedSheets = currentSheets.filter(sheet => sheet.groupId !== group.id);
+    const updatedSheets = currentSheets.filter(
+      (sheet) => sheet.groupId !== group.id
+    );
     updatedSheets.push(newSheetEntry);
-    
-    console.log("📡 forceShowPatrolSheetToAllViaSettings: Updating setting with:", updatedSheets);
-    
+
+    console.log(
+      "📡 forceShowPatrolSheetToAllViaSettings: Updating setting with:",
+      updatedSheets
+    );
+
     // Update the setting - this will automatically sync to all users!
-    await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
-    
-    console.log("✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully");
+    await (game as any).settings.set(
+      MODULE_ID,
+      "activePatrolSheets",
+      updatedSheets
+    );
+
+    console.log(
+      "✅ forceShowPatrolSheetToAllViaSettings: Setting updated successfully"
+    );
   }
-  
+
   // Method to remove a patrol sheet from active list (when closed)
   async removePatrolSheetFromActive(groupId: string) {
     if (!game.user?.isGM) {
       // Only GM can modify the active sheets list
       return;
     }
-    
-    const currentSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets") as any[];
-    const updatedSheets = currentSheets.filter(sheet => sheet.groupId !== groupId);
-    
+
+    const currentSheets = (game as any).settings.get(
+      MODULE_ID,
+      "activePatrolSheets"
+    ) as any[];
+    const updatedSheets = currentSheets.filter(
+      (sheet) => sheet.groupId !== groupId
+    );
+
     if (updatedSheets.length !== currentSheets.length) {
       console.log("📤 Removing patrol sheet from active list:", groupId);
-      await (game as any).settings.set(MODULE_ID, "activePatrolSheets", updatedSheets);
+      await (game as any).settings.set(
+        MODULE_ID,
+        "activePatrolSheets",
+        updatedSheets
+      );
     }
   }
-  
+
   // Method to clear all active patrol sheets (GM only)
   async clearAllActivePatrolSheets() {
     if (!game.user?.isGM) {
-      console.log("🚫 clearAllActivePatrolSheets: Only GM can clear active sheets");
+      console.log(
+        "🚫 clearAllActivePatrolSheets: Only GM can clear active sheets"
+      );
       return;
     }
-    
+
     console.log("🧹 Clearing all active patrol sheets");
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
     console.log("✅ All active patrol sheets cleared");
   }
-  
+
   // Debug method to check current active sheets setting
   debugActiveSheetsSetting() {
-    const activeSheets = (game as any).settings.get(MODULE_ID, "activePatrolSheets");
+    const activeSheets = (game as any).settings.get(
+      MODULE_ID,
+      "activePatrolSheets"
+    );
     console.log("🔍 Current active patrol sheets setting:", activeSheets);
-    console.log("🔍 Current user:", game.user?.name, "ID:", game.user?.id, "isGM:", game.user?.isGM);
-    console.log("🔍 Local active sheets:", Array.from(this.activeSheets.keys()));
-    
+    console.log(
+      "🔍 Current user:",
+      game.user?.name,
+      "ID:",
+      game.user?.id,
+      "isGM:",
+      game.user?.isGM
+    );
+    console.log(
+      "🔍 Local active sheets:",
+      Array.from(this.activeSheets.keys())
+    );
+
     return {
       settingValue: activeSheets,
-      currentUser: { name: game.user?.name, id: game.user?.id, isGM: game.user?.isGM },
-      localActiveSheets: Array.from(this.activeSheets.keys())
+      currentUser: {
+        name: game.user?.name,
+        id: game.user?.id,
+        isGM: game.user?.isGM,
+      },
+      localActiveSheets: Array.from(this.activeSheets.keys()),
     };
   }
 }

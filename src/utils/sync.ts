@@ -85,7 +85,10 @@ export class SyncManager {
     if (type) {
       return this.listeners.get(type)?.length || 0;
     }
-    return Array.from(this.listeners.values()).reduce((total, callbacks) => total + callbacks.length, 0);
+    return Array.from(this.listeners.values()).reduce(
+      (total, callbacks) => total + callbacks.length,
+      0
+    );
   }
 
   // Register a listener for sync events
@@ -224,12 +227,12 @@ export function testPatrolSheetSync() {
         name: "Test Patrol",
         officer: null,
         soldiers: [],
-        mods: {}
+        mods: {},
       },
-      labels: { test: "patrol sheet test" }
+      labels: { test: "patrol sheet test" },
     },
     timestamp: Date.now(),
-    user: game.user?.name || "unknown"
+    user: game.user?.name || "unknown",
   };
 
   console.log("📤 Sending test patrol-sheet event:", testEvent);
