@@ -100,6 +100,7 @@
         action: 'edit',
       },
     ];
+    stats = [...stats];
     await persist();
   }
 
@@ -244,6 +245,7 @@
   }
 
   async function updateResource() {
+    resources = [...resources];
     await persistRes();
   }
 
