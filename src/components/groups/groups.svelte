@@ -13,11 +13,11 @@
   export let groups: Group[] = [];
   export let saveGroups: (groups: Group[]) => Promise<void>;
   export let labels = {
-    groupSingular: 'Patrulla',
-    addGroup: 'Añadir Patrulla',
-    removeGroup: 'Eliminar Patrulla',
-    officerDrop: 'Arrastra un oficial aquí',
-    soldierDrop: 'Arrastra soldados aquí',
+    groupSingular: 'Patrol',
+    addGroup: 'Add Patrol',
+    removeGroup: 'Remove Patrol',
+    officerDrop: 'Drag an officer here',
+    soldierDrop: 'Drag soldiers here',
   };
 
   let stats: GuardStat[] = [];
@@ -225,18 +225,18 @@
     const r = new Roll(`1d20 + ${total}`);
     r.evaluate();
 
-    const lines: string[] = [stat.name, `Valor base de la guardia ${stat.value}`];
+    const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
     const guardMod = guardBonus(stat.key);
     if (guardMod) {
-      lines.push(`Modificador de la guardia ${guardMod > 0 ? '+' : ''}${guardMod}`);
+      lines.push(`Guard modifier ${guardMod > 0 ? '+' : ''}${guardMod}`);
     }
     const groupMod = group.mods[stat.key];
     if (groupMod) {
-      lines.push(`Modificador de la patrulla ${groupMod > 0 ? '+' : ''}${groupMod}`);
+      lines.push(`Patrol modifier ${groupMod > 0 ? '+' : ''}${groupMod}`);
     }
 
     const alias =
-      group.name || (group.officer ? `La Patrulla de ${group.officer.name}` : 'La Patrulla');
+      group.name || (group.officer ? `The Patrol of ${group.officer.name}` : 'The Patrol');
     const headerImg = group.officer
       ? `<img src="${group.officer.img}" alt="${group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
       : '';
@@ -248,7 +248,7 @@
 
   async function deployGroup(group: Group) {
     if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
-      ui.notifications?.warn("No hay miembros en el grupo para desplegar");
+      ui.notifications?.warn("No members in the group to deploy");
       return;
     }
 
@@ -259,7 +259,7 @@
     // Get canvas position (center of canvas view)
     const canvas = game.canvas as any;
     if (!canvas) {
-      ui.notifications?.error("No se puede acceder al canvas");
+      ui.notifications?.error("Cannot access canvas");
       return;
     }
 
@@ -320,8 +320,8 @@
       await canvas.scene.createEmbeddedDocuments("Token", tokensToCreate);
     }
 
-    const groupName = group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'Grupo');
-    ui.notifications?.info(`${groupName} desplegado en el mapa (${members.length} miembros)`);
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
+    ui.notifications?.info(`${groupName} deployed on the map (${members.length} members)`);
   }
 </script>
 
@@ -711,25 +711,25 @@
             <input
               type="text"
               bind:value={group.name}
-              placeholder="Nombre de la patrulla"
+              placeholder="Patrol name"
               class="group-name-input"
               on:change={persist}
             />
           {:else}
-            <strong>{group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'Nuevo ' + labels.groupSingular)}</strong>
+            <strong>{group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'New ' + labels.groupSingular)}</strong>
           {/if}
         </div>
         <div class="group-header-buttons">
           <button class="header-button" on:click={() => toggleEditing(group)}>
-            {editing[group.id] ? 'Guardar' : 'Editar'}
+            {editing[group.id] ? 'Save' : 'Edit'}
           </button>
-          <button 
-            class="header-button" 
+          <button
+            class="header-button"
             draggable="true"
             on:click={() => deployGroup(group)}
             on:dragstart={(e) => onDragDeploy(e, group)}
           >
-            Desplegar
+            Deploy
           </button>
           {#if editing[group.id]}
             <button class="header-button" on:click={() => removeGroup(i)} style="background: #ff4444; color: white;">
@@ -748,7 +748,7 @@
         {#if group.officer}
           <div class="officer-info-top">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span><strong>Oficial:</strong> {group.officer.name}</span>
+              <span><strong>Officer:</strong> {group.officer.name}</span>
             </div>
           </div>
         {/if}
@@ -782,7 +782,7 @@
           <!-- Edit Button separated on the right -->
           <div class="edit-button-container">
             <button on:click={() => toggleEditing(group)}>
-              {editing[group.id] ? 'Guardar' : 'Editar'}
+              {editing[group.id] ? 'Save' : 'Edit'}
             </button>
           </div>
 
@@ -834,15 +834,15 @@
 
         <!-- Skills -->
         <div class="skills">
-          <strong>Habilidades</strong>
+          <strong>Skills</strong>
           {#each group.skills as sk, j}
             <div class="skill">
               <button type="button" class="skill-image-button" on:click={() => editing[group.id] && chooseSkillImage(sk)}>
                 <img src={sk.img} alt="" />
               </button>
               {#if editing[group.id]}
-                <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
-                <textarea placeholder="Descripción" bind:value={sk.description} on:change={persist}></textarea>
+                <input placeholder="Name" bind:value={sk.name} on:change={persist} />
+                <textarea placeholder="Description" bind:value={sk.description} on:change={persist}></textarea>
                 <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
               {:else}
                 <div class="info">
@@ -853,7 +853,7 @@
             </div>
           {/each}
           {#if editing[group.id]}
-            <button on:click={() => addSkill(group)}>Añadir Habilidad</button>
+            <button on:click={() => addSkill(group)}>Add Skill</button>
           {/if}
         </div>
 
