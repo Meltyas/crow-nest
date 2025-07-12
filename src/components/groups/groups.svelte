@@ -578,12 +578,13 @@
     border-radius: 8px;
     padding: 0;
     cursor: pointer;
-    width: 48px;
-    height: 48px;
+    width: 72px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    flex-shrink: 0;
   }
 
   .skill-image-button:hover {
@@ -592,10 +593,10 @@
   }
 
   .skill-image-button img {
-    width: 44px;
-    height: 44px;
+    width: 68px;
+    height: 68px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
   }
 
   .skill-display {
@@ -772,20 +773,6 @@
     flex: 1;
   }
 
-  .skill-image-button {
-    background: none;
-    border: none;
-    padding: 0;
-    padding-right: 0.5rem;
-    cursor: pointer;
-    width: 64px;
-    height: 64px;
-  }
-
-  .skill-image-button:hover {
-    opacity: 0.8;
-  }
-
   .delete-button {
     width: 20px;
     height: 20px;
@@ -809,27 +796,6 @@
 
   .delete-button:hover {
     background: #ff6666;
-  }
-
-  /* Skill clickable styles */
-  .skill .info {
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    border-radius: 4px;
-    padding: 0.25rem;
-  }
-
-  .skill .info:hover {
-    background-color: rgba(74, 144, 226, 0.1);
-    transform: translateY(-1px);
-  }
-
-  .skill .info:active {
-    transform: translateY(0);
-  }
-
-  .skill .info:focus {
-    outline: 2px solid #4a90e2;
-    outline-offset: 2px;
   }
 </style>
 
