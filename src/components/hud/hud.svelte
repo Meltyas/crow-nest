@@ -147,7 +147,7 @@
     padding: 0.5rem;
     border-radius: 0.5rem;
     user-select: none;
-    z-index: 1000;
+    z-index: 50;
     width: max-content;
   }
 

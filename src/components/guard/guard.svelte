@@ -432,8 +432,22 @@
 
   function onModImageClick(mod: GuardModifier) {
     if (editingMods) {
-      const input = document.getElementById(`mod-file-${mod.key}`) as HTMLInputElement | null;
-      input?.click();
+      // Prefer Foundry's file picker when available
+      if (typeof FilePicker !== 'undefined') {
+        // @ts-ignore - FilePicker is provided by Foundry at runtime
+        new FilePicker({
+          type: 'image',
+          current: mod.img,
+          callback: (path: string) => {
+            mod.img = path;
+            updateModifier();
+          },
+        }).render(true);
+      } else {
+        // Fallback to file input
+        const input = document.getElementById(`mod-file-${mod.key}`) as HTMLInputElement | null;
+        input?.click();
+      }
     }
   }
 
@@ -510,7 +524,7 @@
     position: fixed;
     border-radius: 12px;
     overflow: hidden;
-    z-index: 10000;
+    z-index: 80;
   }
 
   .image-button {
@@ -532,7 +546,7 @@
     height: 40px;
     cursor: move;
     background: transparent;
-    z-index: 1002;
+    z-index: 82;
   }
 
   .resize-handle {
@@ -544,7 +558,7 @@
     cursor: se-resize;
     background: rgba(212, 175, 55, 0.3);
     border-top-left-radius: 12px;
-    z-index: 1002;
+    z-index: 82;
     transition: background 0.3s ease;
   }
 
@@ -587,7 +601,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
-    z-index: 1001;
+    z-index: 81;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   }
 

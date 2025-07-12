@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
   export let title = 'Crow Nest Popup';
   const dispatch = createEventDispatcher();
@@ -98,6 +98,7 @@
     border-radius: 4px;
     min-width: 800px;
     box-shadow: rgb(0, 0, 0) 0px 0px 10px 0px;
+    z-index: 70;
   }
 
   .backdrop {
