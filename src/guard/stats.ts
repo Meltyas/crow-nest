@@ -2,6 +2,7 @@ import {
   MODULE_ID,
   SETTING_LOG,
   SETTING_MODIFIERS,
+  SETTING_REPUTATION,
   SETTING_RESOURCES,
   SETTING_STATS,
 } from "@/constants";
@@ -35,6 +36,13 @@ export interface GuardResource {
   key: string;
   name: string;
   value: number;
+  img?: string;
+}
+
+export interface GuardReputation {
+  key: string;
+  name: string;
+  value: number; // 0-10
   img?: string;
 }
 
@@ -128,5 +136,34 @@ export async function saveResources(resources: GuardResource[]): Promise<void> {
   const syncManager = SyncManager.getInstance();
   await syncManager.broadcast(
     createSyncEvent("resources", "update", resources)
+  );
+}
+
+export function getReputation(): GuardReputation[] {
+  return (
+    (game.settings.get(MODULE_ID, SETTING_REPUTATION) as GuardReputation[]) ??
+    []
+  );
+}
+
+export async function saveReputation(
+  reputation: GuardReputation[]
+): Promise<void> {
+  if (!game.user?.isGM) {
+    console.log("🚫 Reputation: Only GM can save reputation");
+    return;
+  }
+
+  console.log(
+    "💾 Reputation: Saving reputation as GM",
+    reputation.length,
+    "reputation entries"
+  );
+  await game.settings.set(MODULE_ID, SETTING_REPUTATION, reputation);
+
+  // Broadcast changes to all players
+  const syncManager = SyncManager.getInstance();
+  await syncManager.broadcast(
+    createSyncEvent("reputation", "update", reputation)
   );
 }

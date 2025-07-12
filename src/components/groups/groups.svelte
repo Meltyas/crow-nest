@@ -38,12 +38,14 @@
     // Listen for stats and modifiers updates (for UI updates)
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
+    syncManager.subscribe('groups', handleGroupsSync);
   });
 
   onDestroy(() => {
     if (syncManager) {
       syncManager.unsubscribe('stats', handleStatsSync);
       syncManager.unsubscribe('modifiers', handleModifiersSync);
+      syncManager.unsubscribe('groups', handleGroupsSync);
     }
   });
 
@@ -60,11 +62,28 @@
     }
   }
 
+  function handleGroupsSync(event: SyncEvent) {
+    if (event.type === 'groups' && event.data) {
+      groups = event.data;
+    }
+  }
+
   async function persist() {
     // Only allow saving if user is GM
     if (game.user?.isGM) {
       console.log("💾 Groups: Persisting changes as GM");
       await saveGroups(groups);
+
+      // Broadcast groups changes to other players
+      if (syncManager) {
+        syncManager.broadcast({
+          type: 'groups',
+          action: 'update',
+          data: groups,
+          timestamp: Date.now(),
+          user: game.user?.name || 'Unknown'
+        });
+      }
     } else {
       console.log("🚫 Groups: Skipping persist - not GM");
     }
@@ -474,10 +493,6 @@
     border: 2px solid #666;
   }
 
-  .edit-button-container {
-    flex-shrink: 0;
-  }
-
   .drop-zone {
     border: 1px dashed #aaa;
     padding: 0.25rem;
@@ -516,6 +531,7 @@
     display: flex;
     gap: 0.25rem;
     margin-bottom: 0.25rem;
+    align-items: flex-start;
   }
 
   .skill img {
@@ -544,6 +560,44 @@
 
   .skill textarea {
     flex: 1;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85em;
+    resize: vertical;
+    min-height: 60px;
+  }
+
+  .skill textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  .skill textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  .skill input {
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9em;
+    font-weight: bold;
+  }
+
+  .skill input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  .skill input::placeholder {
+    color: #9ca3af;
   }
 
   .member {
@@ -583,6 +637,19 @@
   .stat-values input {
     width: 32px;
     text-align: center;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.125rem;
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+
+  .stat-values input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
   .stat-mod {
@@ -612,10 +679,6 @@
     );
     margin: 0 0.5rem;
     flex-shrink: 0;
-  }
-
-  .deploy {
-    margin-top: 0.25rem;
   }
 
   .stat-icon {
@@ -657,22 +720,24 @@
   }
 
   .delete-button {
-    width: 16px;
-    height: 16px;
-    min-width: 16px;
-    min-height: 16px;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
     padding: 0;
     border: 1px solid #666;
     background: #ff4444;
     color: white;
-    border-radius: 2px;
-    font-size: 10px;
+    border-radius: 4px;
+    font-size: 12px;
     line-height: 1;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
   }
 
   .delete-button:hover {
@@ -846,8 +911,10 @@
                 <img src={sk.img} alt="" />
               </button>
               {#if editing[group.id]}
-                <input placeholder="Name" bind:value={sk.name} on:change={persist} />
-                <textarea placeholder="Description" bind:value={sk.description} on:change={persist}></textarea>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
+                  <input placeholder="Name" bind:value={sk.name} on:change={persist} />
+                  <textarea placeholder="Description" bind:value={sk.description} on:change={persist}></textarea>
+                </div>
                 <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
               {:else}
                 <div class="info">

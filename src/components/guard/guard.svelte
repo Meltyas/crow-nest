@@ -7,14 +7,16 @@
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
   import Tooltip from '@/components/tooltip.svelte';
-  import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
-  import type { GuardModifier, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
+  import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
+  import type { GuardModifier, GuardReputation, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
     getLog,
     getModifiers,
+    getReputation,
     getResources,
     getStats,
     saveModifiers,
+    saveReputation,
     saveResources,
     saveStats,
   } from '@/guard/stats';
@@ -45,6 +47,13 @@
   let addingResource = false;
   let editingResources = false;
   let newResource: GuardResource = { key: '', name: '', value: 0 };
+
+  let reputation: GuardReputation[] = [];
+  let addingReputation = false;
+  let editingReputation = false;
+  let newReputation: GuardReputation = { key: '', name: '', value: 0, img: 'icons/svg/aura.svg' };
+  let collapsedReputation = false;
+  let collapsedResources = false;
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
@@ -136,6 +145,7 @@
     modifiers = getModifiers();
     sortModifiersByState(); // Sort modifiers on initial load
     resources = getResources();
+    reputation = getReputation();
     patrols = getPatrols();
     admins = getAdmins();
 
@@ -147,6 +157,7 @@
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
     syncManager.subscribe('resources', handleResourcesSync);
+    syncManager.subscribe('reputation', handleReputationSync);
     syncManager.subscribe('patrols', handlePatrolsSync);
     syncManager.subscribe('admins', handleAdminsSync);
 
@@ -176,6 +187,11 @@
         resources = setting.value || [];
       }
 
+      if (setting.key === `${MODULE_ID}.${SETTING_REPUTATION}`) {
+        console.log("🏆 Guard: Reputation setting changed, updating UI");
+        reputation = setting.value || [];
+      }
+
       if (setting.key === `${MODULE_ID}.patrols`) {
         console.log("👥 Guard: Patrols setting changed, updating UI");
         patrols = setting.value || [];
@@ -195,6 +211,7 @@
       syncManager.unsubscribe('stats', handleStatsSync);
       syncManager.unsubscribe('modifiers', handleModifiersSync);
       syncManager.unsubscribe('resources', handleResourcesSync);
+      syncManager.unsubscribe('reputation', handleReputationSync);
       syncManager.unsubscribe('patrols', handlePatrolsSync);
       syncManager.unsubscribe('admins', handleAdminsSync);
     }
@@ -224,6 +241,14 @@
     if (event.type === 'resources') {
       resources = event.data || getResources();
       console.log("✅ Guard: Resources updated", resources.length, "resources");
+    }
+  }
+
+  function handleReputationSync(event: SyncEvent) {
+    console.log("🏆 Guard: Reputation sync event received", event);
+    if (event.type === 'reputation') {
+      reputation = event.data || getReputation();
+      console.log("✅ Guard: Reputation updated", reputation.length, "reputation entries");
     }
   }
 
@@ -267,6 +292,15 @@
       await saveResources(resources);
     } else {
       console.log("🚫 Guard: Skipping resources persist - not GM");
+    }
+  }
+
+  async function persistRep() {
+    if (game.user?.isGM) {
+      console.log("💾 Guard: Persisting reputation as GM");
+      await saveReputation(reputation);
+    } else {
+      console.log("🚫 Guard: Skipping reputation persist - not GM");
     }
   }
 
@@ -541,6 +575,79 @@
     };
     reader.readAsDataURL(input.files[0]);
   }
+
+  function toggleEditingReputation() {
+    editingReputation = !editingReputation;
+  }
+
+  function openAddReputation() {
+    newReputation = { key: crypto.randomUUID(), name: '', value: 0, img: 'icons/svg/aura.svg' };
+    addingReputation = true;
+  }
+
+  function cancelAddReputation() {
+    addingReputation = false;
+  }
+
+  async function confirmAddReputation() {
+    reputation = [...reputation, { ...newReputation }];
+    await persistRep();
+    addingReputation = false;
+  }
+
+  async function removeReputation(index: number) {
+    reputation.splice(index, 1);
+    reputation = [...reputation];
+    await persistRep();
+  }
+
+  async function updateReputation() {
+    reputation = [...reputation];
+    await persistRep();
+  }
+
+  function onRepImageClick(rep: GuardReputation) {
+    if (editingReputation) {
+      // Prefer Foundry's file picker when available
+      if (typeof FilePicker !== 'undefined') {
+        // @ts-ignore - FilePicker is provided by Foundry at runtime
+        new FilePicker({
+          type: 'image',
+          current: rep.img,
+          callback: (path: string) => {
+            rep.img = path;
+            updateReputation();
+          },
+        }).render(true);
+      }
+    }
+  }
+
+  function onNewRepImageClick() {
+    // Prefer Foundry's file picker when available
+    if (typeof FilePicker !== 'undefined') {
+      // @ts-ignore - FilePicker is provided by Foundry at runtime
+      new FilePicker({
+        type: 'image',
+        current: newReputation.img,
+        callback: (path: string) => {
+          newReputation.img = path;
+          newReputation = { ...newReputation }; // Trigger reactivity
+        },
+      }).render(true);
+    }
+  }
+
+  function onRepFileChange(rep: GuardReputation, event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      rep.img = String(reader.result);
+      updateReputation();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
 </script>
 
 <style>
@@ -781,9 +888,46 @@
     min-height: 60px;
     resize: vertical;
     padding: 0.25rem;
-    border: 1px solid #ccc;
+    border: 1px solid #6b7280;
     border-radius: 3px;
     font-family: inherit;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+  }
+
+  .add-mod-form textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  /* General input and textarea styling for edit forms */
+  .add-stat-form input,
+  .add-mod-form input,
+  .add-resource-form input,
+  .modifier-edit input,
+  .modifier-edit textarea {
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .add-stat-form input::placeholder,
+  .add-mod-form input::placeholder,
+  .add-resource-form input::placeholder,
+  .modifier-edit input::placeholder,
+  .modifier-edit textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  .add-stat-form input:focus,
+  .add-mod-form input:focus,
+  .add-resource-form input:focus,
+  .modifier-edit input:focus,
+  .modifier-edit textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
   .modifier-image-section {
@@ -979,6 +1123,234 @@
     flex-wrap: wrap;
     gap: 0.25rem;
   }
+
+  /* Reputation Styles */
+  .reputation-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .reputation-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .reputation-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    background: transparent;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .reputation-display:hover {
+    transform: translateY(-2px);
+    border-color: #6b7280;
+  }
+
+  .reputation-image {
+    width: 100%;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+    border: 2px solid #6b7280;
+  }
+
+  .reputation-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    align-items: center;
+  }
+
+  .reputation-name {
+    font-weight: bold;
+    font-size: 1em;
+    color: #f9fafb;
+    text-align: center;
+    line-height: 1.2;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .reputation-bar-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .reputation-bar {
+    width: 100%;
+    height: 24px;
+    background: #000000;
+    border: 2px solid #374151;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .reputation-fill {
+    height: 100%;
+    transition: width 0.4s ease;
+    border-radius: 0;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  }
+
+  .reputation-tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.6) 50%,
+      rgba(0, 0, 0, 0.8) 100%);
+    z-index: 1;
+    border-radius: 1px;
+  }
+
+  .reputation-tick:first-child,
+  .reputation-tick:last-child {
+    opacity: 0; /* Hide first and last ticks */
+  }
+
+  .reputation-edit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #6b7280;
+    border-radius: 8px;
+    background: transparent;
+  }
+
+  .rep-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    justify-content: center;
+  }
+
+  .reputation-edit input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .reputation-edit input::placeholder {
+    color: #9ca3af;
+  }
+
+  .reputation-edit input[type="number"] {
+    width: 80px;
+  }
+
+  .add-reputation-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    border: 2px solid #6b7280;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .add-reputation-form input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #6b7280;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    color: #f9fafb;
+  }
+
+  .add-reputation-form input::placeholder {
+    color: #9ca3af;
+  }
+
+  .collapse-button {
+    font-size: 0.8em;
+    padding: 0.25rem 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .collapse-button:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+
+  /* Responsive design for reputation grid */
+  @media (max-width: 1200px) {
+    .reputation-container {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .reputation-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .edit-button {
+    font-size: 0.85em;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .reputation-image-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+
+  .reputation-image-button:hover {
+    transform: scale(1.05);
+  }
+
+  .reputation-image-button img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #6b7280;
+  }
+
+  .reputation-image-edit{
+    height: 56px;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  .reputation-edit-image-button {
+    width: 100%;
+    height: 56px;
+  }
 </style>
 {#if showPopup}
   <div
@@ -1172,44 +1544,129 @@
               </div>
 
               <hr />
-              <h3>Recursos</h3>
-              <div class="button-holder">
-                {#if editingResources}
-                  <button on:click={openAddResource}>Añadir Recurso</button>
-                {/if}
-                <button on:click={toggleEditingResources}>{editingResources ? 'Finalizar Edición' : 'Editar Recursos'}</button>
-              </div>
+              <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                Reputación
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <button class="edit-button" on:click={toggleEditingReputation}>
+                    {editingReputation ? 'Finalizar Edición' : 'Editar Reputación'}
+                  </button>
+                  <button class="collapse-button" on:click={() => collapsedReputation = !collapsedReputation}>
+                    {collapsedReputation ? '▼' : '▲'}
+                  </button>
+                </div>
+              </h3>
 
-              {#if addingResource}
-                <div class="add-resource-form">
-                  <input placeholder="Nombre" bind:value={newResource.name} />
-                  <input type="number" bind:value={newResource.value} />
-                  <button on:click={confirmAddResource}>Agregar</button>
-                  <button on:click={cancelAddResource}>Cancelar</button>
+              {#if !collapsedReputation}
+                {#if editingReputation}
+                  <div class="button-holder">
+                    <button on:click={openAddReputation}>Añadir Reputación</button>
+                  </div>
+                {/if}
+
+                {#if addingReputation}
+                  <div class="add-reputation-form">
+                    <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
+                      <img src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
+                    </button>
+                    <input placeholder="Nombre de la facción" bind:value={newReputation.name} />
+                    <input type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
+                    <button on:click={confirmAddReputation}>Agregar</button>
+                    <button on:click={cancelAddReputation}>Cancelar</button>
+                  </div>
+                {/if}
+
+                <div class="reputation-container">
+                  {#each reputation as rep, i}
+                    <div class="reputation-item">
+                      {#if editingReputation}
+
+                        <div class="reputation-edit">
+                                                  <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
+                          <img class="reputation-image-edit" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
+                        </button>
+                        <input id={`rep-file-${rep.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onRepFileChange(rep,e)} />
+                          <input placeholder="Nombre" bind:value={rep.name} on:change={updateReputation} />
+                          <div class="rep-actions">
+                          <input type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
+                          <button on:click={() => removeReputation(i)}>✕</button>
+                          </div>
+                        </div>
+                      {:else}
+                        <div class="reputation-display">
+                          <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
+                          <div class="reputation-info">
+                            <div class="reputation-name">{rep.name}</div>
+                            <div class="reputation-bar-container">
+                              <div class="reputation-bar">
+                                <div class="reputation-fill" style="width: {rep.value * 10}%; background: linear-gradient(90deg,
+                                  hsl({(rep.value / 10) * 120}, 70%, 40%) 0%,
+                                  hsl({(rep.value / 10) * 120}, 80%, 50%) 50%,
+                                  hsl({(rep.value / 10) * 120}, 70%, 60%) 100%);">
+                                </div>
+                                {#each Array(11) as _, j}
+                                  <div class="reputation-tick" style="left: {j * 10}%;"></div>
+                                {/each}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
                 </div>
               {/if}
 
-              <div class="resource-container">
-                {#each resources as res, i}
-                  <div class="resource">
-                    <button type="button" class="image-button" on:click={() => editingResources ? onResImageClick(res) : null}>
-                      <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" />
-                    </button>
-                    <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
+              <hr />
+              <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                Recursos
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <button class="edit-button" on:click={toggleEditingResources}>
+                    {editingResources ? 'Finalizar Edición' : 'Editar Recursos'}
+                  </button>
+                  <button class="collapse-button" on:click={() => collapsedResources = !collapsedResources}>
+                    {collapsedResources ? '▼' : '▲'}
+                  </button>
+                </div>
+              </h3>
 
-                    {#if editingResources}
-                      <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
-                      <input type="number" bind:value={res.value} on:change={updateResource} />
-                      <button on:click={() => removeResource(i)}>✕</button>
-                    {:else}
-                      <div>
-                        <span>{res.name}</span>
-                        <span>{res.value}</span>
-                      </div>
-                    {/if}
+              {#if !collapsedResources}
+                {#if editingResources}
+                  <div class="button-holder">
+                    <button on:click={openAddResource}>Añadir Recurso</button>
                   </div>
-                {/each}
-              </div>
+                {/if}
+
+                {#if addingResource}
+                  <div class="add-resource-form">
+                    <input placeholder="Nombre" bind:value={newResource.name} />
+                    <input type="number" bind:value={newResource.value} />
+                    <button on:click={confirmAddResource}>Agregar</button>
+                    <button on:click={cancelAddResource}>Cancelar</button>
+                  </div>
+                {/if}
+
+                <div class="resource-container">
+                  {#each resources as res, i}
+                    <div class="resource">
+                      <button type="button" class="image-button" on:click={() => editingResources ? onResImageClick(res) : null}>
+                        <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" />
+                      </button>
+                      <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
+
+                      {#if editingResources}
+                        <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
+                        <input type="number" bind:value={res.value} on:change={updateResource} />
+                        <button on:click={() => removeResource(i)}>✕</button>
+                      {:else}
+                        <div>
+                          <span>{res.name}</span>
+                          <span>{res.value}</span>
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
 
           {:else if activeTab === 'patrullas'}
@@ -1230,7 +1687,6 @@
             <h3>Administración</h3>
             <Groups
               groups={admins}
-              getGroups={getAdmins}
               saveGroups={saveAdmins}
               labels={{
                 groupSingular: 'Admin',

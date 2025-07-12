@@ -5,6 +5,7 @@ import {
   SETTING_LOG,
   SETTING_MODIFIERS,
   SETTING_PATROLS,
+  SETTING_REPUTATION,
   SETTING_RESOURCES,
   SETTING_STATS,
 } from "@/constants";
@@ -45,6 +46,12 @@ Hooks.once("init", () => {
     default: [],
   });
   game.settings.register(MODULE_ID, SETTING_ADMINS, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, SETTING_REPUTATION, {
     scope: "world",
     config: false,
     type: Array,

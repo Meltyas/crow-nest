@@ -4,7 +4,15 @@
 import { MODULE_ID } from "@/constants";
 
 export interface SyncEvent {
-  type: "stats" | "modifiers" | "resources" | "tokens" | "patrols" | "admins";
+  type:
+    | "stats"
+    | "modifiers"
+    | "resources"
+    | "tokens"
+    | "patrols"
+    | "admins"
+    | "reputation"
+    | "groups";
   action: "update" | "create" | "delete" | "command";
   data: any;
   timestamp: number;
@@ -13,7 +21,15 @@ export interface SyncEvent {
 }
 
 export interface SyncCommand {
-  type: "stats" | "modifiers" | "resources" | "tokens" | "patrols" | "admins";
+  type:
+    | "stats"
+    | "modifiers"
+    | "resources"
+    | "tokens"
+    | "patrols"
+    | "admins"
+    | "reputation"
+    | "groups";
   action: "update" | "create" | "delete";
   data: any;
   timestamp: number;
