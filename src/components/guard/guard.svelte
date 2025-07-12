@@ -39,15 +39,15 @@
   let modifiers: GuardModifier[] = [];
   let addingModifier = false;
   let editingMods = false;
-  let newModifier: GuardModifier = { key: '', name: '', description: '', mods: {} };
+  let newModifier: GuardModifier = { key: '', name: '', description: '', mods: {}, state: 'neutral', img: 'icons/svg/upgrade.svg' };
 
   let resources: GuardResource[] = [];
   let addingResource = false;
   let editingResources = false;
   let newResource: GuardResource = { key: '', name: '', value: 0 };
 
-  // Tab system
-  let activeTab: 'guardia' | 'patrullas' | 'admins' = 'guardia';
+  // Tab system - Load last active tab from localStorage
+  let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
 
   // Data for tabs
   let patrols: any[] = [];
@@ -67,6 +67,8 @@
 
   function switchTab(tab: 'guardia' | 'patrullas' | 'admins') {
     activeTab = tab;
+    // Save the active tab to localStorage
+    localStorage.setItem('crow-nest-active-tab', tab);
   }
 
   function closePopup() {
@@ -318,7 +320,7 @@
   }
 
   function openAddModifier() {
-    newModifier = { key: crypto.randomUUID(), name: '', description: '', mods: {} };
+    newModifier = { key: crypto.randomUUID(), name: '', description: '', mods: {}, state: 'neutral', img: 'icons/svg/upgrade.svg' };
     addingModifier = true;
   }
 
@@ -344,6 +346,7 @@
   async function updateModifier() {
     modifiers = modifiers.map((m) => ({
       ...m,
+      state: m.state || 'neutral', // Ensure all modifiers have a state
       mods: Object.fromEntries(
         Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
       ),
@@ -443,6 +446,20 @@
       updateModifier();
     };
     reader.readAsDataURL(input.files[0]);
+  }
+
+  function onNewModImageClick() {
+    // Prefer Foundry's file picker when available
+    if (typeof FilePicker !== 'undefined') {
+      // @ts-ignore - FilePicker is provided by Foundry at runtime
+      new FilePicker({
+        type: 'image',
+        current: newModifier.img,
+        callback: (path: string) => {
+          newModifier.img = path;
+        },
+      }).render(true);
+    }
   }
 
   function openAddResource() {
@@ -687,16 +704,115 @@
     gap: 0.25rem;
     margin: 0.5rem 0;
   }
+
+  .add-mod-form textarea {
+    min-height: 60px;
+    resize: vertical;
+    padding: 0.25rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-family: inherit;
+  }
+
+  .modifier-image-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .modifier-image-button {
+    background: none;
+    border: 2px solid #666;
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modifier-image-button:hover {
+    border-color: #4a90e2;
+  }
+
+  .modifier-image-button img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 2px;
+  }
+
+  .modifier-stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 0.5rem 0;
+  }
+
+  .form-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
   .modifier {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
     margin-bottom: 0.5rem;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    padding: 0.25rem;
+  }
+
+  .modifier-positive {
+    border-color: #22c55e; /* Green border for positive */
+  }
+
+  .modifier-neutral {
+    border-color: #ffffff; /* White border for neutral */
+  }
+
+  .modifier-negative {
+    border-color: #ef4444; /* Red border for negative */
+  }
+
+  .state-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .state-selector label {
+    font-weight: bold;
+    min-width: 50px;
+  }
+
+  .state-selector select {
+    padding: 0.25rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    font-size: 0.9em;
   }
   .modifier-values {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 0.25rem;
+  }
+
+  .modifier-values input {
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 3px;
   }
   .modifier-values-edit {
     display: flex;
@@ -911,21 +1027,38 @@
               <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
               {#if addingModifier}
                 <div class="add-mod-form">
+                  <div class="modifier-image-section">
+                    <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
+                      <img src={newModifier.img} alt="Modifier Image" />
+                    </button>
+                  </div>
                   <input placeholder="Nombre" bind:value={newModifier.name} />
-                  <input placeholder="Descripción" bind:value={newModifier.description} />
-                  {#each stats as stat}
-                    <div class="modifier-values">
-                      <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-                      <input type="number" bind:value={newModifier.mods[stat.key]} />
-                    </div>
-                  {/each}
-                  <button on:click={confirmAddModifier}>Agregar</button>
-                  <button on:click={cancelAddModifier}>Cancelar</button>
+                  <textarea placeholder="Descripción" bind:value={newModifier.description}></textarea>
+                  <div class="state-selector">
+                    <label for="new-modifier-state">Estado:</label>
+                    <select id="new-modifier-state" bind:value={newModifier.state}>
+                      <option value="positive">Positive</option>
+                      <option value="neutral">Neutral</option>
+                      <option value="negative">Negative</option>
+                    </select>
+                  </div>
+                  <div class="modifier-stats-container">
+                    {#each stats as stat}
+                      <div class="modifier-values">
+                        <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="32" height="32" />
+                        <input type="number" bind:value={newModifier.mods[stat.key]} />
+                      </div>
+                    {/each}
+                  </div>
+                  <div class="form-buttons">
+                    <button on:click={confirmAddModifier}>Agregar</button>
+                    <button on:click={cancelAddModifier}>Cancelar</button>
+                  </div>
                 </div>
               {/if}
               <div class="modifier-container">
                 {#each modifiers as mod, i}
-                  <div class="modifier">
+                  <div class="modifier modifier-{mod.state || 'neutral'}">
                     <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
                       <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
                         <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
@@ -936,6 +1069,14 @@
                       <div class="modifier-edit">
                         <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
                         <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+                        <div class="state-selector">
+                          <label for="edit-modifier-state-{i}">Estado:</label>
+                          <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
+                            <option value="positive">Positive</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="negative">Negative</option>
+                          </select>
+                        </div>
                         <div class="modifier-values-contain">
                           {#each stats as stat}
                             <div class="modifier-values modifier-values-edit">

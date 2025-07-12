@@ -568,9 +568,8 @@
 
   .group-stat {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
 
   .stat-values {
@@ -582,6 +581,7 @@
 
   .stat-values input {
     width: 32px;
+    height: 32px;
     text-align: center;
   }
 

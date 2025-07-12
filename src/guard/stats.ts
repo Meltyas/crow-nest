@@ -28,6 +28,7 @@ export interface GuardModifier {
   description?: string;
   img?: string;
   mods: Record<string, number>;
+  state?: "positive" | "neutral" | "negative";
 }
 
 export interface GuardResource {
@@ -46,9 +47,16 @@ export function getLog(): LogEntry[] {
 }
 
 export function getModifiers(): GuardModifier[] {
-  return (
-    (game.settings.get(MODULE_ID, SETTING_MODIFIERS) as GuardModifier[]) ?? []
-  );
+  const modifiers =
+    (game.settings.get(MODULE_ID, SETTING_MODIFIERS) as GuardModifier[]) ?? [];
+
+  // Sort modifiers by state: positive, neutral, negative
+  return modifiers.sort((a, b) => {
+    const stateOrder = { positive: 0, neutral: 1, negative: 2 };
+    const aState = a.state || "neutral";
+    const bState = b.state || "neutral";
+    return stateOrder[aState] - stateOrder[bState];
+  });
 }
 
 export async function saveStats(
