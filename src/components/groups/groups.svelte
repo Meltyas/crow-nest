@@ -65,29 +65,27 @@
   }
 
   function handleGroupsSync(event: SyncEvent) {
-    if (event.type === 'groups' && event.data) {
+    if (event.type === 'groups') {
+      // If this is a command (from a player) and current user is GM, process it
+      // Handle groups sync events - simplified to allow all users to sync directly
+      console.log("📥 Receiving groups update from", event.user);
       groups = event.data;
     }
   }
 
   async function persist() {
-    // Only allow saving if user is GM
-    if (game.user?.isGM) {
-      console.log("💾 Groups: Persisting changes as GM");
-      await saveGroups(groups);
+    console.log("💾 Groups: Persisting changes for user:", game.user?.name);
+    await saveGroups(groups);
 
-      // Broadcast groups changes to other players
-      if (syncManager) {
-        syncManager.broadcast({
-          type: 'groups',
-          action: 'update',
-          data: groups,
-          timestamp: Date.now(),
-          user: game.user?.name || 'Unknown'
-        });
-      }
-    } else {
-      console.log("🚫 Groups: Skipping persist - not GM");
+    // Broadcast groups changes to other players
+    if (syncManager) {
+      syncManager.broadcast({
+        type: 'groups',
+        action: 'update',
+        data: groups,
+        timestamp: Date.now(),
+        user: game.user?.name || 'Unknown'
+      });
     }
   }
 

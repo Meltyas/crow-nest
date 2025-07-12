@@ -13,12 +13,7 @@ export function getAdmins(): Admin[] {
 }
 
 export async function saveAdmins(admins: Admin[]): Promise<void> {
-  if (!game.user?.isGM) {
-    console.log("🚫 Admins: Only GM can save admins");
-    return;
-  }
-
-  console.log("💾 Admins: Saving admins as GM", admins.length, "admins");
+  console.log("� Admins: Saving admins for user:", game.user?.name, "- Count:", admins.length);
   await game.settings.set(MODULE_ID, SETTING_ADMINS, admins);
 
   // Broadcast changes to all players

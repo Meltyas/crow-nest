@@ -13,12 +13,7 @@ export function getPatrols(): Patrol[] {
 }
 
 export async function savePatrols(patrols: Patrol[]): Promise<void> {
-  if (!game.user?.isGM) {
-    console.log("🚫 Patrols: Only GM can save patrols");
-    return;
-  }
-
-  console.log("💾 Patrols: Saving patrols as GM", patrols.length, "patrols");
+  console.log("� Patrols: Saving patrols for user:", game.user?.name, "- Count:", patrols.length);
   await game.settings.set(MODULE_ID, SETTING_PATROLS, patrols);
 
   // Broadcast changes to all players

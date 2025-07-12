@@ -1,5 +1,5 @@
 import Hud from "@/components/hud/hud.svelte";
-import { patrolSheetManager } from "@/components/patrol-sheet/patrol-sheet";
+import { patrolSheetManager, PatrolSheetManager } from "@/components/patrol-sheet/patrol-sheet";
 import {
   MODULE_ID,
   SETTING_ADMINS,
@@ -11,7 +11,7 @@ import {
   SETTING_STATS,
 } from "@/constants";
 import { getPatrols } from "@/patrol/patrols";
-import { initializeSync } from "@/utils/sync";
+import { initializeSync, SyncManager } from "@/utils/sync";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
@@ -83,6 +83,10 @@ Hooks.once("ready", () => {
     getGroups: () => getPatrols(),
     patrolSheetManager: patrolSheetManager,
     debugPatrolSheets: () => patrolSheetManager.debugState(),
+    debugSyncHandlers: () => patrolSheetManager.debugSyncHandlers(),
+    testSyncCommunication: () => patrolSheetManager.testSyncCommunication(),
+    testSocketReception: () => patrolSheetManager.testSocketReception(),
+    testSocketDirectly: () => patrolSheetManager.testSocketDirectly(),
     clearPatrolPositions: () => patrolSheetManager.clearStoredPositions(),
     checkLocalStorage: () => {
       const activeSheets = localStorage.getItem("crow-nest-open-patrol-sheets");
@@ -188,3 +192,93 @@ Hooks.on("dropCanvasData", async (canvas: any, data: any) => {
 
   return false;
 });
+
+// API for debugging purposes
+if (typeof globalThis !== "undefined") {
+  globalThis.CrowNest = {
+    patrol: PatrolSheetManager.getInstance(),
+    testSyncCommunication: () => {
+      console.log("🧪 Testing sync communication...");
+      console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
+
+      // Test basic socket
+      if (game.socket) {
+        const testData = {
+          test: "manual test",
+          timestamp: Date.now(),
+          from: game.user?.name,
+          isGM: game.user?.isGM,
+        };
+
+        console.log("Sending test data:", testData);
+        game.socket.emit(`module.${MODULE_ID}-test`, testData);
+
+        // Also test the main channel
+        const syncEvent = {
+          type: "patrol-sheet",
+          action: "show",
+          data: { test: "patrol sheet communication test" },
+          timestamp: Date.now(),
+          user: game.user?.name ?? "unknown",
+        };
+
+        console.log("Sending sync event:", syncEvent);
+        game.socket.emit(`module.${MODULE_ID}`, syncEvent);
+      }
+    },
+    testShowPatrolToAll: () => {
+      console.log("🧪 Testing show patrol to all...");
+      const patrol = PatrolSheetManager.getInstance();
+      if (patrol.currentGroup) {
+        console.log("Current group:", patrol.currentGroup);
+        patrol.showPatrolSheetToAll(patrol.currentGroup);
+      } else {
+        console.log("No current group available");
+      }
+    },
+    forceShowPatrol: (groupData: any) => {
+      console.log("🧪 Force showing patrol:", groupData);
+      const syncManager = SyncManager.getInstance();
+      const event = {
+        type: "patrol-sheet" as const,
+        action: "show" as const,
+        data: groupData,
+        timestamp: Date.now(),
+        user: game.user?.name ?? "unknown",
+      };
+      syncManager.broadcast(event);
+    },
+    checkSocketStatus: () => {
+      console.log("🔍 Socket Status Check:");
+      console.log("Socket exists:", !!game.socket);
+      console.log("Socket connected:", game.socket?.connected);
+      console.log("Socket ID:", game.socket?.id);
+      console.log("User:", game.user?.name, "ID:", game.user?.id);
+      console.log("Is GM:", game.user?.isGM);
+      console.log(
+        "Connected users:",
+        game.users?.contents?.map((u) => ({
+          name: u.name,
+          id: u.id,
+          active: u.active,
+          role: u.role,
+          isGM: u.isGM,
+        }))
+      );
+    },
+    simulatePlayerReceive: () => {
+      console.log("🎭 Simulating player receive...");
+      const fakePatrolData = {
+        id: "test-patrol-123",
+        name: "Test Patrol",
+        officer: { name: "Test Officer", img: "icons/svg/mystery-man.svg" },
+        soldiers: [],
+        mods: {},
+      };
+
+      // Directly call the handler as if received from socket
+      const patrol = PatrolSheetManager.getInstance();
+      patrol.handleShowPatrolSheet(fakePatrolData);
+    },
+  };
+}
