@@ -12,6 +12,9 @@
   } from '@/guard/stats';
   import { onMount } from 'svelte';
 
+  // FilePicker is provided by Foundry at runtime
+  declare const FilePicker: any;
+
   interface Stat extends GuardStat {}
 
   let stats: Stat[] = [];
@@ -160,8 +163,17 @@
 
   function onImageClick(stat: Stat) {
     if (editing) {
-      const input = document.getElementById(`file-${stat.key}`) as HTMLInputElement | null;
-      input?.click();
+      if (typeof FilePicker !== 'undefined') {
+        // @ts-ignore - FilePicker is provided by Foundry at runtime
+        FilePicker.create({
+          type: 'image',
+          current: stat.img,
+          callback: (path: string) => {
+            stat.img = path;
+            updateStat();
+          },
+        }).render(true);
+      }
     } else {
       const bonus = modifiers.reduce(
         (acc, m) => acc + (m.mods[stat.key] || 0),
