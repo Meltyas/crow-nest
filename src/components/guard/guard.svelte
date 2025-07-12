@@ -1,5 +1,13 @@
+<script context="module" lang="ts">
+  // FilePicker is provided by Foundry at runtime
+  declare const FilePicker: any;
+</script>
+
 <script lang="ts">
+  import { getAdmins, saveAdmins } from '@/admin/admins';
+  import Groups from '@/components/groups/groups.svelte';
   import Tooltip from '@/components/tooltip.svelte';
+  import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
     getLog,
@@ -10,10 +18,14 @@
     saveResources,
     saveStats,
   } from '@/guard/stats';
-  import { onMount } from 'svelte';
+  import { getPatrols, savePatrols } from '@/patrol/patrols';
+  import { SyncManager, type SyncEvent } from '@/utils/sync';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
-  // FilePicker is provided by Foundry at runtime
-  declare const FilePicker: any;
+  // Props for controlling the popup
+  export let showPopup = false;
+
+  const dispatch = createEventDispatcher();
 
   interface Stat extends GuardStat {}
 
@@ -31,25 +43,226 @@
 
   let resources: GuardResource[] = [];
   let addingResource = false;
+  let editingResources = false;
   let newResource: GuardResource = { key: '', name: '', value: 0 };
+
+  // Tab system
+  let activeTab: 'guardia' | 'patrullas' | 'admins' = 'guardia';
+
+  // Data for tabs
+  let patrols: any[] = [];
+  let admins: any[] = [];
+
+  // Draggable popup state
+  let popupPosition = { x: 100, y: 100 };
+  let popupSize = { width: 800, height: 600 };
+  let isDragging = false;
+  let isResizing = false;
+  let dragOffset = { x: 0, y: 0 };
+  let resizeStartPos = { x: 0, y: 0 };
+  let resizeStartSize = { width: 0, height: 0 };
+
+  // Sync manager
+  let syncManager: SyncManager;
+
+  function switchTab(tab: 'guardia' | 'patrullas' | 'admins') {
+    activeTab = tab;
+  }
+
+  function closePopup() {
+    dispatch('close');
+  }
+
+  function onDragStart(event: MouseEvent) {
+    isDragging = true;
+    dragOffset = {
+      x: event.clientX - popupPosition.x,
+      y: event.clientY - popupPosition.y,
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      popupPosition = {
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y,
+      };
+    };
+
+    const handleMouseUp = () => {
+      isDragging = false;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }
+
+  function onResizeStart(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    isResizing = true;
+    resizeStartPos = { x: event.clientX, y: event.clientY };
+    resizeStartSize = { width: popupSize.width, height: popupSize.height };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const deltaX = e.clientX - resizeStartPos.x;
+      const deltaY = e.clientY - resizeStartPos.y;
+
+      popupSize = {
+        width: Math.max(400, resizeStartSize.width + deltaX),
+        height: Math.max(300, resizeStartSize.height + deltaY),
+      };
+    };
+
+    const handleMouseUp = () => {
+      isResizing = false;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }
 
   onMount(() => {
     stats = getStats() as Stat[];
     log = getLog();
     modifiers = getModifiers();
     resources = getResources();
+    patrols = getPatrols();
+    admins = getAdmins();
+
+    // Setup real-time synchronization
+    syncManager = SyncManager.getInstance();
+
+    // Listen for different types of updates
+    console.log("👂 Guard: Setting up sync subscriptions");
+    syncManager.subscribe('stats', handleStatsSync);
+    syncManager.subscribe('modifiers', handleModifiersSync);
+    syncManager.subscribe('resources', handleResourcesSync);
+    syncManager.subscribe('patrols', handlePatrolsSync);
+    syncManager.subscribe('admins', handleAdminsSync);
+
+    // Also listen for direct game settings changes as backup
+    console.log("👂 Guard: Setting up game settings listener");
+    Hooks.on('updateSetting', (setting: any) => {
+      console.log("⚙️ Guard: Game setting changed", setting.key, setting.value);
+
+      if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
+        console.log("📊 Guard: Stats setting changed, updating UI");
+        stats = setting.value || [];
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_LOG}`) {
+        console.log("📋 Guard: Log setting changed, updating UI");
+        log = setting.value || [];
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
+        console.log("🔧 Guard: Modifiers setting changed, updating UI");
+        modifiers = setting.value || [];
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_RESOURCES}`) {
+        console.log("📦 Guard: Resources setting changed, updating UI");
+        resources = setting.value || [];
+      }
+
+      if (setting.key === `${MODULE_ID}.patrols`) {
+        console.log("👥 Guard: Patrols setting changed, updating UI");
+        patrols = setting.value || [];
+      }
+
+      if (setting.key === `${MODULE_ID}.admins`) {
+        console.log("⚙️ Guard: Admins setting changed, updating UI");
+        admins = setting.value || [];
+      }
+    });
+
+    console.log("✅ Guard: All sync setup complete");
   });
 
+  onDestroy(() => {
+    if (syncManager) {
+      syncManager.unsubscribe('stats', handleStatsSync);
+      syncManager.unsubscribe('modifiers', handleModifiersSync);
+      syncManager.unsubscribe('resources', handleResourcesSync);
+      syncManager.unsubscribe('patrols', handlePatrolsSync);
+      syncManager.unsubscribe('admins', handleAdminsSync);
+    }
+  });
+
+  // Sync event handlers
+  function handleStatsSync(event: SyncEvent) {
+    console.log("📊 Guard: Stats sync event received", event);
+    if (event.type === 'stats' && event.data) {
+      stats = event.data.stats || getStats();
+      log = event.data.log || getLog();
+      console.log("✅ Guard: Stats updated", stats.length, "stats,", log.length, "log entries");
+    }
+  }
+
+  function handleModifiersSync(event: SyncEvent) {
+    console.log("🔧 Guard: Modifiers sync event received", event);
+    if (event.type === 'modifiers') {
+      modifiers = event.data || getModifiers();
+      console.log("✅ Guard: Modifiers updated", modifiers.length, "modifiers");
+    }
+  }
+
+  function handleResourcesSync(event: SyncEvent) {
+    console.log("📦 Guard: Resources sync event received", event);
+    if (event.type === 'resources') {
+      resources = event.data || getResources();
+      console.log("✅ Guard: Resources updated", resources.length, "resources");
+    }
+  }
+
+  function handlePatrolsSync(event: SyncEvent) {
+    console.log("👥 Guard: Patrols sync event received", event);
+    if (event.type === 'patrols') {
+      patrols = event.data || getPatrols();
+      console.log("✅ Guard: Patrols updated", patrols.length, "patrols");
+    }
+  }
+
+  function handleAdminsSync(event: SyncEvent) {
+    console.log("⚙️ Guard: Admins sync event received", event);
+    if (event.type === 'admins') {
+      admins = event.data || getAdmins();
+      console.log("✅ Guard: Admins updated", admins.length, "admins");
+    }
+  }
+
   async function persist() {
-    await saveStats(stats, log);
+    if (game.user?.isGM) {
+      console.log("💾 Guard: Persisting stats as GM");
+      await saveStats(stats, log);
+    } else {
+      console.log("🚫 Guard: Skipping stats persist - not GM");
+    }
   }
 
   async function persistMods() {
-    await saveModifiers(modifiers);
+    if (game.user?.isGM) {
+      console.log("💾 Guard: Persisting modifiers as GM");
+      await saveModifiers(modifiers);
+    } else {
+      console.log("🚫 Guard: Skipping modifiers persist - not GM");
+    }
   }
 
   async function persistRes() {
-    await saveResources(resources);
+    if (game.user?.isGM) {
+      console.log("💾 Guard: Persisting resources as GM");
+      await saveResources(resources);
+    } else {
+      console.log("🚫 Guard: Skipping resources persist - not GM");
+    }
   }
 
   function openAddStat() {
@@ -167,6 +380,10 @@
     editing = !editing;
   }
 
+  function toggleEditingResources() {
+    editingResources = !editingResources;
+  }
+
   function onImageClick(stat: Stat) {
     if (editing) {
       if (typeof FilePicker !== 'undefined') {
@@ -186,7 +403,7 @@
         0
       );
       const r = new Roll(`1d20 + ${stat.value + bonus}`);
-      r.evaluate({ async: false });
+      r.evaluate();
 
       const lines: string[] = [];
       for (const m of modifiers) {
@@ -272,6 +489,134 @@
 </script>
 
 <style>
+  .custom-popup {
+    position: fixed;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 10000;
+  }
+
+  .drag-handle {
+    position: absolute;
+    top: 0;
+    left: 60px;
+    right: 0;
+    height: 40px;
+    cursor: move;
+    background: transparent;
+    z-index: 1002;
+  }
+
+  .resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: se-resize;
+    background: rgba(212, 175, 55, 0.3);
+    border-top-left-radius: 12px;
+    z-index: 1002;
+    transition: background 0.3s ease;
+  }
+
+  .resize-handle:hover {
+    background: rgba(212, 175, 55, 0.6);
+  }
+
+  .resize-handle::before {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-bottom: 8px solid rgba(212, 175, 55, 0.8);
+  }
+
+  .app-container {
+    display: flex;
+    height: 100%;
+    min-height: 400px;
+    position: relative;
+  }
+
+  .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    background: rgba(139, 105, 20, 0.9);
+    border: 2px solid #d4af37;
+    border-radius: 50%;
+    color: #f4f1e8;
+    font-size: 1.4rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .close-button:hover {
+    background: rgba(212, 175, 55, 0.9);
+    color: #1a0f08;
+    transform: scale(1.1);
+  }
+
+  .tab-navigation {
+    display: flex;
+    flex-direction: column;
+    min-width: 60px;
+    border-right: 2px solid #d4af37;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(30, 40, 60, 0.8);
+    border-bottom: 1px solid #8b6914;
+    color: #f4f1e8;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 50px;
+  }
+
+  .tab:hover {
+    background: rgba(40, 50, 70, 0.9);
+    color: #d4af37;
+  }
+
+  .tab.active {
+    background: rgba(50, 60, 80, 1);
+    color: #d4af37;
+    border-left: 4px solid #d4af37;
+  }
+
+  .content-area {
+    border-top: 2px solid #d4af37;
+    border-right: 2px solid #d4af37;
+    border-bottom: 2px solid #d4af37;
+    flex: 1;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(11, 10, 19, 0.95) 0%, rgba(20, 30, 50, 0.9) 50%, rgba(11, 10, 19, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    color: #f4f1e8;
+    overflow-y: auto;
+    border-radius: 0 8px 8px 0;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+    font-family: "Cinzel", serif;
+  }
+
   .guard-container {
     padding: 0.5rem;
     color: white;
@@ -436,146 +781,235 @@
     gap: 0.25rem;
   }
 </style>
-<h3>Los Cuervos</h3>
-<div class="guard-container">
+{#if showPopup}
+  <div
+    class="custom-popup"
+    style="transform: translate({popupPosition.x}px, {popupPosition.y}px); width: {popupSize.width}px; height: {popupSize.height}px;"
+  >
+    <!-- Drag Handle -->
+    <div class="drag-handle" role="button" tabindex="0" on:mousedown={onDragStart}></div>
 
-  <div class="button-holder">
-    {#if editing}
-      <button on:click={openAddStat}>Añadir Stat</button>
-    {/if}
-    <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
-  </div>
+    <!-- Resize Handle -->
+    <div class="resize-handle" role="button" tabindex="0" on:mousedown={onResizeStart}></div>
 
-  {#if addingStat}
-    <div class="add-stat-form">
-      <input placeholder="Nombre" bind:value={newStat.name} />
-      <input type="number" placeholder="Valor" bind:value={newStat.value} />
-      <button on:click={confirmAddStat}>Agregar</button>
-      <button on:click={cancelAddStat}>Cancelar</button>
-    </div>
-  {/if}
-  <div class="stat-container">
-      {#each stats as stat, i}
-    <div class="stat">
-      <button class="stat-img" on:click={() => onImageClick(stat)}>
-        <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+    <div class="app-container">
+      <!-- Close Button -->
+      <button class="close-button" on:click={closePopup} title="Cerrar">
+        ✕
       </button>
-      <input
-        id={`file-${stat.key}`}
-        type="file"
-        accept="image/*"
-        on:change={(e) => onFileChange(stat, e)}
-        style="display: none;"
-      />
-      {#if editing}
-        <div class="stats-editables">
-          <input
-            class="stat-name-input"
-            placeholder="Nombre"
-            bind:value={stat.name}
-            on:change={updateStat}
-          />
-        </div>
-        <div class="stat-number">
-          <input
-            class="stat-number-input"
-            type="number"
-            placeholder="Valor"
-            bind:value={stat.value}
-            on:change={updateStat}
-          />
-          <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
-        </div>
-      {:else}
-        <div class="stat-view">
-          <div class="stat-name">{stat.name}</div>
-          <div class="stat-value">{stat.value}</div>
-        </div>
-      {/if}
 
-    </div>
-  {/each}
-
-  </div>
-
-  <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
-  {#if showLog}
-    <div class="log">
-      {#each log as entry}
-        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
-      {/each}
-    </div>
-  {/if}
-
-  <hr />
-  <h4>Modificaciones Situacionales</h4>
-  {#if editingMods}
-    <button on:click={openAddModifier}>Añadir Modificador</button>
-  {/if}
-  <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
-  {#if addingModifier}
-    <div class="add-mod-form">
-      <input placeholder="Nombre" bind:value={newModifier.name} />
-      <input placeholder="Descripción" bind:value={newModifier.description} />
-      {#each stats as stat}
-        <div class="modifier-values">
-          <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-          <input type="number" bind:value={newModifier.mods[stat.key]} />
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+          <button
+            class="tab {activeTab === 'guardia' ? 'active' : ''}"
+            on:click={() => switchTab('guardia')}
+          >
+            G
+          </button>
+          <button
+            class="tab {activeTab === 'patrullas' ? 'active' : ''}"
+            on:click={() => switchTab('patrullas')}
+          >
+            P
+          </button>
+          <button
+            class="tab {activeTab === 'admins' ? 'active' : ''}"
+            on:click={() => switchTab('admins')}
+          >
+            A
+          </button>
         </div>
-      {/each}
-      <button on:click={confirmAddModifier}>Agregar</button>
-      <button on:click={cancelAddModifier}>Cancelar</button>
-    </div>
-  {/if}
-  <div class="modifier-container">
-  {#each modifiers as mod, i}
-    <div class="modifier">
-      <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
-        <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
-      </Tooltip>
-      <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
-      {#if editingMods}
-        <div class="modifier-edit">
-          <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
-          <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
-          <div class="modifier-values-contain">
-          {#each stats as stat}
-            <div class="modifier-values modifier-values-edit">
-              <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-              <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
+
+        <!-- Content Area -->
+        <div class="content-area">
+          {#if activeTab === 'guardia'}
+            <h3>Los Cuervos</h3>
+            <div class="guard-container">
+              <div class="button-holder">
+                {#if editing}
+                  <button on:click={openAddStat}>Añadir Stat</button>
+                {/if}
+                <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
+              </div>
+
+              {#if addingStat}
+                <div class="add-stat-form">
+                  <input placeholder="Nombre" bind:value={newStat.name} />
+                  <input type="number" placeholder="Valor" bind:value={newStat.value} />
+                  <button on:click={confirmAddStat}>Agregar</button>
+                  <button on:click={cancelAddStat}>Cancelar</button>
+                </div>
+              {/if}
+
+              <div class="stat-container">
+                {#each stats as stat, i}
+                  <div class="stat">
+                    <button class="stat-img" on:click={() => onImageClick(stat)}>
+                      <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+                    </button>
+                    <input
+                      id={`file-${stat.key}`}
+                      type="file"
+                      accept="image/*"
+                      on:change={(e) => onFileChange(stat, e)}
+                      style="display: none;"
+                    />
+                    {#if editing}
+                      <div class="stats-editables">
+                        <input
+                          class="stat-name-input"
+                          placeholder="Nombre"
+                          bind:value={stat.name}
+                          on:change={updateStat}
+                        />
+                      </div>
+                      <div class="stat-number">
+                        <input
+                          class="stat-number-input"
+                          type="number"
+                          placeholder="Valor"
+                          bind:value={stat.value}
+                          on:change={updateStat}
+                        />
+                        <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
+                      </div>
+                    {:else}
+                      <div class="stat-view">
+                        <div class="stat-name">{stat.name}</div>
+                        <div class="stat-value">{stat.value}</div>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+
+              <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
+              {#if showLog}
+                <div class="log">
+                  {#each log as entry}
+                    <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
+                  {/each}
+                </div>
+              {/if}
+
+              <hr />
+              <h4>Modificaciones Situacionales</h4>
+              {#if editingMods}
+                <button on:click={openAddModifier}>Añadir Modificador</button>
+              {/if}
+              <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
+              {#if addingModifier}
+                <div class="add-mod-form">
+                  <input placeholder="Nombre" bind:value={newModifier.name} />
+                  <input placeholder="Descripción" bind:value={newModifier.description} />
+                  {#each stats as stat}
+                    <div class="modifier-values">
+                      <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+                      <input type="number" bind:value={newModifier.mods[stat.key]} />
+                    </div>
+                  {/each}
+                  <button on:click={confirmAddModifier}>Agregar</button>
+                  <button on:click={cancelAddModifier}>Cancelar</button>
+                </div>
+              {/if}
+              <div class="modifier-container">
+                {#each modifiers as mod, i}
+                  <div class="modifier">
+                    <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
+                      <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+                    </Tooltip>
+                    <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
+                    {#if editingMods}
+                      <div class="modifier-edit">
+                        <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
+                        <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+                        <div class="modifier-values-contain">
+                          {#each stats as stat}
+                            <div class="modifier-values modifier-values-edit">
+                              <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
+                              <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
+                            </div>
+                          {/each}
+                        </div>
+                        <button on:click={() => removeModifier(i)}>X</button>
+                      </div>
+                    {:else}
+                      <!-- content moved into tooltip -->
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+
+              <hr />
+              <h3>Recursos</h3>
+              <div class="button-holder">
+                {#if editingResources}
+                  <button on:click={openAddResource}>Añadir Recurso</button>
+                {/if}
+                <button on:click={toggleEditingResources}>{editingResources ? 'Finalizar Edición' : 'Editar Recursos'}</button>
+              </div>
+
+              {#if addingResource}
+                <div class="add-resource-form">
+                  <input placeholder="Nombre" bind:value={newResource.name} />
+                  <input type="number" bind:value={newResource.value} />
+                  <button on:click={confirmAddResource}>Agregar</button>
+                  <button on:click={cancelAddResource}>Cancelar</button>
+                </div>
+              {/if}
+
+              <div class="resource-container">
+                {#each resources as res, i}
+                  <div class="resource">
+                    <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => editingResources ? onResImageClick(res) : null} />
+                    <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
+
+                    {#if editingResources}
+                      <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
+                      <input type="number" bind:value={res.value} on:change={updateResource} />
+                      <button on:click={() => removeResource(i)}>✕</button>
+                    {:else}
+                      <div>
+                        <span>{res.name}</span>
+                        <span>{res.value}</span>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
             </div>
-          {/each}
-          </div>
-          <button on:click={() => removeModifier(i)}>X</button>
+
+          {:else if activeTab === 'patrullas'}
+            <h3>Patrullas</h3>
+            <Groups
+              groups={patrols}
+              getGroups={getPatrols}
+              saveGroups={savePatrols}
+              labels={{
+                groupSingular: 'Patrulla',
+                addGroup: 'Añadir Patrulla',
+                removeGroup: 'Eliminar Patrulla',
+                officerDrop: 'Arrastra un oficial aquí',
+                soldierDrop: 'Arrastra soldados aquí',
+              }}
+            />
+
+          {:else if activeTab === 'admins'}
+            <h3>Administración</h3>
+            <Groups
+              groups={admins}
+              getGroups={getAdmins}
+              saveGroups={saveAdmins}
+              labels={{
+                groupSingular: 'Admin',
+                addGroup: 'Añadir Admin',
+                removeGroup: 'Eliminar Admin',
+                officerDrop: 'Arrastra un líder aquí',
+                soldierDrop: 'Arrastra miembros aquí',
+              }}
+            />
+          {/if}
         </div>
-      {:else}
-        <!-- content moved into tooltip -->
-      {/if}
+      </div>
     </div>
-  {/each}
-</div>
-
-  <hr />
-  <h3>Recursos</h3>
-  {#if addingResource}
-    <div class="add-resource-form">
-      <input placeholder="Nombre" bind:value={newResource.name} />
-      <input type="number" bind:value={newResource.value} />
-      <button on:click={confirmAddResource}>Agregar</button>
-      <button on:click={cancelAddResource}>Cancelar</button>
-    </div>
-  {/if}
-  <button on:click={openAddResource}>Añadir Recurso</button>
-
-  <div class="resource-container">
-  {#each resources as res, i}
-    <div class="resource">
-      <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => onResImageClick(res)} />
-      <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
-      <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
-      <input type="number" bind:value={res.value} on:change={updateResource} />
-      <button on:click={() => removeResource(i)}>X</button>
-    </div>
-  {/each}
-  </div>
-</div>
+{/if}

@@ -3,10 +3,12 @@
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
-  import { onMount } from 'svelte';
+  import { SyncManager, type SyncEvent } from '@/utils/sync';
+  import { onDestroy, onMount } from 'svelte';
 
   declare const FilePicker: any;
 
+  export let groups: Group[] = [];
   export let getGroups: () => Group[];
   export let saveGroups: (groups: Group[]) => Promise<void>;
   export let labels = {
@@ -18,18 +20,52 @@
   };
 
   let stats: GuardStat[] = [];
-  let groups: Group[] = [];
   let modifiers: GuardModifier[] = [];
   let editing: Record<string, boolean> = {};
 
+  // Sync manager
+  let syncManager: SyncManager;
+
   onMount(() => {
     stats = getStats() as GuardStat[];
-    groups = getGroups();
     modifiers = getModifiers();
+
+    // Setup real-time synchronization
+    syncManager = SyncManager.getInstance();
+
+    // Listen for stats and modifiers updates (for UI updates)
+    syncManager.subscribe('stats', handleStatsSync);
+    syncManager.subscribe('modifiers', handleModifiersSync);
   });
 
+  onDestroy(() => {
+    if (syncManager) {
+      syncManager.unsubscribe('stats', handleStatsSync);
+      syncManager.unsubscribe('modifiers', handleModifiersSync);
+    }
+  });
+
+  // Sync event handlers
+  function handleStatsSync(event: SyncEvent) {
+    if (event.type === 'stats' && event.data?.stats) {
+      stats = event.data.stats;
+    }
+  }
+
+  function handleModifiersSync(event: SyncEvent) {
+    if (event.type === 'modifiers') {
+      modifiers = event.data || getModifiers();
+    }
+  }
+
   async function persist() {
-    await saveGroups(groups);
+    // Only allow saving if user is GM
+    if (game.user?.isGM) {
+      console.log("💾 Groups: Persisting changes as GM");
+      await saveGroups(groups);
+    } else {
+      console.log("🚫 Groups: Skipping persist - not GM");
+    }
   }
 
   function addGroup() {

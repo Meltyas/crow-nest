@@ -64,14 +64,18 @@
   }
   .tooltip {
     position: absolute;
-    background: #333;
-    color: white;
-    padding: 0.25rem 16px;
-    border-radius: 4px;
+    background: rgba(11, 10, 19, 0.95);
+    color: #f4f1e8;
+    border: 1px solid #d4af37;
+    padding: 0.5rem 12px;
+    border-radius: 6px;
     white-space: normal;
     word-wrap: break-word;
-    z-index: 10;
+    z-index: 15000;
     pointer-events: none;
     box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    font-family: "Cinzel", serif;
   }
 </style>

@@ -1,5 +1,6 @@
 import { MODULE_ID, SETTING_ADMINS } from "@/constants";
 import type { Group, GroupMember, GroupSkill } from "@/shared/group";
+import { SyncManager, createSyncEvent } from "@/utils/sync";
 
 export type AdminSkill = GroupSkill;
 export type AdminMember = GroupMember;
@@ -12,5 +13,15 @@ export function getAdmins(): Admin[] {
 }
 
 export async function saveAdmins(admins: Admin[]): Promise<void> {
+  if (!game.user?.isGM) {
+    console.log("🚫 Admins: Only GM can save admins");
+    return;
+  }
+
+  console.log("💾 Admins: Saving admins as GM", admins.length, "admins");
   await game.settings.set(MODULE_ID, SETTING_ADMINS, admins);
+
+  // Broadcast changes to all players
+  const syncManager = SyncManager.getInstance();
+  await syncManager.broadcast(createSyncEvent("admins", "update", admins));
 }
