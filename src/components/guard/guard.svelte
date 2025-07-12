@@ -496,6 +496,17 @@
     z-index: 10000;
   }
 
+  .image-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .image-button:hover {
+    opacity: 0.8;
+  }
+
   .drag-handle {
     position: absolute;
     top: 0;
@@ -916,7 +927,9 @@
                 {#each modifiers as mod, i}
                   <div class="modifier">
                     <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
-                      <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" on:click={() => onModImageClick(mod)} />
+                      <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
+                        <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
+                      </button>
                     </Tooltip>
                     <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
                     {#if editingMods}
@@ -961,7 +974,9 @@
               <div class="resource-container">
                 {#each resources as res, i}
                   <div class="resource">
-                    <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" on:click={() => editingResources ? onResImageClick(res) : null} />
+                    <button type="button" class="image-button" on:click={() => editingResources ? onResImageClick(res) : null}>
+                      <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" />
+                    </button>
                     <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
 
                     {#if editingResources}

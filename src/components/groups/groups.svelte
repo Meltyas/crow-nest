@@ -9,7 +9,6 @@
   declare const FilePicker: any;
 
   export let groups: Group[] = [];
-  export let getGroups: () => Group[];
   export let saveGroups: (groups: Group[]) => Promise<void>;
   export let labels = {
     groupSingular: 'Patrulla',
@@ -316,6 +315,17 @@
   .group-stat-container {
     display: flex;
   }
+
+  .skill-image-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .skill-image-button:hover {
+    opacity: 0.8;
+  }
 </style>
 
 <div class="groups">
@@ -326,13 +336,13 @@
         {editing[group.id] ? 'Guardar' : 'Editar'}
       </button>
       <div
-        class="drop-zone officer" role="button" aria-label={labels.officerDrop}
+        class="drop-zone officer" role="button" tabindex="0" aria-label={labels.officerDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropOfficer(e, group)}
       >
         {#if group.officer}
           <div
-            class="member" role="button"
+            class="member" role="button" tabindex="0"
             draggable="true"
             on:dragstart={(e) => onDragMember(e, group.officer)}
           >
@@ -354,13 +364,13 @@
         {/if}
       </div>
       <div
-        class="drop-zone soldier" role="button" aria-label={labels.soldierDrop}
+        class="drop-zone soldier" role="button" tabindex="0" aria-label={labels.soldierDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropSoldier(e, group)}
       >
         {#each group.soldiers as s, j}
           <div
-            class="member" role="button"
+            class="member" role="button" tabindex="0"
             draggable="true"
             on:dragstart={(e) => onDragMember(e, s)}
           >
@@ -404,7 +414,9 @@
         <strong>Habilidades</strong>
           {#each group.skills as sk, j}
             <div class="skill">
-              <img src={sk.img} alt="" on:click={() => editing[group.id] && chooseSkillImage(sk)} />
+              <button type="button" class="skill-image-button" on:click={() => editing[group.id] && chooseSkillImage(sk)}>
+                <img src={sk.img} alt="" />
+              </button>
               {#if editing[group.id]}
                 <input placeholder="Nombre" bind:value={sk.name} on:change={persist} />
                 <textarea placeholder="Descripción" bind:value={sk.description} on:change={persist}></textarea>

@@ -235,7 +235,7 @@
   class:expanded={showPopup}
   style="transform: translate({pos.x}px, {pos.y}px);"
 >
-  <div class="drag-area" on:mousedown={onMouseDown}>Crow Nest</div>
+  <div class="drag-area" role="button" tabindex="0" on:mousedown={onMouseDown} on:keydown={(e) => e.key === 'Enter' && onMouseDown(e)}>Crow Nest</div>
   <button on:click|stopPropagation={togglePopup}>Abrir Popup</button>
 
   <!-- Game Tokens (Visible to all, buttons only for GM) -->

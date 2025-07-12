@@ -50,7 +50,7 @@
   }
 </script>
 
-<div class="tooltip-wrapper" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>
+<div class="tooltip-wrapper" role="tooltip" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>
   <slot></slot>
   <div class="tooltip" bind:this={tooltipEl} style:display={show ? undefined : 'none'}>
     {@html content}
