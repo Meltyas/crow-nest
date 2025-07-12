@@ -112,10 +112,12 @@
 
   function toggleEditing(group: Group) {
     editing[group.id] = !editing[group.id];
+    editing = { ...editing }; // Trigger reactivity
   }
 
   function toggleCollapsed(group: Group) {
     collapsed[group.id] = !collapsed[group.id];
+    collapsed = { ...collapsed }; // Trigger reactivity
   }
 
   function removeOfficer(group: Group) {
@@ -229,6 +231,31 @@
         },
       }).render(true);
     }
+  }
+
+  function showSkillInChat(skill: GroupSkill, group: Group) {
+    if (editing[group.id]) return; // No mostrar en modo edición
+
+    const groupName = group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'Grupo');
+    const groupColor = '#4a90e2'; // Color azul para las habilidades de patrulla
+
+    const content = `
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 2px solid ${groupColor}; border-radius: 8px; background: rgba(0,0,0,0.1);">
+        <img src="${skill.img || 'icons/svg/book.svg'}" alt="${skill.name}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 2px solid ${groupColor};" />
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 0.5rem 0; color: ${groupColor}; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${skill.name}</h3>
+          <div style="color: #000; font-size: 0.9em; line-height: 1.4;">${skill.description || 'Sin descripción disponible'}</div>
+          <div style="margin-top: 0.5rem; font-size: 0.8em; color: #666; font-style: italic;">— ${groupName}</div>
+        </div>
+      </div>
+    `;
+
+    // Enviar mensaje al chat
+    ChatMessage.create({
+      speaker: { alias: `${groupName} - Habilidad` },
+      content: content,
+      whisper: null // Mensaje público
+    });
   }
 
   function guardBonus(key: string): number {
@@ -743,6 +770,27 @@
   .delete-button:hover {
     background: #ff6666;
   }
+
+  /* Skill clickable styles */
+  .skill .info {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    border-radius: 4px;
+    padding: 0.25rem;
+  }
+
+  .skill .info:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .skill .info:active {
+    transform: translateY(0);
+  }
+
+  .skill .info:focus {
+    outline: 2px solid #4a90e2;
+    outline-offset: 2px;
+  }
 </style>
 
 <div class="groups">
@@ -907,19 +955,36 @@
           </div>
           {#each group.skills as sk, j}
             <div class="skill">
-              <button type="button" class="skill-image-button" on:click={() => editing[group.id] && chooseSkillImage(sk)}>
-                <img src={sk.img} alt="" />
-              </button>
               {#if editing[group.id]}
+                <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
+                  <img src={sk.img} alt="" />
+                </button>
                 <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
-                  <input placeholder="Name" bind:value={sk.name} on:change={persist} />
-                  <textarea placeholder="Description" bind:value={sk.description} on:change={persist}></textarea>
+                  <input
+                    placeholder="Name"
+                    bind:value={sk.name}
+                    on:change={persist}
+                    on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
+                  />
+                  <textarea
+                    placeholder="Description"
+                    bind:value={sk.description}
+                    on:change={persist}
+                    on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
+                  ></textarea>
                 </div>
                 <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
               {:else}
-                <div class="info">
-                  <strong>{sk.name}</strong>
-                  <p>{sk.description}</p>
+                <div class="skill-display" role="button" tabindex="0"
+                     on:click={() => showSkillInChat(sk, group)}
+                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
+                  <div class="skill-image">
+                    <img src={sk.img} alt="" />
+                  </div>
+                  <div class="skill-info">
+                    <strong>{sk.name}</strong>
+                    <p>{sk.description}</p>
+                  </div>
                 </div>
               {/if}
             </div>

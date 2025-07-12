@@ -1822,11 +1822,11 @@
               groups={patrols}
               saveGroups={savePatrols}
               labels={{
-                groupSingular: 'Patrulla',
-                addGroup: 'Añadir Patrulla',
-                removeGroup: 'Eliminar Patrulla',
-                officerDrop: 'Arrastra un oficial aquí',
-                soldierDrop: 'Arrastra soldados aquí',
+                groupSingular: 'Patrol',
+                addGroup: 'Add Patrol',
+                removeGroup: 'Remove Patrol',
+                officerDrop: 'Drag an officer here',
+                soldierDrop: 'Drag soldiers here',
               }}
             />
 
@@ -1837,10 +1837,10 @@
               saveGroups={saveAdmins}
               labels={{
                 groupSingular: 'Admin',
-                addGroup: 'Añadir Admin',
-                removeGroup: 'Eliminar Admin',
-                officerDrop: 'Arrastra un líder aquí',
-                soldierDrop: 'Arrastra miembros aquí',
+                addGroup: 'Add Admin',
+                removeGroup: 'Remove Admin',
+                officerDrop: 'Drag a leader here',
+                soldierDrop: 'Drag members here',
               }}
             />
           {/if}
