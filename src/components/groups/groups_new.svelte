@@ -3,7 +3,6 @@
 </script>
 
 <script lang="ts">
-  import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
@@ -139,7 +138,7 @@
 
     try {
       const droppedData = JSON.parse(data);
-      
+
       // Check if it's an actor from the sidebar
       if (droppedData.type === 'Actor') {
         const actor = game.actors?.get(droppedData.uuid.split('.')[1]);
@@ -153,7 +152,7 @@
 
       // Otherwise treat as group member
       const member = droppedData as GroupMember;
-      
+
       // Remove from all other positions first
       groups.forEach(g => {
         if (g.officer && g.officer.id === member.id) {
@@ -178,7 +177,7 @@
 
     try {
       const droppedData = JSON.parse(data);
-      
+
       // Check if it's an actor from the sidebar
       if (droppedData.type === 'Actor') {
         const actor = game.actors?.get(droppedData.uuid.split('.')[1]);
@@ -204,7 +203,7 @@
 
       // Otherwise treat as group member
       const member = droppedData as GroupMember;
-      
+
       // Remove from all other positions first
       groups.forEach(g => {
         if (g.officer && g.officer.id === member.id) {
@@ -680,10 +679,7 @@
   }
 
   .skills {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    border-radius: 8px;
-    padding: 1rem;
+    padding-top: 0.5rem;
   }
 
   .skills strong {
@@ -897,26 +893,26 @@
     .members-grid {
       grid-template-columns: 1fr;
     }
-    
+
     .stats-and-edit-container {
       flex-direction: column;
     }
-    
+
     .deployment-controls {
       min-width: auto;
       width: 100%;
     }
-    
+
     .add-group-button {
       min-width: 180px;
       min-height: 100px;
       padding: 1rem 1.5rem;
     }
-    
+
     .add-group-icon {
       font-size: 2rem;
     }
-    
+
     .add-group-text {
       font-size: 1rem;
     }
@@ -1084,22 +1080,22 @@
                     <img src={sk.img} alt="" />
                   </button>
                   <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
-                    <input 
-                      placeholder="Name" 
-                      bind:value={sk.name} 
+                    <input
+                      placeholder="Name"
+                      bind:value={sk.name}
                       on:change={persist}
                       on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
                     />
-                    <textarea 
-                      placeholder="Description" 
-                      bind:value={sk.description} 
+                    <textarea
+                      placeholder="Description"
+                      bind:value={sk.description}
                       on:change={persist}
                       on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
                     ></textarea>
                   </div>
                   <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
                 {:else}
-                  <div class="skill-display" role="button" tabindex="0" 
+                  <div class="skill-display" role="button" tabindex="0"
                        on:click={() => showSkillInChat(sk, group)}
                        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
                     <div class="skill-image">
@@ -1118,7 +1114,7 @@
       </div>
     </div>
   {/each}
-  
+
   <!-- Big GM-only Add Group Button -->
   {#if game.user?.isGM}
     <div class="add-group-container">

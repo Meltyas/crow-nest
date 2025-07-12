@@ -546,85 +546,125 @@
   }
 
   .skills {
-    margin-top: 0;
+    border-radius: 8px;
+    padding-top: .5rem;
   }
 
   .skills strong {
-    display: block;
-    margin-bottom: 0.5rem;
+    color: #d4af37;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .skill {
     display: flex;
-    gap: 0.25rem;
-    margin-bottom: 0.25rem;
-    align-items: flex-start;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
   }
 
-  .skill img {
-    width: 64px;
-    height: 64px;
-    min-width: 64px;
-    min-height: 64px;
+  .skill:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.4);
+  }
+
+  .skill-image-button {
+    background: none;
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    border-radius: 8px;
+    padding: 0;
+    cursor: pointer;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+
+  .skill-image-button:hover {
+    border-color: #d4af37;
+    transform: scale(1.05);
+  }
+
+  .skill-image-button img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  .skill-display {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+  }
+
+  .skill-image {
     flex-shrink: 0;
   }
 
-  .skill .info {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.85em;
+  .skill-image img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid rgba(212, 175, 55, 0.5);
   }
 
-  .skill .info strong {
-    text-transform: none;
-    font-size: 0.9em;
+  .skill-info {
+    flex: 1;
   }
 
-  .skill .info p {
+  .skill-info strong {
+    display: block;
+    color: #d4af37;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .skill-info p {
     margin: 0;
-    font-size: 0.85em;
+    color: #f4f1e8;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    opacity: 0.9;
+  }
+
+  .skill input,
+  .skill textarea {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 6px;
+    color: #f4f1e8;
+    padding: 0.5rem;
+    font-family: inherit;
+  }
+
+  .skill input:focus,
+  .skill textarea:focus {
+    outline: none;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
+  }
+
+  .skill input::placeholder,
+  .skill textarea::placeholder {
+    color: rgba(244, 241, 232, 0.5);
   }
 
   .skill textarea {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.85em;
     resize: vertical;
     min-height: 60px;
-  }
-
-  .skill textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .skill textarea::placeholder {
-    color: #9ca3af;
-  }
-
-  .skill input {
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.9em;
-    font-weight: bold;
-  }
-
-  .skill input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .skill input::placeholder {
-    color: #9ca3af;
   }
 
   .member {
@@ -946,50 +986,52 @@
         </div>
 
         <!-- Skills -->
-        <div class="skills">
-          <div style="display: flex; justify-content: space-between; align-items: center; height: 28px; margin-bottom: 0.5rem;">
-            <strong style="margin: 0; line-height: 28px;">Skills</strong>
-            {#if editing[group.id]}
-              <button on:click={() => addSkill(group)}>Add Skill</button>
-            {/if}
-          </div>
-          {#each group.skills as sk, j}
-            <div class="skill">
+        {#if group.skills.length > 0 || editing[group.id]}
+          <div class="skills">
+            <div style="display: flex; justify-content: space-between; align-items: center; height: 28px; margin-bottom: 0.5rem;">
+              <strong style="margin: 0; line-height: 28px;">Skills</strong>
               {#if editing[group.id]}
-                <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
-                  <img src={sk.img} alt="" />
-                </button>
-                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
-                  <input
-                    placeholder="Name"
-                    bind:value={sk.name}
-                    on:change={persist}
-                    on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
-                  />
-                  <textarea
-                    placeholder="Description"
-                    bind:value={sk.description}
-                    on:change={persist}
-                    on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
-                  ></textarea>
-                </div>
-                <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
-              {:else}
-                <div class="skill-display" role="button" tabindex="0"
-                     on:click={() => showSkillInChat(sk, group)}
-                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
-                  <div class="skill-image">
-                    <img src={sk.img} alt="" />
-                  </div>
-                  <div class="skill-info">
-                    <strong>{sk.name}</strong>
-                    <p>{sk.description}</p>
-                  </div>
-                </div>
+                <button on:click={() => addSkill(group)}>Add Skill</button>
               {/if}
             </div>
-          {/each}
-        </div>
+            {#each group.skills as sk, j}
+              <div class="skill">
+                {#if editing[group.id]}
+                  <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
+                    <img src={sk.img} alt="" />
+                  </button>
+                  <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
+                    <input
+                      placeholder="Name"
+                      bind:value={sk.name}
+                      on:change={persist}
+                      on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
+                    />
+                    <textarea
+                      placeholder="Description"
+                      bind:value={sk.description}
+                      on:change={persist}
+                      on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
+                    ></textarea>
+                  </div>
+                  <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
+                {:else}
+                  <div class="skill-display" role="button" tabindex="0"
+                       on:click={() => showSkillInChat(sk, group)}
+                       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
+                    <div class="skill-image">
+                      <img src={sk.img} alt="" />
+                    </div>
+                    <div class="skill-info">
+                      <strong>{sk.name}</strong>
+                      <p>{sk.description}</p>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
 
         {/if}
       </div>
