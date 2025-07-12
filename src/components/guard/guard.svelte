@@ -165,7 +165,7 @@
     if (editing) {
       if (typeof FilePicker !== 'undefined') {
         // @ts-ignore - FilePicker is provided by Foundry at runtime
-        FilePicker.create({
+        new FilePicker({
           type: 'image',
           current: stat.img,
           callback: (path: string) => {

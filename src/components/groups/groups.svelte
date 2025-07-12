@@ -155,7 +155,7 @@
     // Prefer Foundry's file picker when available
     if (typeof FilePicker !== 'undefined') {
       // @ts-ignore - FilePicker is provided by Foundry at runtime
-      FilePicker.create({
+      new FilePicker({
         type: 'image',
         current: skill.img,
         callback: (path: string) => {
