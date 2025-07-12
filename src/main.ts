@@ -24,7 +24,6 @@ import {
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
-  console.log("Crow Nest | Initializing module");
   game.settings.register(MODULE_ID, SETTING_STATS, {
     scope: "world",
     config: false,
@@ -166,26 +165,19 @@ function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
 }
 
 Hooks.once("ready", () => {
-  console.log("Crow Nest | Ready");
-
   // Initialize real-time synchronization
-  console.log("Crow Nest | Initializing sync system");
   initializeSync();
 
   // Initialize global groups sync (always active)
-  console.log("Crow Nest | Initializing global groups sync");
   initializeGroupsSync();
 
   // Clean up any existing sync system first
-  console.log("Crow Nest | Cleaning up existing sync system");
   cleanupSync();
 
   // Initialize patrol sheet manager
-  console.log("Crow Nest | Initializing patrol sheet system");
   patrolSheetManager; // Esto inicializa la instancia
 
   // Set up patrol sheet setting watcher (much simpler than sockets!)
-  console.log("Crow Nest | Setting up patrol sheet setting watcher");
   game.settings.sheet.render(); // Ensure settings are ready
 
   // Watch for changes in activePatrolSheets setting
@@ -196,7 +188,6 @@ Hooks.once("ready", () => {
   });
 
   // Initialize patrol sheet sync handlers (always active for all users)
-  console.log("Crow Nest | Registering patrol sheet sync handlers");
   const syncManager = SyncManager.getInstance();
 
   // Clear any existing patrol-sheet handlers first
@@ -205,7 +196,6 @@ Hooks.once("ready", () => {
   syncManager.registerEventHandler("patrol-sheet", (event) => {
     patrolSheetManager.handleSyncEvent(event);
   });
-  console.log("✅ Crow Nest | Patrol sheet sync handlers registered");
 
   // Expose API for external access
   (game.modules.get(MODULE_ID) as any).api = {
@@ -242,7 +232,6 @@ Hooks.once("ready", () => {
     // Cleanup functions for sync issues
     cleanupSync: () => patrolSheetManager.manualCleanupSync(),
     reinitializeSync: () => {
-      console.log("🔄 Manual reinitialize: Cleaning and restarting sync");
       patrolSheetManager.manualCleanupSync();
       initializeSync();
       const syncManager = SyncManager.getInstance();
@@ -250,12 +239,10 @@ Hooks.once("ready", () => {
       syncManager.registerEventHandler("patrol-sheet", (event) => {
         patrolSheetManager.handleSyncEvent(event);
       });
-      console.log("✅ Sync system reinitialized");
       return { success: true, message: "Sync system reinitialized" };
     },
     // New sync diagnostic functions
     testGroupsSync: () => {
-      console.log("🧪 Testing groups sync...");
       const syncManager = SyncManager.getInstance();
       const testEvent = {
         type: "groups" as const,
@@ -272,21 +259,14 @@ Hooks.once("ready", () => {
         timestamp: Date.now(),
         user: game.user?.name || "unknown",
       };
-      console.log("📤 Broadcasting test groups event:", testEvent);
       syncManager.broadcast(testEvent);
     },
     checkSyncListeners: () => {
       const syncManager = SyncManager.getInstance();
-      console.log("🔍 Sync Listeners Debug:");
-      console.log("SyncManager instance:", syncManager);
-      console.log("Total listeners:", syncManager.getListenerCount());
-      console.log("Event handlers count:", syncManager.getEventHandlerCount());
-      console.log("Groups listeners:", syncManager.getListenerCount("groups"));
-      console.log("All listeners by type:");
 
       const listeners = syncManager.getListeners();
       for (const [type, callbacks] of listeners.entries()) {
-        console.log(`  ${type}: ${callbacks.length} listeners`);
+        // Silent iteration
       }
 
       return {
@@ -304,15 +284,7 @@ Hooks.once("ready", () => {
     checkLocalStorage: () => {
       const activeSheets = localStorage.getItem("crow-nest-open-patrol-sheets");
       const positions = localStorage.getItem("crow-nest-patrol-positions");
-      console.log("🔍 LocalStorage Debug:");
-      console.log(
-        "Active sheets:",
-        activeSheets ? JSON.parse(activeSheets) : null
-      );
-      console.log(
-        "Position history:",
-        positions ? JSON.parse(positions) : null
-      );
+
       return {
         activeSheets: activeSheets ? JSON.parse(activeSheets) : null,
         positions: positions ? JSON.parse(positions) : null,
@@ -321,12 +293,10 @@ Hooks.once("ready", () => {
   };
 
   // Create HUD
-  console.log("Crow Nest | Creating HUD");
   const container = document.createElement("div");
   container.style.position = "absolute";
   document.body.appendChild(container);
   new Hud({ target: container });
-  console.log("Crow Nest | HUD created successfully");
 });
 
 Hooks.on("getActorSheetHeaderButtons", (sheet: any, buttons: any[]) => {
@@ -411,10 +381,6 @@ if (typeof globalThis !== "undefined") {
   globalThis.CrowNest = {
     patrol: PatrolSheetManager.getInstance(),
     testSyncCommunication: () => {
-      console.log("🧪 Testing sync communication...");
-      console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
-
-      // Test basic socket
       if (game.socket) {
         const testData = {
           test: "manual test",
@@ -423,7 +389,6 @@ if (typeof globalThis !== "undefined") {
           isGM: game.user?.isGM,
         };
 
-        console.log("Sending test data:", testData);
         game.socket.emit(`module.${MODULE_ID}-test`, testData);
 
         // Also test the main channel
@@ -435,22 +400,16 @@ if (typeof globalThis !== "undefined") {
           user: game.user?.name ?? "unknown",
         };
 
-        console.log("Sending sync event:", syncEvent);
         game.socket.emit(`module.${MODULE_ID}`, syncEvent);
       }
     },
     testShowPatrolToAll: () => {
-      console.log("🧪 Testing show patrol to all...");
       const patrol = PatrolSheetManager.getInstance();
       if (patrol.currentGroup) {
-        console.log("Current group:", patrol.currentGroup);
         patrol.showPatrolSheetToAll(patrol.currentGroup);
-      } else {
-        console.log("No current group available");
       }
     },
     forceShowPatrol: (groupData: any) => {
-      console.log("🧪 Force showing patrol:", groupData);
       const syncManager = SyncManager.getInstance();
       const event = {
         type: "patrol-sheet" as const,
@@ -462,25 +421,25 @@ if (typeof globalThis !== "undefined") {
       syncManager.broadcast(event);
     },
     checkSocketStatus: () => {
-      console.log("🔍 Socket Status Check:");
-      console.log("Socket exists:", !!game.socket);
-      console.log("Socket connected:", game.socket?.connected);
-      console.log("Socket ID:", game.socket?.id);
-      console.log("User:", game.user?.name, "ID:", game.user?.id);
-      console.log("Is GM:", game.user?.isGM);
-      console.log(
-        "Connected users:",
-        game.users?.contents?.map((u) => ({
+      return {
+        socketExists: !!game.socket,
+        socketConnected: game.socket?.connected,
+        socketId: game.socket?.id,
+        user: {
+          name: game.user?.name,
+          id: game.user?.id,
+          isGM: game.user?.isGM,
+        },
+        connectedUsers: game.users?.contents?.map((u) => ({
           name: u.name,
           id: u.id,
           active: u.active,
           role: u.role,
           isGM: u.isGM,
-        }))
-      );
+        })),
+      };
     },
     simulatePlayerReceive: () => {
-      console.log("🎭 Simulating player receive...");
       const fakePatrolData = {
         id: "test-patrol-123",
         name: "Test Patrol",

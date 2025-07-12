@@ -51,19 +51,16 @@ export class SyncManager {
 
   // Register a handler for specific event types
   registerEventHandler(type: string, handler: (event: SyncEvent) => void) {
-    console.log(`🔧 SyncManager: Registering handler for type: ${type}`);
     this.eventHandlers.set(type, handler);
   }
 
   // Clear a specific event handler
   clearEventHandler(type: string) {
-    console.log(`🧹 SyncManager: Clearing handler for type: ${type}`);
     this.eventHandlers.delete(type);
   }
 
   // Clear all event handlers
   clearAllEventHandlers() {
-    console.log("🧹 SyncManager: Clearing all event handlers");
     this.eventHandlers.clear();
   }
 
@@ -112,39 +109,11 @@ export class SyncManager {
 
   // Broadcast a change to all connected players
   async broadcast(event: SyncEvent) {
-    console.log(
-      "🔄 SyncManager: Broadcasting event",
-      event.type,
-      event.action,
-      event.data
-    );
-
-    console.log("🔍 SyncManager: Checking socket availability...");
-    console.log("📊 Socket info:", {
-      socketExists: !!game.socket,
-      userId: game.user?.id,
-      userName: game.user?.name,
-      isGM: game.user?.isGM,
-      moduleId: MODULE_ID,
-      channel: `module.${MODULE_ID}`,
-    });
-
     // Send to all players via Foundry's socket system
     if (game.socket) {
-      console.log(`📡 SyncManager: Emitting to channel: module.${MODULE_ID}`);
-
       // In Foundry VTT, game.socket.emit() should broadcast to all connected clients
       // Let's try the standard approach first
       game.socket.emit(`module.${MODULE_ID}`, event);
-      console.log("✅ SyncManager: Event sent via socket");
-
-      // Also log connected users for debugging
-      console.log(
-        "👥 Connected users:",
-        game.users?.map((u) => ({ id: u.id, name: u.name, active: u.active }))
-      );
-    } else {
-      console.warn("⚠️ SyncManager: No socket available");
     }
 
     // Also trigger local listeners
@@ -163,31 +132,20 @@ export class SyncManager {
   }
 
   private notifyLocalListeners(event: SyncEvent) {
-    console.log("🔔 SyncManager: Notifying local listeners for", event.type);
-
     // Check for registered event handlers first
     const handler = this.eventHandlers.get(event.type);
     if (handler) {
-      console.log(`🎯 SyncManager: Found event handler for ${event.type}`);
       handler(event);
     }
 
     const callbacks = this.listeners.get(event.type);
     if (callbacks) {
-      console.log(
-        `📢 SyncManager: Found ${callbacks.length} callbacks for ${event.type}`
-      );
       callbacks.forEach((callback) => callback(event));
-    } else {
-      console.log(`📭 SyncManager: No callbacks found for ${event.type}`);
     }
 
     // Also notify 'all' listeners
     const allCallbacks = this.listeners.get("all");
     if (allCallbacks) {
-      console.log(
-        `📢 SyncManager: Found ${allCallbacks.length} 'all' callbacks`
-      );
       allCallbacks.forEach((callback) => callback(event));
     }
   }
@@ -210,11 +168,7 @@ export function createSyncEvent(
 
 // Test function specifically for patrol-sheet events
 export function testPatrolSheetSync() {
-  console.log("🧪 Testing patrol-sheet sync communication...");
-  console.log("Current user:", game.user?.name, "isGM:", game.user?.isGM);
-
   if (!game.socket) {
-    console.error("❌ No socket available!");
     return;
   }
 
@@ -235,7 +189,6 @@ export function testPatrolSheetSync() {
     user: game.user?.name || "unknown",
   };
 
-  console.log("📤 Sending test patrol-sheet event:", testEvent);
   game.socket.emit(`module.crow-nest`, testEvent);
 }
 
@@ -246,48 +199,16 @@ export function initializeSync() {
   const syncManager = SyncManager.getInstance();
 
   if (game.socket) {
-    console.log("✅ SyncManager: Socket available, setting up listener");
-    console.log("🔌 Socket object:", game.socket);
-
     // Setup the main listener
     const mainChannel = `module.${MODULE_ID}`;
-    console.log(`🎯 Setting up listener for: ${mainChannel}`);
 
     // IMPORTANT: Remove any existing listener first to prevent duplicates
-    console.log("🧹 Cleaning up existing listeners...");
     game.socket.off(mainChannel);
 
     // Register the main socket listener
     game.socket.on(mainChannel, (event: SyncEvent) => {
-      console.log("📨 SyncManager: Socket received event", event);
-      console.log(
-        "📨 Received by user:",
-        game.user?.name,
-        "isGM:",
-        game.user?.isGM
-      );
-      console.log("📨 Event details:", {
-        type: event.type,
-        action: event.action,
-        timestamp: event.timestamp,
-        sender: event.user,
-      });
-
-      // Special handling for patrol-sheet events
-      if (event.type === "patrol-sheet" && event.action === "show") {
-        console.log("🚨 PATROL SHEET SHOW EVENT RECEIVED!");
-        console.log("🚨 Data:", event.data);
-        console.log("🚨 Current user is GM:", game.user?.isGM);
-        console.log("🚨 Should show patrol sheet to player");
-      }
-
       syncManager.handleRemoteEvent(event);
     });
-
-    console.log(`🎯 SyncManager: Listening on ${mainChannel}`);
-    console.log("✅ SyncManager: Socket listener fully configured");
-  } else {
-    console.error("❌ SyncManager: No socket available during initialization");
   }
 }
 

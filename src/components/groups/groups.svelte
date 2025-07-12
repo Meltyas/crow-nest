@@ -45,7 +45,6 @@
     syncManager.subscribe('modifiers', handleModifiersSync);
 
     // Groups sync is handled globally, no need to subscribe here
-    console.log("📋 Groups component mounted, using global groups store");
   });
 
   onDestroy(() => {
@@ -70,7 +69,6 @@
   }
 
   async function persist() {
-    console.log("💾 Groups: Persisting changes via global store for user:", game.user?.name);
     await persistGroups(groups);
   }
 
