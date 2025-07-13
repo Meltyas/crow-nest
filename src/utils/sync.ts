@@ -21,21 +21,6 @@ export interface SyncEvent {
   isCommand?: boolean; // Indicates this is a command for the GM to execute
 }
 
-export interface SyncCommand {
-  type:
-    | "stats"
-    | "modifiers"
-    | "resources"
-    | "tokens"
-    | "patrols"
-    | "admins"
-    | "reputation"
-    | "groups";
-  action: "update" | "create" | "delete";
-  data: any;
-  timestamp: number;
-  user: string;
-}
 
 export class SyncManager {
   private static instance: SyncManager;
