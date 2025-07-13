@@ -13,7 +13,11 @@
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
 
-  export let saveGroups: (groups: Group[]) => Promise<void>; // Legacy prop, not used anymore
+  // Access game through global window object to avoid declaration issues
+  const game = (globalThis as any).game;
+  const FilePicker = (globalThis as any).FilePicker;
+
+  export const saveGroups: (groups: Group[]) => Promise<void> = async () => {}; // Legacy prop, not used anymore
   export let labels = {
     groupSingular: 'Patrol',
     addGroup: 'Add Patrol',

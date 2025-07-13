@@ -418,7 +418,7 @@
       <!-- Header -->
       <div class="patrol-sheet-header">
         <!-- Left Column: Officer image -->
-        <div class="left-column" on:mousedown={handleMouseDown}>
+        <div class="left-column" role="button" tabindex="0" on:mousedown={handleMouseDown}>
           {#if group.officer}
             <img src={group.officer.img} alt={group.officer.name} class="officer-image" />
           {:else}
@@ -430,7 +430,7 @@
 
         <!-- Middle Column: Patrol name and stats -->
         <div class="middle-column">
-          <div class="patrol-info" on:mousedown={handleMouseDown}>
+          <div class="patrol-info" role="button" tabindex="0" on:mousedown={handleMouseDown}>
             <h2 class="patrol-name">{groupName}</h2>
           </div>
 

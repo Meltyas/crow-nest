@@ -1572,7 +1572,7 @@
                     <div class="add-mod-form">
                       <div class="modifier-image-section">
                         <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
-                          <img src={newModifier.img} alt="Modifier Image" />
+                          <img src={newModifier.img} alt="" />
                         </button>
                       </div>
                       <input placeholder="Nombre" bind:value={newModifier.name} />
