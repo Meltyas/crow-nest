@@ -66,21 +66,17 @@
   let resizeStartPos = { x: 0, y: 0 };
   let resizeStartSize = { width: 0, height: 0 };
 
-  // Sync manager
+  // Sync manager and handlers
   let syncManager: SyncManager;
-
-  // Handlers instance
   let handlers: GuardHandlers;
 
   function switchTab(tab: 'guardia' | 'patrullas' | 'admins') {
     activeTab = tab;
-    // Save the active tab to localStorage
     localStorage.setItem('crow-nest-active-tab', tab);
   }
 
   function switchGuardTab(tab: 'reputation' | 'resources') {
     activeGuardTab = tab;
-    // Save the active guard sub-tab to localStorage
     localStorage.setItem('crow-nest-guard-subtab', tab);
   }
 
@@ -143,99 +139,6 @@
     window.addEventListener('mouseup', handleMouseUp);
   }
 
-  onMount(() => {
-    stats = getStats() as Stat[];
-    log = getLog();
-    modifiers = getModifiers();
-    sortModifiersByState(); // Sort modifiers on initial load
-    resources = getResources();
-    reputation = getReputation();
-    patrols = getPatrols();
-    admins = getAdmins();
-
-    // Initialize handlers
-    handlers = new GuardHandlers(updateComponentData);
-
-    // Setup real-time synchronization
-    syncManager = SyncManager.getInstance();
-
-    // Listen for different types of updates
-    syncManager.subscribe('stats', handlers.handleStatsSync);
-    syncManager.subscribe('modifiers', handlers.handleModifiersSync);
-    syncManager.subscribe('resources', handlers.handleResourcesSync);
-    syncManager.subscribe('reputation', handlers.handleReputationSync);
-    syncManager.subscribe('patrols', handlers.handlePatrolsSync);
-    syncManager.subscribe('admins', handlers.handleAdminsSync);
-
-    // Update handlers with initial data
-    updateHandlersData();
-
-    // Also listen for direct game settings changes as backup
-    Hooks.on('updateSetting', (setting: any) => {
-      if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
-        stats = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_LOG}`) {
-        log = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
-        modifiers = setting.value || [];
-        sortModifiersByState(); // Sort modifiers when loaded from settings
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_RESOURCES}`) {
-        resources = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_REPUTATION}`) {
-        reputation = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.patrols`) {
-        patrols = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.admins`) {
-        admins = setting.value || [];
-        updateHandlersData();
-      }
-    });
-  });
-
-  onDestroy(() => {
-    if (syncManager && handlers) {
-      syncManager.unsubscribe('stats', handlers.handleStatsSync);
-      syncManager.unsubscribe('modifiers', handlers.handleModifiersSync);
-      syncManager.unsubscribe('resources', handlers.handleResourcesSync);
-      syncManager.unsubscribe('reputation', handlers.handleReputationSync);
-      syncManager.unsubscribe('patrols', handlers.handlePatrolsSync);
-      syncManager.unsubscribe('admins', handlers.handleAdminsSync);
-    }
-  });
-
-  function getTotalStatValue(stat: Stat): number {
-    const modifierBonus = modifiers.reduce((acc, m) => acc + (m.mods[stat.key] || 0), 0);
-    return stat.value + modifierBonus;
-  }
-
-  function sortModifiersByState() {
-    // Sort modifiers by state: positive -> neutral -> negative
-    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
-    modifiers.sort((a, b) => {
-      const stateA = stateOrder[a.state || 'neutral'] ?? 1; // Default to neutral if state is undefined
-      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
-      return stateA - stateB;
-    });
-  }
-
   // Update handlers with current component data
   function updateHandlersData() {
     if (handlers) {
@@ -271,6 +174,20 @@
     }
   }
 
+  function getTotalStatValue(stat: Stat): number {
+    const modifierBonus = modifiers.reduce((acc, m) => acc + (m.mods[stat.key] || 0), 0);
+    return stat.value + modifierBonus;
+  }
+
+  function sortModifiersByState() {
+    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
+    modifiers.sort((a, b) => {
+      const stateA = stateOrder[a.state || 'neutral'] ?? 1;
+      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
+      return stateA - stateB;
+    });
+  }
+
   // Toggle state handlers (these stay local as they're simple state changes)
   function handleToggleEditing() {
     editing = !editing;
@@ -298,14 +215,89 @@
     editingResources = !editingResources;
     updateHandlersData();
   }
+
+  onMount(() => {
+    stats = getStats() as Stat[];
+    log = getLog();
+    modifiers = getModifiers();
+    sortModifiersByState();
+    resources = getResources();
+    reputation = getReputation();
+    patrols = getPatrols();
+    admins = getAdmins();
+
+    // Initialize handlers
+    handlers = new GuardHandlers(updateComponentData);
+    updateHandlersData();
+
+    // Setup real-time synchronization
+    syncManager = SyncManager.getInstance();
+
+    // Listen for different types of updates using handlers
+    syncManager.subscribe('stats', handlers.handleStatsSync);
+    syncManager.subscribe('modifiers', handlers.handleModifiersSync);
+    syncManager.subscribe('resources', handlers.handleResourcesSync);
+    syncManager.subscribe('reputation', handlers.handleReputationSync);
+    syncManager.subscribe('patrols', handlers.handlePatrolsSync);
+    syncManager.subscribe('admins', handlers.handleAdminsSync);
+
+    // Also listen for direct game settings changes as backup
+    Hooks.on('updateSetting', (setting: any) => {
+      if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
+        stats = setting.value || [];
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_LOG}`) {
+        log = setting.value || [];
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
+        modifiers = setting.value || [];
+        sortModifiersByState();
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_RESOURCES}`) {
+        resources = setting.value || [];
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.${SETTING_REPUTATION}`) {
+        reputation = setting.value || [];
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.patrols`) {
+        patrols = setting.value || [];
+        updateHandlersData();
+      }
+
+      if (setting.key === `${MODULE_ID}.admins`) {
+        admins = setting.value || [];
+        updateHandlersData();
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (syncManager && handlers) {
+      syncManager.unsubscribe('stats', handlers.handleStatsSync);
+      syncManager.unsubscribe('modifiers', handlers.handleModifiersSync);
+      syncManager.unsubscribe('resources', handlers.handleResourcesSync);
+      syncManager.unsubscribe('reputation', handlers.handleReputationSync);
+      syncManager.unsubscribe('patrols', handlers.handlePatrolsSync);
+      syncManager.unsubscribe('admins', handlers.handleAdminsSync);
+    }
+  });
 </script>
 
 {#if showPopup}
-  <div class="crow-nest-guard">
-    <div
-      class="custom-popup"
-      style="transform: translate({popupPosition.x}px, {popupPosition.y}px); width: {popupSize.width}px; height: {popupSize.height}px;"
-    >
+  <div
+    class="custom-popup"
+    style="transform: translate({popupPosition.x}px, {popupPosition.y}px); width: {popupSize.width}px; height: {popupSize.height}px;"
+  >
     <!-- Drag Handle -->
     <div class="drag-handle" role="button" tabindex="0" on:mousedown={onDragStart}></div>
 
@@ -452,5 +444,4 @@
         </div>
       </div>
     </div>
-  </div>
 {/if}

@@ -153,7 +153,7 @@
     width: 100%;
     height: 100%;
     background: transparent;
-    z-index: 10000;
+    z-index: 75;
     pointer-events: none;
   }
 

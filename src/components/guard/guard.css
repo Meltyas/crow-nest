@@ -1,23 +1,23 @@
-/* Guard Component Styles */
-.custom-popup {
+﻿/* Guard Component Styles - Scoped to avoid conflicts with Foundry */
+.crow-nest-guard .custom-popup {
   position: fixed;
   border-radius: 12px;
   overflow: hidden;
   z-index: 80;
 }
 
-.image-button {
+.crow-nest-guard .image-button {
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
 }
 
-.image-button:hover {
+.crow-nest-guard .image-button:hover {
   opacity: 0.8;
 }
 
-.drag-handle {
+.crow-nest-guard .drag-handle {
   position: absolute;
   top: 0;
   left: 60px;
@@ -28,7 +28,7 @@
   z-index: 82;
 }
 
-.resize-handle {
+.crow-nest-guard .resize-handle {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -41,11 +41,11 @@
   transition: background 0.3s ease;
 }
 
-.resize-handle:hover {
+.crow-nest-guard .resize-handle:hover {
   background: rgba(212, 175, 55, 0.6);
 }
 
-.resize-handle::before {
+.crow-nest-guard .resize-handle::before {
   content: "";
   position: absolute;
   bottom: 2px;
@@ -56,14 +56,14 @@
   border-bottom: 8px solid rgba(212, 175, 55, 0.8);
 }
 
-.app-container {
+.crow-nest-guard .app-container {
   display: flex;
   height: 100%;
   min-height: 400px;
   position: relative;
 }
 
-.close-button {
+.crow-nest-guard .close-button {
   position: absolute;
   top: 15px;
   right: 15px;
@@ -84,20 +84,20 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
-.close-button:hover {
+.crow-nest-guard .close-button:hover {
   background: rgba(212, 175, 55, 0.9);
   color: #1a0f08;
   transform: scale(1.1);
 }
 
-.tab-navigation {
+.crow-nest-guard .tab-navigation {
   display: flex;
   flex-direction: column;
   min-width: 60px;
   border-right: 2px solid #d4af37;
 }
 
-.tab {
+.crow-nest-guard .tab {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,18 +112,18 @@
   min-height: 50px;
 }
 
-.tab:hover {
+.crow-nest-guard .tab:hover {
   background: rgba(40, 50, 70, 0.9);
   color: #d4af37;
 }
 
-.tab.active {
+.crow-nest-guard .tab.active {
   background: rgba(50, 60, 80, 1);
   color: #d4af37;
   border-left: 4px solid #d4af37;
 }
 
-.content-area {
+.crow-nest-guard .content-area {
   border-top: 2px solid #d4af37;
   border-right: 2px solid #d4af37;
   border-bottom: 2px solid #d4af37;
@@ -143,20 +143,20 @@
   font-family: "Cinzel", serif;
 }
 
-.guard-container {
+.crow-nest-guard .guard-container {
   padding: 0.5rem;
   color: white;
   overflow-y: auto;
 }
 
 /* Guard Sub-tabs */
-.guard-sub-tabs {
+.crow-nest-guard .guard-sub-tabs {
   display: flex;
   margin: 1rem 0;
   border-bottom: 2px solid #d4af37;
 }
 
-.guard-sub-tab {
+.crow-nest-guard .guard-sub-tab {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -172,19 +172,19 @@
   margin-right: 2px;
 }
 
-.guard-sub-tab:hover {
+.crow-nest-guard .guard-sub-tab:hover {
   background: rgba(30, 40, 60, 0.9);
   color: #d4af37;
 }
 
-.guard-sub-tab.active {
+.crow-nest-guard .guard-sub-tab.active {
   background: rgba(40, 50, 70, 1);
   color: #d4af37;
   border-top: 3px solid #d4af37;
 }
 
 /* Button Styles */
-.small-button {
+.crow-nest-guard .small-button {
   font-size: 0.8rem;
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
@@ -198,32 +198,32 @@
   gap: 0.3rem;
 }
 
-.small-button:hover {
+.crow-nest-guard .small-button:hover {
   background: rgba(107, 114, 128, 0.9);
   border-color: #9ca3af;
   transform: translateY(-1px);
 }
 
-.add-button {
+.crow-nest-guard .dd-button {
   background: rgba(34, 197, 94, 0.8);
   border-color: #16a34a;
 }
 
-.add-button:hover {
+.crow-nest-guard .dd-button:hover {
   background: rgba(34, 197, 94, 0.9);
   border-color: #15803d;
 }
 
-.edit-button {
+.crow-nest-guard .dit-button {
   font-size: 0.85em;
   padding: 0.25rem 0.5rem;
 }
 
 /* Common Form Styles */
-.add-stat-form,
-.add-mod-form,
-.add-resource-form,
-.add-reputation-form {
+.crow-nest-guard .dd-stat-form,
+.crow-nest-guard .dd-mod-form,
+.crow-nest-guard .dd-resource-form,
+.crow-nest-guard .dd-reputation-form {
   display: flex;
   gap: 0.5rem;
   margin: 0.5rem 0;
@@ -234,25 +234,25 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.add-stat-form {
+.crow-nest-guard .dd-stat-form {
   gap: 0.25rem;
   padding: 0.5rem;
 }
 
-.add-mod-form {
+.crow-nest-guard .dd-mod-form {
   flex-direction: column;
   gap: 0.25rem;
 }
 
 /* Input Styles */
-.add-stat-form input,
-.add-mod-form input,
-.add-resource-form input,
-.add-reputation-form input,
-.modifier-edit input,
-.modifier-edit textarea,
-.reputation-edit input,
-.reputation-edit textarea {
+.crow-nest-guard .dd-stat-form input,
+.crow-nest-guard .dd-mod-form input,
+.crow-nest-guard .dd-resource-form input,
+.crow-nest-guard .dd-reputation-form input,
+.crow-nest-guard .odifier-edit input,
+.crow-nest-guard .odifier-edit textarea,
+.crow-nest-guard .eputation-edit input,
+.crow-nest-guard .eputation-edit textarea {
   background: rgba(0, 0, 0, 0.1);
   color: #f9fafb;
   border: 1px solid #6b7280;
@@ -260,40 +260,40 @@
   padding: 0.25rem 0.5rem;
 }
 
-.add-reputation-form input {
+.crow-nest-guard .dd-reputation-form input {
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
 }
 
-.add-stat-form input::placeholder,
-.add-mod-form input::placeholder,
-.add-resource-form input::placeholder,
-.add-reputation-form input::placeholder,
-.modifier-edit input::placeholder,
-.modifier-edit textarea::placeholder,
-.reputation-edit input::placeholder,
-.reputation-edit textarea::placeholder {
+.crow-nest-guard .dd-stat-form input::placeholder,
+.crow-nest-guard .dd-mod-form input::placeholder,
+.crow-nest-guard .dd-resource-form input::placeholder,
+.crow-nest-guard .dd-reputation-form input::placeholder,
+.crow-nest-guard .odifier-edit input::placeholder,
+.crow-nest-guard .odifier-edit textarea::placeholder,
+.crow-nest-guard .eputation-edit input::placeholder,
+.crow-nest-guard .eputation-edit textarea::placeholder {
   color: #9ca3af;
 }
 
-.add-stat-form input:focus,
-.add-mod-form input:focus,
-.add-resource-form input:focus,
-.add-reputation-form input:focus,
-.modifier-edit input:focus,
-.modifier-edit textarea:focus,
-.reputation-edit input:focus,
-.reputation-edit textarea:focus {
+.crow-nest-guard .dd-stat-form input:focus,
+.crow-nest-guard .dd-mod-form input:focus,
+.crow-nest-guard .dd-resource-form input:focus,
+.crow-nest-guard .dd-reputation-form input:focus,
+.crow-nest-guard .odifier-edit input:focus,
+.crow-nest-guard .odifier-edit textarea:focus,
+.crow-nest-guard .eputation-edit input:focus,
+.crow-nest-guard .eputation-edit textarea:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 /* Textarea Styles */
-.add-mod-form textarea,
-.add-reputation-form textarea,
-.reputation-edit textarea {
+.crow-nest-guard .dd-mod-form textarea,
+.crow-nest-guard .dd-reputation-form textarea,
+.crow-nest-guard .eputation-edit textarea {
   min-height: 60px;
   resize: vertical;
   padding: 0.25rem;
@@ -304,53 +304,53 @@
   color: #f9fafb;
 }
 
-.add-reputation-form textarea {
+.crow-nest-guard .dd-reputation-form textarea {
   flex: 1;
   padding: 0.5rem;
   border-radius: 6px;
 }
 
-.add-mod-form textarea::placeholder,
-.add-reputation-form textarea::placeholder {
+.crow-nest-guard .dd-mod-form textarea::placeholder,
+.crow-nest-guard .dd-reputation-form textarea::placeholder {
   color: #9ca3af;
 }
 
 /* Stats and Layout Styles */
-.stats-and-modifiers-container {
+.crow-nest-guard .tats-and-modifiers-container {
   display: flex;
   gap: 1rem;
   width: 100%;
 }
 
-.stats-section {
+.crow-nest-guard .tats-section {
   flex: 0 0 60%;
   min-width: 60%;
 }
 
-.modifiers-section {
+.crow-nest-guard .odifiers-section {
   flex: 1;
   min-width: 35%;
 }
 
-.modifiers-section h4 {
+.crow-nest-guard .odifiers-section h4 {
   margin-top: 0;
   margin-bottom: 0.5rem;
 }
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
-  .stats-and-modifiers-container {
+.crow-nest-guard .tats-and-modifiers-container {
     flex-direction: column;
   }
 
-  .stats-section,
-  .modifiers-section {
+.crow-nest-guard .tats-section,
+.crow-nest-guard .odifiers-section {
     flex: 1;
     min-width: 100%;
   }
 }
 
-.stat {
+.crow-nest-guard .tat {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -362,12 +362,12 @@
   box-sizing: border-box;
 }
 
-.stat img {
+.crow-nest-guard .tat img {
   height: 42px;
   width: 42px;
 }
 
-.stat-img {
+.crow-nest-guard .tat-img {
   background: none;
   border: none;
   padding: 0;
@@ -376,7 +376,7 @@
   cursor: pointer;
 }
 
-.stat-container {
+.crow-nest-guard .tat-container {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -384,7 +384,7 @@
   flex-wrap: wrap;
 }
 
-.log {
+.crow-nest-guard .og {
   background: #333;
   padding: 0.25rem;
   margin-top: 0.5rem;
@@ -392,44 +392,44 @@
   overflow-y: auto;
 }
 
-.button-holder {
+.crow-nest-guard .utton-holder {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
-.stats-editables {
+.crow-nest-guard .tats-editables {
   display: flex;
   gap: 0.25rem;
 }
 
-.stat-name-input {
+.crow-nest-guard .tat-name-input {
   max-width: 100px;
   text-align: center;
 }
 
-.stat-number {
+.crow-nest-guard .tat-number {
   display: flex;
 }
 
-.stat-number-input {
+.crow-nest-guard .tat-number-input {
   width: 30px;
   text-align: center;
 }
 
-.stat-number-close {
+.crow-nest-guard .tat-number-close {
   width: 24px;
   text-align: center;
 }
 
-.stat-view {
+.crow-nest-guard .tat-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   font-weight: bold;
 }
 
-.stat-value {
+.crow-nest-guard .tat-value {
   display: flex;
   align-items: center;
   height: 32px;
@@ -437,23 +437,23 @@
   font-weight: bold;
 }
 
-.stat-name {
+.crow-nest-guard .tat-name {
   margin-bottom: 0.25rem;
 }
 
-.standard-image {
+.crow-nest-guard .tandard-image {
   width: 32px;
   height: 32px;
 }
 
 /* Modifier Styles */
-.modifier-image-section {
+.crow-nest-guard .odifier-image-section {
   display: flex;
   justify-content: center;
   margin-bottom: 0.5rem;
 }
 
-.modifier-image-button {
+.crow-nest-guard .odifier-image-button {
   background: none;
   border: 2px solid #666;
   border-radius: 4px;
@@ -466,18 +466,18 @@
   justify-content: center;
 }
 
-.modifier-image-button:hover {
+.crow-nest-guard .odifier-image-button:hover {
   border-color: #4a90e2;
 }
 
-.modifier-image-button img {
+.crow-nest-guard .odifier-image-button img {
   width: 60px;
   height: 60px;
   object-fit: cover;
   border-radius: 2px;
 }
 
-.modifier-stats-container {
+.crow-nest-guard .odifier-stats-container {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -485,14 +485,14 @@
   margin: 0.5rem 0;
 }
 
-.form-buttons {
+.crow-nest-guard .orm-buttons {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
   margin-top: 0.5rem;
 }
 
-.modifier {
+.crow-nest-guard .odifier {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -503,31 +503,31 @@
   padding: 0.25rem;
 }
 
-.modifier-positive {
+.crow-nest-guard .odifier-positive {
   border-color: #22c55e; /* Green border for positive */
 }
 
-.modifier-neutral {
+.crow-nest-guard .odifier-neutral {
   border-color: #ffffff; /* White border for neutral */
 }
 
-.modifier-negative {
+.crow-nest-guard .odifier-negative {
   border-color: #ef4444; /* Red border for negative */
 }
 
-.state-selector {
+.crow-nest-guard .tate-selector {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0.5rem 0;
 }
 
-.state-selector label {
+.crow-nest-guard .tate-selector label {
   font-weight: bold;
   min-width: 50px;
 }
 
-.state-selector select {
+.crow-nest-guard .tate-selector select {
   padding: 0.25rem;
   border: 1px solid #ccc;
   border-radius: 3px;
@@ -535,14 +535,14 @@
   font-size: 0.9em;
 }
 
-.modifier-values {
+.crow-nest-guard .odifier-values {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
 }
 
-.modifier-values input {
+.crow-nest-guard .odifier-values input {
   width: 32px;
   height: 32px;
   text-align: center;
@@ -550,46 +550,47 @@
   border-radius: 3px;
 }
 
-.modifier-values-edit {
+.crow-nest-guard .odifier-values-edit {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
 }
 
-.modifier-values-edit input {
+.crow-nest-guard .odifier-values-edit input {
   height: 32px;
   width: 32px;
 }
 
-.modifier-edit {
+.crow-nest-guard .odifier-edit {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.modifier-container {
+.crow-nest-guard .odifier-container {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
-.modifier-values-contain {
+.crow-nest-guard .odifier-values-contain {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
 }
 
 /* Resource Styles */
-.resource {
+.crow-nest-guard .esource {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   margin-bottom: 0.25rem;
 }
 
-.resource-container {
+.crow-nest-guard .esource-container {
   display: flex;
   gap: 0.25rem;
 }
+
