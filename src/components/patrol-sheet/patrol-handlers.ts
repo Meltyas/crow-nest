@@ -13,7 +13,7 @@ export class PatrolHandlers {
   private labels: any;
 
   constructor(
-    group: Group, 
+    group: Group,
     labels: any,
     private updateComponent: () => void
   ) {
@@ -57,20 +57,24 @@ export class PatrolHandlers {
     const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
     const guardMod = this.guardBonus(stat.key);
     if (guardMod) {
-      lines.push(`Guard modifier ${guardMod > 0 ? '+' : ''}${guardMod}`);
+      lines.push(`Guard modifier ${guardMod > 0 ? "+" : ""}${guardMod}`);
     }
     const groupMod = this.group.mods[stat.key];
     if (groupMod) {
-      lines.push(`Patrol modifier ${groupMod > 0 ? '+' : ''}${groupMod}`);
+      lines.push(`Patrol modifier ${groupMod > 0 ? "+" : ""}${groupMod}`);
     }
 
-    const groupName = this.group.name || (this.group.officer ? `${this.labels.groupSingular} de ${this.group.officer.name}` : 'Grupo');
+    const groupName =
+      this.group.name ||
+      (this.group.officer
+        ? `${this.labels.groupSingular} de ${this.group.officer.name}`
+        : "Grupo");
     const headerImg = this.group.officer
       ? `<img src="${this.group.officer.img}" alt="${this.group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
-      : '';
+      : "";
     const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${groupName}</strong></div>`;
 
-    const flavor = `${header}<br/>${lines.join('<br/>')}`;
+    const flavor = `${header}<br/>${lines.join("<br/>")}`;
     r.toMessage({ speaker: { alias: groupName }, flavor });
   };
 
@@ -83,15 +87,20 @@ export class PatrolHandlers {
   // Handle drag start for deploy
   handleDragDeploy = (event: DragEvent) => {
     const payload = {
-      type: 'CrowPatrol',
+      type: "CrowPatrol",
       patrolId: this.group.id,
     };
-    event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
+    event.dataTransfer?.setData("text/plain", JSON.stringify(payload));
   };
 
   // Get computed group name
   getGroupName = (): string => {
-    return this.group.name || (this.group.officer ? `${this.labels.groupSingular} de ${this.group.officer.name}` : 'Grupo');
+    return (
+      this.group.name ||
+      (this.group.officer
+        ? `${this.labels.groupSingular} de ${this.group.officer.name}`
+        : "Grupo")
+    );
   };
 
   // Get current data

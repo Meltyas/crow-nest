@@ -209,13 +209,12 @@
   .stat-value {
     display: flex;
     align-items: center;
-    height: 32px;
-    font-size: 24px;
+    font-size: 1rem;
     font-weight: bold;
   }
 
   .stat-name {
-    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
   }
 
   .standard-image {

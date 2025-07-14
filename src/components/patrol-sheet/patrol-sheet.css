@@ -29,11 +29,19 @@
   display: flex;
   gap: 0.25rem;
   position: relative;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.1),
+    rgba(212, 175, 55, 0.05)
+  );
 }
 
 .crow-nest-patrol .patrol-sheet-header:hover {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.15),
+    rgba(212, 175, 55, 0.08)
+  );
 }
 
 .crow-nest-patrol .left-column {

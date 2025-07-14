@@ -149,6 +149,12 @@
   overflow-y: auto;
 }
 
+.crow-nest-guard .stats-and-modifiers-container {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 /* Guard Sub-tabs */
 .crow-nest-guard .guard-sub-tabs {
   display: flex;
@@ -339,12 +345,12 @@
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
-.crow-nest-guard .tats-and-modifiers-container {
+  .crow-nest-guard .tats-and-modifiers-container {
     flex-direction: column;
   }
 
-.crow-nest-guard .tats-section,
-.crow-nest-guard .odifiers-section {
+  .crow-nest-guard .tats-section,
+  .crow-nest-guard .odifiers-section {
     flex: 1;
     min-width: 100%;
   }
@@ -593,4 +599,3 @@
   display: flex;
   gap: 0.25rem;
 }
-
