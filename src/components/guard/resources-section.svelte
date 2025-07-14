@@ -70,9 +70,10 @@
     dispatch('showResourceInChat', res);
   }
 
-  // Drag and drop functionality
+  // Drag and drop functionality - Drop zones within items
   let draggedIndex: number | null = null;
-  let dropZoneVisible: Record<number, boolean> = {};
+  let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};
+
   function handleDragStart(event: DragEvent, index: number) {
     console.log('🚀 DRAG START - Resource index:', index);
     draggedIndex = index;
@@ -85,48 +86,75 @@
   function handleDragOver(event: DragEvent, index: number) {
     event.preventDefault();
     event.stopPropagation();
-    console.log('👆 DRAG OVER - Resource target index:', index, 'dragged:', draggedIndex);
-    if (event.dataTransfer && draggedIndex !== null && draggedIndex !== index) {
-      event.dataTransfer.dropEffect = 'move';
+    
+    if (draggedIndex !== null && draggedIndex !== index) {
+      const rect = (event.currentTarget as Element).getBoundingClientRect();
+      const x = event.clientX;
+      const centerX = rect.left + rect.width / 2;
+      const side = x < centerX ? 'left' : 'right';
+      
+      console.log('👆 DRAG OVER - Resource index:', index, 'side:', side, 'dragged:', draggedIndex);
+      
       // Clear other drop zones first
       dropZoneVisible = {};
-      dropZoneVisible[index] = true;
+      dropZoneVisible[index] = side;
       dropZoneVisible = { ...dropZoneVisible };
+      
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
       console.log('✨ DROP ZONE VISIBLE:', dropZoneVisible);
     }
   }
 
   function handleDragLeave(event: DragEvent, index: number) {
     console.log('👈 DRAG LEAVE - Resource index:', index);
-    // Only hide if we're actually leaving the item, not just moving between child elements
+    // Only hide if we're actually leaving the item
     const rect = (event.currentTarget as Element).getBoundingClientRect();
     const x = event.clientX;
     const y = event.clientY;
-    
+
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      dropZoneVisible[index] = false;
+      dropZoneVisible[index] = null;
       dropZoneVisible = { ...dropZoneVisible };
       console.log('🚫 DROP ZONE HIDDEN:', dropZoneVisible);
     }
   }
 
   function handleDrop(event: DragEvent, dropIndex: number) {
-    console.log('🎯 DROP EVENT - Resource from:', draggedIndex, 'to:', dropIndex);
     event.preventDefault();
     event.stopPropagation();
+    
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
-      console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'dropIndex:', dropIndex);
-      // Dispatch with the correct parameters (dragIndex, dropIndex)
-      dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex });
+      const side = dropZoneVisible[dropIndex];
+      let newIndex: number;
+      
+      if (side === 'left') {
+        // Insert before this item
+        newIndex = dropIndex;
+      } else {
+        // Insert after this item
+        newIndex = dropIndex + 1;
+      }
+      
+      // Adjust for removal if dragging to a position after current
+      if (draggedIndex < newIndex) {
+        newIndex = newIndex - 1;
+      }
+      
+      console.log('🎯 DROP EVENT - from:', draggedIndex, 'to:', side, 'of index:', dropIndex, 'final newIndex:', newIndex);
+      console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'newIndex:', newIndex);
+      dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex: newIndex });
     } else {
       console.log('❌ NO REORDER - same index or null draggedIndex');
     }
+    
     draggedIndex = null;
     dropZoneVisible = {};
   }
 
   function handleDragEnd() {
-    console.log('🏁 DRAG END - Resource');
+    console.log('🏁 DRAG END - Resources');
     draggedIndex = null;
     dropZoneVisible = {};
   }
@@ -168,10 +196,14 @@
            on:dragend={handleDragEnd}
            class:dragging={draggedIndex === i}>
 
-        <!-- Drop zone overlay -->
-        <div class="drop-zone" class:show={dropZoneVisible[i]}>
-          Soltar aquí
+        <!-- Drop zones overlays -->
+        <div class="drop-zone drop-zone-left" class:show={dropZoneVisible[i] === 'left'}>
+          ⬅️ Insertar antes
         </div>
+        <div class="drop-zone drop-zone-right" class:show={dropZoneVisible[i] === 'right'}>
+          Insertar después ➡️
+        </div>
+
         {#if editingResources}
           <div class="resource-edit">
             <button type="button" class="image-button resource-edit-image-button" on:click={() => onResImageClick(res)}>
@@ -208,7 +240,6 @@
               </div>
             {/if}
           </div>
-
         {/if}
       </div>
     {/each}
@@ -293,10 +324,9 @@
   .drop-zone {
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
     bottom: 0;
-    background: rgba(59, 130, 246, 0.2);
+    width: 50%;
+    background: rgba(59, 130, 246, 0.3);
     border: 2px dashed #3b82f6;
     border-radius: 8px;
     z-index: 10;
@@ -305,8 +335,23 @@
     justify-content: center;
     color: #3b82f6;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
     pointer-events: none;
+    backdrop-filter: blur(2px);
+  }
+
+  .drop-zone-left {
+    left: 0;
+    background: rgba(255, 165, 0, 0.3);
+    border-color: #ffa500;
+    color: #ffa500;
+  }
+
+  .drop-zone-right {
+    right: 0;
+    background: rgba(34, 197, 94, 0.3);
+    border-color: #22c55e;
+    color: #22c55e;
   }
 
   .resource-item:not(.dragging) .drop-zone.show {
