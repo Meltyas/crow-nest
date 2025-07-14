@@ -1,0 +1,122 @@
+/* Global Fonts for Crow Nest Module */
+
+/* Overpass Font from Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Overpass:wght@400;700&display=swap");
+
+/* Eveleth Font Family - Local files */
+@font-face {
+  font-family: "Eveleth";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Regular.otf")
+    format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Bold.otf")
+    format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Light.otf")
+    format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Thin.otf")
+    format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Slant";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Slant%20Regular.otf")
+    format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Slant";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Slant%20Bold.otf")
+    format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Slant";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Slant%20Light.otf")
+    format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Dot";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Dot%20Regular.otf")
+    format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Dot";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Dot%20Bold.otf")
+    format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Dot";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Dot%20Light.otf")
+    format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Clean";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Clean%20Regular.otf")
+    format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Eveleth Clean";
+  src: url("/modules/crow-nest/static/font/Eveleth%20Clean%20Thin.otf")
+    format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+/* Global font utilities */
+.font-eveleth {
+  font-family: "Eveleth", "Overpass", Arial, sans-serif;
+}
+
+.font-eveleth-slant {
+  font-family: "Eveleth Slant", "Eveleth", "Overpass", Arial, sans-serif;
+}
+
+.font-eveleth-dot {
+  font-family: "Eveleth Dot", "Eveleth", "Overpass", Arial, sans-serif;
+}
+
+.font-eveleth-clean {
+  font-family: "Eveleth Clean", "Eveleth", "Overpass", Arial, sans-serif;
+}
+
+.font-overpass {
+  font-family: "Overpass", Arial, sans-serif;
+}

@@ -86,20 +86,20 @@
   function handleDragOver(event: DragEvent, index: number) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (draggedIndex !== null && draggedIndex !== index) {
       const rect = (event.currentTarget as Element).getBoundingClientRect();
       const x = event.clientX;
       const centerX = rect.left + rect.width / 2;
       const side = x < centerX ? 'left' : 'right';
-      
+
       console.log('👆 DRAG OVER - Resource index:', index, 'side:', side, 'dragged:', draggedIndex);
-      
+
       // Clear other drop zones first
       dropZoneVisible = {};
       dropZoneVisible[index] = side;
       dropZoneVisible = { ...dropZoneVisible };
-      
+
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
@@ -124,11 +124,11 @@
   function handleDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
       const side = dropZoneVisible[dropIndex];
       let newIndex: number;
-      
+
       if (side === 'left') {
         // Insert before this item
         newIndex = dropIndex;
@@ -136,19 +136,19 @@
         // Insert after this item
         newIndex = dropIndex + 1;
       }
-      
+
       // Adjust for removal if dragging to a position after current
       if (draggedIndex < newIndex) {
         newIndex = newIndex - 1;
       }
-      
+
       console.log('🎯 DROP EVENT - from:', draggedIndex, 'to:', side, 'of index:', dropIndex, 'final newIndex:', newIndex);
       console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'newIndex:', newIndex);
       dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex: newIndex });
     } else {
       console.log('❌ NO REORDER - same index or null draggedIndex');
     }
-    
+
     draggedIndex = null;
     dropZoneVisible = {};
   }
@@ -161,7 +161,7 @@
 </script>
 
 <div class="resources-section">
-  <h3 style="display: flex; justify-content: space-between; align-items: center;">
+  <h3 style="display: flex; justify-content: space-between; align-items: center; font-family: 'Eveleth', 'Overpass', Arial, sans-serif; font-size: 1.5rem; color: #f9fafb; font-weight: bold;">
     Recursos
     <div style="display: flex; gap: 0.5rem; align-items: center;">
       <button class="edit-button small-button" on:click={toggleEditingResources}>
@@ -393,6 +393,9 @@
     text-align: center;
     line-height: 1.2;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-family: 'Eveleth', 'Overpass', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .resource-quantity {
@@ -405,6 +408,7 @@
     border: 1px solid #6b7280;
     min-width: 2rem;
     text-align: center;
+    font-family: 'Overpass', Arial, sans-serif;
   }
 
   .resource-details-toggle {
@@ -457,6 +461,24 @@
     border: 1px solid #6b7280;
     border-radius: 8px;
     background: transparent;
+    padding: 0.75rem;
+  }
+
+  .resource-edit input,
+  .resource-edit textarea {
+    background: rgba(17, 24, 39, 0.8);
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-family: 'Overpass', Arial, sans-serif;
+    width: 100%;
+  }
+
+  .resource-edit input:focus,
+  .resource-edit textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
   }
 
   .resource-edit-image-button {
@@ -491,6 +513,8 @@
     padding: 0.25rem 0.5rem;
     cursor: pointer;
     transition: background 0.2s ease;
+    font-family: 'Overpass', Arial, sans-serif;
+    font-weight: bold;
   }
 
   .res-actions button:hover {
@@ -553,6 +577,7 @@
     border-radius: 4px;
     background: rgba(17, 24, 39, 0.8);
     color: #f9fafb;
+    font-family: 'Overpass', Arial, sans-serif;
   }
 
   .add-resource-form input:focus,
@@ -572,6 +597,8 @@
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s ease;
+    font-family: 'Overpass', Arial, sans-serif;
+    font-weight: bold;
   }
 
   .add-resource-form button:first-of-type {

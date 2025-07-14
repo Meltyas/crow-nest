@@ -85,20 +85,20 @@
   function handleDragOver(event: DragEvent, index: number) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (draggedIndex !== null && draggedIndex !== index) {
       const rect = (event.currentTarget as Element).getBoundingClientRect();
       const x = event.clientX;
       const centerX = rect.left + rect.width / 2;
       const side = x < centerX ? 'left' : 'right';
-      
+
       console.log('👆 DRAG OVER - Reputation index:', index, 'side:', side, 'dragged:', draggedIndex);
-      
+
       // Clear other drop zones first
       dropZoneVisible = {};
       dropZoneVisible[index] = side;
       dropZoneVisible = { ...dropZoneVisible };
-      
+
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
@@ -123,11 +123,11 @@
   function handleDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
       const side = dropZoneVisible[dropIndex];
       let newIndex: number;
-      
+
       if (side === 'left') {
         // Insert before this item
         newIndex = dropIndex;
@@ -135,19 +135,19 @@
         // Insert after this item
         newIndex = dropIndex + 1;
       }
-      
+
       // Adjust for removal if dragging to a position after current
       if (draggedIndex < newIndex) {
         newIndex = newIndex - 1;
       }
-      
+
       console.log('🎯 DROP EVENT - from:', draggedIndex, 'to:', side, 'of index:', dropIndex, 'final newIndex:', newIndex);
       console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'newIndex:', newIndex);
       dispatch('reorderReputation', { dragIndex: draggedIndex, dropIndex: newIndex });
     } else {
       console.log('❌ NO REORDER - same index or null draggedIndex');
     }
-    
+
     draggedIndex = null;
     dropZoneVisible = {};
   }
@@ -175,9 +175,9 @@
       <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
         <img src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
       </button>
-      <input placeholder="Nombre de la facción" bind:value={newReputation.name} />
+      <input class="reputation-input reputation-name" placeholder="Nombre de la facción" bind:value={newReputation.name} />
       <input type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
-      <textarea placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
+      <textarea class="reputation-area" placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
       <button on:click={confirmAddReputation}>Agregar</button>
       <button on:click={cancelAddReputation}>Cancelar</button>
     </div>
@@ -206,14 +206,16 @@
         {#if editingReputation}
           <div class="reputation-edit">
             <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
-              <img class="reputation-image-edit" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
+              <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
             </button>
             <input id={`rep-file-${rep.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onRepFileChange(rep,e)} />
-            <input placeholder="Nombre" bind:value={rep.name} on:change={updateReputation} />
-            <textarea placeholder="Detalles sobre la relación..." bind:value={rep.details} on:change={updateReputation}></textarea>
+            <div class="reputation-edit-text-container">
+            <input class="reputation-input reputation-name" placeholder="Nombre" bind:value={rep.name} on:change={updateReputation} />
+            <textarea class="reputation-textarea" placeholder="Detalles sobre la relación..." bind:value={rep.details} on:change={updateReputation}></textarea>
             <div class="rep-actions">
-              <input type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
-              <button on:click={() => removeReputation(i)}>✕</button>
+              <input class="reputation-input number" type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
+              <button class="x-button" on:click={() => removeReputation(i)}>✕</button>
+              </div>
             </div>
           </div>
         {:else}
@@ -224,6 +226,11 @@
             <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
             <div class="reputation-info">
               <div class="reputation-name">{rep.name}</div>
+                          {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
+              <div class="reputation-details">
+                <p>{rep.details}</p>
+              </div>
+            {/if}
               <div class="reputation-bar-container">
                 <div class="reputation-bar">
                   <div class="reputation-fill" style="width: {rep.value * 10}%; background: linear-gradient(90deg,
@@ -241,11 +248,6 @@
               <button class="reputation-details-toggle" on:click|stopPropagation={() => toggleReputationDetails(rep.key)}>
                 📝
               </button>
-            {/if}
-            {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
-              <div class="reputation-details">
-                <p>{rep.details}</p>
-              </div>
             {/if}
           </div>
         {/if}
@@ -277,6 +279,7 @@
   }
 
   .reputation-display {
+    background: #ffffff;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -284,7 +287,6 @@
     width: 100%;
     border: 1px solid #d4af37;
     border-radius: 8px;
-    background: transparent;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
     position: relative;
@@ -368,6 +370,7 @@
   }
 
   .reputation-image {
+    background: #000000;
     width: 100%;
     height: 56px;
     object-fit: cover;
@@ -382,17 +385,14 @@
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
-    align-items: center;
     padding: 0.75rem;
   }
 
   .reputation-name {
-    font-weight: bold;
-    font-size: 1em;
-    color: #f9fafb;
-    text-align: center;
-    line-height: 1.2;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-family: "Eveleth";
+    font-size: 1rem;
+    color: #000000;
+    line-height: 1.4;
   }
 
   .reputation-bar-container {
@@ -430,6 +430,14 @@
       rgba(0, 0, 0, 0.8) 100%);
     z-index: 1;
     border-radius: 1px;
+    transform: rotate(2deg);
+  }
+
+  .x-button {
+    background: #ffffff;
+    color: #000000;
+    height: 32px;
+    width: 32px;
   }
 
   .reputation-tick:first-child,
@@ -438,6 +446,7 @@
   }
 
   .reputation-edit {
+    background: white;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -445,7 +454,6 @@
     flex: 1;
     border: 1px solid #6b7280;
     border-radius: 8px;
-    background: transparent;
   }
 
   .rep-actions {
@@ -520,18 +528,44 @@
 
   .reputation-details {
     margin-bottom: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #374151;
-    border-radius: 6px;
-    font-size: 0.85em;
+    font-family: "Overpass", sans-serif;
+    font-size: 14px;
     line-height: 1.4;
-    color: #d1d5db;
-    width: calc(100% - 1.5rem);
+    color: #000000;
+    width: 100%;
   }
 
   .reputation-details p {
     margin: 0;
+  }
+
+  .reputation-edit-text-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .reputation-input {
+    background: transparent;
+    border: solid 1px #000000;
+    color: #000000;
+  }
+
+  .reputation-input.number {
+    width: 32px;
+  }
+
+  .reputation-textarea {
+    background: transparent;
+    border: solid 1px #000000;
+    margin-bottom: 0.5rem;
+    font-family: "Overpass", sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #000000;
+    width: 100%;
   }
 
   /* Responsive design for reputation grid */

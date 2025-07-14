@@ -21,6 +21,7 @@ import {
   SyncManager,
   testPatrolSheetSync,
 } from "@/utils/sync";
+import "./styles/font.css";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
