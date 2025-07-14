@@ -36,6 +36,7 @@ export class GuardHandlers {
   private editingResources = false;
   private editingReputation = false;
   private expandedReputationDetails: Record<string, boolean> = {};
+  public expandedResourceDetails: Record<string, boolean> = {};
 
   constructor(private updateComponent: () => void) {}
 
@@ -53,6 +54,7 @@ export class GuardHandlers {
     editingResources: boolean;
     editingReputation: boolean;
     expandedReputationDetails: Record<string, boolean>;
+    expandedResourceDetails: Record<string, boolean>;
   }) {
     this.stats = data.stats;
     this.log = data.log;
@@ -66,6 +68,7 @@ export class GuardHandlers {
     this.editingResources = data.editingResources;
     this.editingReputation = data.editingReputation;
     this.expandedReputationDetails = data.expandedReputationDetails;
+    this.expandedResourceDetails = data.expandedResourceDetails;
   }
 
   // Sync handlers
@@ -386,6 +389,19 @@ export class GuardHandlers {
     input?.click();
   };
 
+  handleNewResImageClick = (event: CustomEvent) => {
+    const newResource = event.detail;
+    if (typeof FilePicker !== "undefined") {
+      new FilePicker({
+        type: "image",
+        current: newResource.img,
+        callback: (path: string) => {
+          newResource.img = path;
+        },
+      }).render(true);
+    }
+  };
+
   handleResFileChange = (event: CustomEvent) => {
     const { res, event: fileEvent } = event.detail;
     const input = fileEvent.target as HTMLInputElement;
@@ -396,6 +412,65 @@ export class GuardHandlers {
       this.handleUpdateResource();
     };
     reader.readAsDataURL(input.files[0]);
+  };
+
+  showResourceInChat = (res: any) => {
+    const chatData = {
+      content: `
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a;">
+          <img src="${res.img}" alt="${res.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+          <div>
+            <h4 style="margin: 0; color: #fff; font-size: 14px;">${res.name}</h4>
+            <p style="margin: 0; color: #ccc; font-size: 12px;">${res.details || res.description || 'Sin descripción'}</p>
+          </div>
+        </div>
+      `,
+      speaker: { alias: "Recursos del Guardia" }
+    };
+    
+    ChatMessage.create(chatData);
+  };
+
+  reorderResources = (event: CustomEvent) => {
+    console.log('🔄 HANDLER reorderResources received:', event.detail);
+    const { dragIndex, dropIndex } = event.detail;
+    if (dragIndex === dropIndex) return;
+    
+    const newResources = [...this.resources];
+    const draggedResource = newResources[dragIndex];
+    
+    console.log('📦 Moving resource:', draggedResource.name, 'from', dragIndex, 'to', dropIndex);
+    
+    // Remove the dragged item
+    newResources.splice(dragIndex, 1);
+    
+    // Insert it at the new position
+    newResources.splice(dropIndex, 0, draggedResource);
+    
+    this.resources = newResources;
+    console.log('✅ Resources reordered successfully');
+    this.handleUpdateResource();
+  };
+
+  reorderReputation = (event: CustomEvent) => {
+    console.log('🔄 HANDLER reorderReputation received:', event.detail);
+    const { dragIndex, dropIndex } = event.detail;
+    if (dragIndex === dropIndex) return;
+    
+    const newReputation = [...this.reputation];
+    const draggedReputation = newReputation[dragIndex];
+    
+    console.log('🏆 Moving reputation:', draggedReputation.name, 'from', dragIndex, 'to', dropIndex);
+    
+    // Remove the dragged item
+    newReputation.splice(dragIndex, 1);
+    
+    // Insert it at the new position
+    newReputation.splice(dropIndex, 0, draggedReputation);
+    
+    this.reputation = newReputation;
+    console.log('✅ Reputation reordered successfully');
+    this.handleUpdateReputation();
   };
 
   // Utility methods
@@ -486,6 +561,7 @@ export class GuardHandlers {
       patrols: this.patrols,
       admins: this.admins,
       expandedReputationDetails: this.expandedReputationDetails,
+      expandedResourceDetails: this.expandedResourceDetails,
     };
   }
 }

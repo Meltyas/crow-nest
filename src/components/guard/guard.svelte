@@ -46,6 +46,7 @@
   let reputation: GuardReputation[] = [];
   let editingReputation = false;
   let expandedReputationDetails: Record<string, boolean> = {};
+  let expandedResourceDetails: Record<string, boolean> = {};
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
@@ -252,6 +253,7 @@
         editingResources,
         editingReputation,
         expandedReputationDetails,
+        expandedResourceDetails,
       });
     }
   }
@@ -268,6 +270,7 @@
       patrols = data.patrols;
       admins = data.admins;
       expandedReputationDetails = data.expandedReputationDetails;
+      expandedResourceDetails = data.expandedResourceDetails;
     }
   }
 
@@ -406,6 +409,7 @@
                   on:repFileChange={handlers.handleRepFileChange}
                   on:showReputationInChat={handlers.handleShowReputationInChat}
                   on:toggleReputationDetails={handlers.handleToggleReputationDetails}
+                  on:reorderReputation={(e) => { console.log('🔗 GUARD INTERCEPTED reorderReputation:', e.detail); handlers.reorderReputation(e); }}
                 />
 
               <!-- Resources Tab -->
@@ -413,12 +417,16 @@
                 <ResourcesSection
                   {resources}
                   {editingResources}
+                  {expandedResourceDetails}
                   on:toggleEditingResources={handleToggleEditingResources}
                   on:addResource={handlers.handleAddResource}
                   on:removeResource={handlers.handleRemoveResource}
                   on:updateResource={handlers.handleUpdateResource}
                   on:resImageClick={handlers.handleResImageClick}
+                  on:newResImageClick={handlers.handleNewResImageClick}
                   on:resFileChange={handlers.handleResFileChange}
+                  on:showResourceInChat={handlers.showResourceInChat}
+                  on:reorderResources={(e) => { console.log('🔗 GUARD INTERCEPTED reorderResources:', e.detail); handlers.reorderResources(e); }}
                 />
               {/if}
             </div>

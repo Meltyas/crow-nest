@@ -37,6 +37,7 @@ export interface GuardResource {
   name: string;
   value: number;
   img?: string;
+  details?: string; // Campo para detalles/descripción del recurso
 }
 
 export interface GuardReputation {

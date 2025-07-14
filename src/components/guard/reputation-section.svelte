@@ -68,6 +68,68 @@
   function toggleReputationDetails(repKey: string) {
     dispatch('toggleReputationDetails', repKey);
   }
+
+  // Drag and drop functionality
+  let draggedIndex: number | null = null;
+  let dropZoneVisible: Record<number, boolean> = {};
+
+  function handleDragStart(event: DragEvent, index: number) {
+    console.log('🚀 DRAG START - Reputation index:', index);
+    draggedIndex = index;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/html', '');
+    }
+  }
+
+  function handleDragOver(event: DragEvent, index: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    console.log('👆 DRAG OVER - Reputation target index:', index, 'dragged:', draggedIndex);
+    if (event.dataTransfer && draggedIndex !== null && draggedIndex !== index) {
+      event.dataTransfer.dropEffect = 'move';
+      // Clear other drop zones first
+      dropZoneVisible = {};
+      dropZoneVisible[index] = true;
+      dropZoneVisible = { ...dropZoneVisible };
+      console.log('✨ DROP ZONE VISIBLE:', dropZoneVisible);
+    }
+  }
+
+  function handleDragLeave(event: DragEvent, index: number) {
+    console.log('👈 DRAG LEAVE - Reputation index:', index);
+    // Only hide if we're actually leaving the item, not just moving between child elements
+    const rect = (event.currentTarget as Element).getBoundingClientRect();
+    const x = event.clientX;
+    const y = event.clientY;
+
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      dropZoneVisible[index] = false;
+      dropZoneVisible = { ...dropZoneVisible };
+      console.log('🚫 DROP ZONE HIDDEN:', dropZoneVisible);
+    }
+  }
+
+  function handleDrop(event: DragEvent, dropIndex: number) {
+    console.log('🎯 DROP EVENT - Reputation from:', draggedIndex, 'to:', dropIndex);
+    event.preventDefault();
+    event.stopPropagation();
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'dropIndex:', dropIndex);
+      // Dispatch with the correct parameters (dragIndex, dropIndex)
+      dispatch('reorderReputation', { dragIndex: draggedIndex, dropIndex });
+    } else {
+      console.log('❌ NO REORDER - same index or null draggedIndex');
+    }
+    draggedIndex = null;
+    dropZoneVisible = {};
+  }
+
+  function handleDragEnd() {
+    console.log('🏁 DRAG END - Reputation');
+    draggedIndex = null;
+    dropZoneVisible = {};
+  }
 </script>
 
 <div class="reputation-section">
@@ -96,7 +158,20 @@
 
   <div class="reputation-container">
     {#each reputation as rep, i}
-      <div class="reputation-item">
+      <div class="reputation-item"
+           role="listitem"
+           draggable="true"
+           on:dragstart={(e) => handleDragStart(e, i)}
+           on:dragover={(e) => handleDragOver(e, i)}
+           on:dragleave={(e) => handleDragLeave(e, i)}
+           on:drop={(e) => handleDrop(e, i)}
+           on:dragend={handleDragEnd}
+           class:dragging={draggedIndex === i}>
+
+        <!-- Drop zone overlay -->
+        <div class="drop-zone" class:show={dropZoneVisible[i]}>
+          Soltar aquí
+        </div>
         {#if editingReputation}
           <div class="reputation-edit">
             <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
@@ -114,6 +189,7 @@
           <div class="reputation-display" role="button" tabindex="0"
                on:click={() => showReputationInChat(rep)}
                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showReputationInChat(rep); } }}>
+            <div class="drag-handle">🖱️</div>
             <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
             <div class="reputation-info">
               <div class="reputation-name">{rep.name}</div>
@@ -135,12 +211,13 @@
                 📝
               </button>
             {/if}
-          </div>
-          {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
+                      {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
             <div class="reputation-details">
               <p>{rep.details}</p>
             </div>
           {/if}
+          </div>
+
         {/if}
       </div>
     {/each}
@@ -161,6 +238,12 @@
     flex-direction: column;
     gap: 0.5rem;
     min-width: 0;
+    position: relative;
+    transition: opacity 0.2s ease;
+  }
+
+  .reputation-item.dragging {
+    opacity: 0.7;
   }
 
   .reputation-display {
@@ -169,8 +252,7 @@
     align-items: center;
     gap: 0.5rem;
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #374151;
+    border: 1px solid #d4af37;
     border-radius: 8px;
     background: transparent;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -180,7 +262,6 @@
 
   .reputation-display:hover {
     transform: translateY(-2px);
-    border-color: #6b7280;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   }
 
@@ -190,13 +271,65 @@
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
+  .drag-handle {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid #6b7280;
+    border-radius: 50%;
+    color: #f9fafb;
+    font-size: 12px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: all 0.2s ease;
+  }
+
+  .drag-handle:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+  }
+
+  .reputation-item.dragging .drag-handle {
+    cursor: grabbing;
+  }
+
+  .drop-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px dashed #3b82f6;
+    border-radius: 8px;
+    z-index: 10;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #3b82f6;
+    font-weight: bold;
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .reputation-item:not(.dragging) .drop-zone.show {
+    display: flex;
+    pointer-events: all;
+  }
+
   .reputation-image {
     width: 100%;
     height: 56px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 8px 8px 0 0;
     flex-shrink: 0;
-    border: 2px solid #6b7280;
+    border-bottom: 2px solid #d4af37;
   }
 
   .reputation-info {
@@ -206,6 +339,7 @@
     gap: 0.5rem;
     width: 100%;
     align-items: center;
+    padding: 0.75rem;
   }
 
   .reputation-name {
@@ -226,7 +360,7 @@
     width: 100%;
     height: 24px;
     background: #000000;
-    border: 2px solid #374151;
+    border: 2px solid #d4af37;
     border-radius: 12px;
     position: relative;
     overflow: hidden;
@@ -265,7 +399,6 @@
     align-items: center;
     gap: 0.5rem;
     flex: 1;
-    padding: 0.5rem;
     border: 1px solid #6b7280;
     border-radius: 8px;
     background: transparent;
@@ -276,6 +409,7 @@
     gap: 0.5rem;
     margin-top: 0.5rem;
     justify-content: center;
+    margin-bottom: 0.5rem;
   }
 
   .reputation-edit input[type="number"] {
@@ -341,7 +475,7 @@
   }
 
   .reputation-details {
-    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid #374151;
@@ -349,6 +483,7 @@
     font-size: 0.85em;
     line-height: 1.4;
     color: #d1d5db;
+    width: calc(100% - 1.5rem);
   }
 
   .reputation-details p {
