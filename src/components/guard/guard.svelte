@@ -6,7 +6,10 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
-  import Tooltip from '@/components/tooltip.svelte';
+  import StatsSection from './stats-section.svelte';
+  import ModifiersSection from './modifiers-section.svelte';
+  import ReputationSection from './reputation-section.svelte';
+  import ResourcesSection from './resources-section.svelte';
   import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
@@ -23,6 +26,7 @@
   import { getPatrols, savePatrols } from '@/patrol/patrols';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import './guard.css';
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -34,24 +38,16 @@
   let stats: Stat[] = [];
   let log: LogEntry[] = [];
   let showLog = false;
-  let addingStat = false;
   let editing = false;
-  let newStat: Stat = { key: '', name: '', value: 0 };
 
   let modifiers: GuardModifier[] = [];
-  let addingModifier = false;
   let editingMods = false;
-  let newModifier: GuardModifier = { key: '', name: '', description: '', mods: {}, state: 'neutral', img: 'icons/svg/upgrade.svg' };
 
   let resources: GuardResource[] = [];
-  let addingResource = false;
   let editingResources = false;
-  let newResource: GuardResource = { key: '', name: '', value: 0 };
 
   let reputation: GuardReputation[] = [];
-  let addingReputation = false;
   let editingReputation = false;
-  let newReputation: GuardReputation = { key: '', name: '', value: 0, img: 'icons/svg/aura.svg', details: '' };
   let expandedReputationDetails: Record<string, boolean> = {};
 
   // Tab system - Load last active tab from localStorage
@@ -280,12 +276,19 @@
     return stat.value + modifierBonus;
   }
 
-  function openAddStat() {
-    newStat = { key: crypto.randomUUID(), name: '', value: 0 };
-    addingStat = true;
+  function sortModifiersByState() {
+    // Sort modifiers by state: positive -> neutral -> negative
+    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
+    modifiers.sort((a, b) => {
+      const stateA = stateOrder[a.state || 'neutral'] ?? 1; // Default to neutral if state is undefined
+      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
+      return stateA - stateB;
+    });
   }
 
-  async function confirmAddStat() {
+  // Event handlers for child components
+  function handleAddStat(event: CustomEvent) {
+    const newStat = event.detail;
     stats = [...stats, { ...newStat }];
     log = [
       ...log,
@@ -296,15 +299,11 @@
         next: { ...newStat },
       },
     ];
-    await persist();
-    addingStat = false;
+    persist();
   }
 
-  function cancelAddStat() {
-    addingStat = false;
-  }
-
-  async function removeStat(index: number) {
+  function handleRemoveStat(event: CustomEvent) {
+    const index = event.detail;
     const [removed] = stats.splice(index, 1);
     stats = [...stats];
     log = [
@@ -316,10 +315,10 @@
         previous: removed,
       },
     ];
-    await persist();
+    persist();
   }
 
-  async function updateStat() {
+  function handleUpdateStat() {
     log = [
       ...log,
       {
@@ -329,94 +328,19 @@
       },
     ];
     stats = [...stats];
-    await persist();
+    persist();
   }
 
-  function openAddModifier() {
-    newModifier = { key: crypto.randomUUID(), name: '', description: '', mods: {}, state: 'neutral', img: 'icons/svg/upgrade.svg' };
-    addingModifier = true;
-  }
-
-  function cancelAddModifier() {
-    addingModifier = false;
-  }
-
-  function sortModifiersByState() {
-    // Sort modifiers by state: positive -> neutral -> negative
-    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
-    modifiers.sort((a, b) => {
-      const stateA = stateOrder[a.state || 'neutral'] ?? 1; // Default to neutral if state is undefined
-      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
-      return stateA - stateB;
-    });
-  }
-
-  async function confirmAddModifier() {
-    newModifier.mods = Object.fromEntries(
-      Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
-    );
-    modifiers = [...modifiers, { ...newModifier }];
-    sortModifiersByState();
-    await persistMods();
-    addingModifier = false;
-  }
-
-  async function removeModifier(index: number) {
-    modifiers.splice(index, 1);
-    modifiers = [...modifiers];
-    await persistMods();
-  }
-
-  async function updateModifier() {
-    modifiers = modifiers.map((m) => ({
-      ...m,
-      state: m.state || 'neutral', // Ensure all modifiers have a state
-      mods: Object.fromEntries(
-        Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
-      ),
-    }));
-    sortModifiersByState();
-    await persistMods();
-  }
-
-  function modTooltip(mod: GuardModifier): string {
-    const header = `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>`;
-    const mods = Object.entries(mod.mods)
-      .map(([k, v]) => {
-        const stat = stats.find((s) => s.key === k);
-        if (!stat) return '';
-        const val = Number(v) > 0 ? `+${v}` : `${v}`;
-        return `<div style="display:flex;align-items:center;gap:0.25rem;">
-          <img src="${stat.img || 'icons/svg/shield.svg'}" alt="${stat.name}" width="16" height="16" />
-          <span>${val}</span>
-        </div>`;
-      })
-      .filter(Boolean)
-      .join('');
-    return header + mods;
-  }
-
-  function toggleEditingMods() {
-    editingMods = !editingMods;
-    // If we're stopping editing, sort the modifiers
-    if (!editingMods) {
-      sortModifiersByState();
-    }
-  }
-
-  function toggleLog() {
-    showLog = !showLog;
-  }
-
-  function toggleEditing() {
+  function handleToggleEditing() {
     editing = !editing;
   }
 
-  function toggleEditingResources() {
-    editingResources = !editingResources;
+  function handleToggleLog() {
+    showLog = !showLog;
   }
 
-  function onImageClick(stat: Stat) {
+  function handleImageClick(event: CustomEvent) {
+    const stat = event.detail;
     if (editing) {
       if (typeof FilePicker !== 'undefined') {
         // @ts-ignore - FilePicker is provided by Foundry at runtime
@@ -425,7 +349,7 @@
           current: stat.img,
           callback: (path: string) => {
             stat.img = path;
-            updateStat();
+            handleUpdateStat();
           },
         }).render(true);
       }
@@ -448,20 +372,58 @@
     }
   }
 
-  function onFileChange(stat: Stat, event: Event) {
-    const input = event.target as HTMLInputElement;
+  function handleFileChange(event: CustomEvent) {
+    const { stat, event: fileEvent } = event.detail;
+    const input = fileEvent.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const reader = new FileReader();
     reader.onload = () => {
       stat.img = String(reader.result);
-      updateStat();
+      handleUpdateStat();
     };
     reader.readAsDataURL(input.files[0]);
   }
 
-  function onModImageClick(mod: GuardModifier) {
+  // Modifier event handlers
+  function handleAddModifier(event: CustomEvent) {
+    const newModifier = event.detail;
+    newModifier.mods = Object.fromEntries(
+      Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
+    );
+    modifiers = [...modifiers, { ...newModifier }];
+    sortModifiersByState();
+    persistMods();
+  }
+
+  function handleRemoveModifier(event: CustomEvent) {
+    const index = event.detail;
+    modifiers.splice(index, 1);
+    modifiers = [...modifiers];
+    persistMods();
+  }
+
+  function handleUpdateModifier() {
+    modifiers = modifiers.map((m) => ({
+      ...m,
+      state: m.state || 'neutral',
+      mods: Object.fromEntries(
+        Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
+      ),
+    }));
+    sortModifiersByState();
+    persistMods();
+  }
+
+  function handleToggleEditingMods() {
+    editingMods = !editingMods;
+    if (!editingMods) {
+      sortModifiersByState();
+    }
+  }
+
+  function handleModImageClick(event: CustomEvent) {
+    const mod = event.detail;
     if (editingMods) {
-      // Prefer Foundry's file picker when available
       if (typeof FilePicker !== 'undefined') {
         // @ts-ignore - FilePicker is provided by Foundry at runtime
         new FilePicker({
@@ -469,30 +431,15 @@
           current: mod.img,
           callback: (path: string) => {
             mod.img = path;
-            updateModifier();
+            handleUpdateModifier();
           },
         }).render(true);
-      } else {
-        // Fallback to file input
-        const input = document.getElementById(`mod-file-${mod.key}`) as HTMLInputElement | null;
-        input?.click();
       }
     }
   }
 
-  function onModFileChange(mod: GuardModifier, event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      mod.img = String(reader.result);
-      updateModifier();
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
-
-  function onNewModImageClick() {
-    // Prefer Foundry's file picker when available
+  function handleNewModImageClick(event: CustomEvent) {
+    const newModifier = event.detail;
     if (typeof FilePicker !== 'undefined') {
       // @ts-ignore - FilePicker is provided by Foundry at runtime
       new FilePicker({
@@ -505,86 +452,44 @@
     }
   }
 
-  function openAddResource() {
-    newResource = { key: crypto.randomUUID(), name: '', value: 0 };
-    addingResource = true;
-  }
-
-  function cancelAddResource() {
-    addingResource = false;
-  }
-
-  async function confirmAddResource() {
-    resources = [...resources, { ...newResource }];
-    await persistRes();
-    addingResource = false;
-  }
-
-  async function removeResource(index: number) {
-    resources.splice(index, 1);
-    resources = [...resources];
-    await persistRes();
-  }
-
-  async function updateResource() {
-    resources = [...resources];
-    await persistRes();
-  }
-
-  function onResImageClick(res: GuardResource) {
-    const input = document.getElementById(`res-file-${res.key}`) as HTMLInputElement | null;
-    input?.click();
-  }
-
-  function onResFileChange(res: GuardResource, event: Event) {
-    const input = event.target as HTMLInputElement;
+  function handleModFileChange(event: CustomEvent) {
+    const { mod, event: fileEvent } = event.detail;
+    const input = fileEvent.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const reader = new FileReader();
     reader.onload = () => {
-      res.img = String(reader.result);
-      updateResource();
+      mod.img = String(reader.result);
+      handleUpdateModifier();
     };
     reader.readAsDataURL(input.files[0]);
   }
 
-  function toggleEditingReputation() {
+  // Reputation event handlers
+  function handleToggleEditingReputation() {
     editingReputation = !editingReputation;
   }
 
-  function openAddReputation() {
-    newReputation = { key: crypto.randomUUID(), name: '', value: 0, img: 'icons/svg/aura.svg', details: '' };
-    addingReputation = true;
-  }
-
-  function toggleReputationDetails(repKey: string) {
-    expandedReputationDetails[repKey] = !expandedReputationDetails[repKey];
-    expandedReputationDetails = { ...expandedReputationDetails }; // Trigger reactivity
-  }
-
-  function cancelAddReputation() {
-    addingReputation = false;
-  }
-
-  async function confirmAddReputation() {
+  function handleAddReputation(event: CustomEvent) {
+    const newReputation = event.detail;
     reputation = [...reputation, { ...newReputation }];
-    await persistRep();
-    addingReputation = false;
+    persistRep();
   }
 
-  async function removeReputation(index: number) {
+  function handleRemoveReputation(event: CustomEvent) {
+    const index = event.detail;
     reputation.splice(index, 1);
     reputation = [...reputation];
-    await persistRep();
+    persistRep();
   }
 
-  async function updateReputation() {
+  function handleUpdateReputation() {
     reputation = [...reputation];
-    await persistRep();
+    persistRep();
   }
 
-  function onRepImageClick(rep: GuardReputation) {
+  function handleRepImageClick(event: CustomEvent) {
+    const rep = event.detail;
     if (editingReputation) {
-      // Prefer Foundry's file picker when available
       if (typeof FilePicker !== 'undefined') {
         // @ts-ignore - FilePicker is provided by Foundry at runtime
         new FilePicker({
@@ -592,7 +497,7 @@
           current: rep.img,
           callback: (path: string) => {
             rep.img = path;
-            updateReputation();
+            handleUpdateReputation();
           },
         }).render(true);
       }
@@ -601,8 +506,8 @@
     }
   }
 
-  function onNewRepImageClick() {
-    // Prefer Foundry's file picker when available
+  function handleNewRepImageClick(event: CustomEvent) {
+    const newReputation = event.detail;
     if (typeof FilePicker !== 'undefined') {
       // @ts-ignore - FilePicker is provided by Foundry at runtime
       new FilePicker({
@@ -610,19 +515,70 @@
         current: newReputation.img,
         callback: (path: string) => {
           newReputation.img = path;
-          newReputation = { ...newReputation }; // Trigger reactivity
         },
       }).render(true);
     }
   }
 
-  function onRepFileChange(rep: GuardReputation, event: Event) {
-    const input = event.target as HTMLInputElement;
+  function handleRepFileChange(event: CustomEvent) {
+    const { rep, event: fileEvent } = event.detail;
+    const input = fileEvent.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const reader = new FileReader();
     reader.onload = () => {
       rep.img = String(reader.result);
-      updateReputation();
+      handleUpdateReputation();
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  function handleShowReputationInChat(event: CustomEvent) {
+    showReputationInChat(event.detail);
+  }
+
+  function handleToggleReputationDetails(event: CustomEvent) {
+    const repKey = event.detail;
+    expandedReputationDetails[repKey] = !expandedReputationDetails[repKey];
+    expandedReputationDetails = { ...expandedReputationDetails };
+  }
+
+  // Resource event handlers
+  function handleToggleEditingResources() {
+    editingResources = !editingResources;
+  }
+
+  function handleAddResource(event: CustomEvent) {
+    const newResource = event.detail;
+    resources = [...resources, { ...newResource }];
+    persistRes();
+  }
+
+  function handleRemoveResource(event: CustomEvent) {
+    const index = event.detail;
+    resources.splice(index, 1);
+    resources = [...resources];
+    persistRes();
+  }
+
+  function handleUpdateResource() {
+    resources = [...resources];
+    persistRes();
+  }
+
+  function handleResImageClick(event: CustomEvent) {
+    const res = event.detail;
+    const input = document.getElementById(`res-file-${res.key}`) as HTMLInputElement | null;
+    input?.click();
+  }
+
+  function handleResFileChange(event: CustomEvent) {
+    const { res, event: fileEvent } = event.detail;
+    const input = fileEvent.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      res.img = String(reader.result);
+      handleUpdateResource();
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -670,824 +626,6 @@
   }
 </script>
 
-<style>
-  .custom-popup {
-    position: fixed;
-    border-radius: 12px;
-    overflow: hidden;
-    z-index: 80;
-  }
-
-  .image-button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-  }
-
-  .image-button:hover {
-    opacity: 0.8;
-  }
-
-  .drag-handle {
-    position: absolute;
-    top: 0;
-    left: 60px;
-    right: 0;
-    height: 40px;
-    cursor: move;
-    background: transparent;
-    z-index: 82;
-  }
-
-  .resize-handle {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 20px;
-    height: 20px;
-    cursor: se-resize;
-    background: rgba(212, 175, 55, 0.3);
-    border-top-left-radius: 12px;
-    z-index: 82;
-    transition: background 0.3s ease;
-  }
-
-  .resize-handle:hover {
-    background: rgba(212, 175, 55, 0.6);
-  }
-
-  .resize-handle::before {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-bottom: 8px solid rgba(212, 175, 55, 0.8);
-  }
-
-  .app-container {
-    display: flex;
-    height: 100%;
-    min-height: 400px;
-    position: relative;
-  }
-
-  .close-button {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 40px;
-    height: 40px;
-    background: rgba(139, 105, 20, 0.9);
-    border: 2px solid #d4af37;
-    border-radius: 50%;
-    color: #f4f1e8;
-    font-size: 1.4rem;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    z-index: 81;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  }
-
-  .close-button:hover {
-    background: rgba(212, 175, 55, 0.9);
-    color: #1a0f08;
-    transform: scale(1.1);
-  }
-
-  .tab-navigation {
-    display: flex;
-    flex-direction: column;
-    min-width: 60px;
-    border-right: 2px solid #d4af37;
-  }
-
-  .tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    background: rgba(30, 40, 60, 0.8);
-    border-bottom: 1px solid #8b6914;
-    color: #f4f1e8;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-height: 50px;
-  }
-
-  .tab:hover {
-    background: rgba(40, 50, 70, 0.9);
-    color: #d4af37;
-  }
-
-  .tab.active {
-    background: rgba(50, 60, 80, 1);
-    color: #d4af37;
-    border-left: 4px solid #d4af37;
-  }
-
-  .guard-sub-tabs {
-    display: flex;
-    margin: 1rem 0;
-    border-bottom: 2px solid #d4af37;
-  }
-
-  .guard-sub-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.8rem 1.5rem;
-    background: rgba(20, 30, 50, 0.8);
-    border: 1px solid #8b6914;
-    border-bottom: none;
-    color: #f4f1e8;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin-right: 2px;
-  }
-
-  .guard-sub-tab:hover {
-    background: rgba(30, 40, 60, 0.9);
-    color: #d4af37;
-  }
-
-  .guard-sub-tab.active {
-    background: rgba(40, 50, 70, 1);
-    color: #d4af37;
-    border-top: 3px solid #d4af37;
-  }
-
-  .content-area {
-    border-top: 2px solid #d4af37;
-    border-right: 2px solid #d4af37;
-    border-bottom: 2px solid #d4af37;
-    flex: 1;
-    padding: 1rem;
-    background: linear-gradient(135deg, rgba(11, 10, 19, 0.95) 0%, rgba(20, 30, 50, 0.9) 50%, rgba(11, 10, 19, 0.95) 100%);
-    backdrop-filter: blur(10px);
-    color: #f4f1e8;
-    overflow-y: auto;
-    border-radius: 0 8px 8px 0;
-    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
-    font-family: "Cinzel", serif;
-  }
-
-  .guard-container {
-    padding: 0.5rem;
-    color: white;
-    overflow-y: auto;
-  }
-
-  .stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.25rem;
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: none;
-    box-sizing: border-box;
-  }
-
-  .stat img {
-    height: 42px;
-    width: 42px;
-  }
-
-  .stat-img {
-    background: none;
-    border: none;
-    padding: 0;
-    height: 42px;
-    width: 42px;
-    cursor: pointer;
-  }
-
-  .stat-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .stats-and-modifiers-container {
-    display: flex;
-    gap: 1rem;
-    width: 100%;
-  }
-
-  .stats-section {
-    flex: 0 0 60%;
-    min-width: 60%;
-  }
-
-  .modifiers-section {
-    flex: 1;
-    min-width: 35%;
-  }
-
-  .modifiers-section h4 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-  }
-
-  /* Responsive design for smaller screens */
-  @media (max-width: 768px) {
-    .stats-and-modifiers-container {
-      flex-direction: column;
-    }
-
-    .stats-section,
-    .modifiers-section {
-      flex: 1;
-      min-width: 100%;
-    }
-  }
-
-  .log {
-    background: #333;
-    padding: 0.25rem;
-    margin-top: 0.5rem;
-    max-height: 150px;
-    overflow-y: auto;
-  }
-
-  .add-stat-form {
-    display: flex;
-    gap: 0.25rem;
-    margin: 0.5rem 0;
-  }
-  .add-mod-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin: 0.5rem 0;
-  }
-
-  .add-mod-form textarea {
-    min-height: 60px;
-    resize: vertical;
-    padding: 0.25rem;
-    border: 1px solid #6b7280;
-    border-radius: 3px;
-    font-family: inherit;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-  }
-
-  .add-mod-form textarea::placeholder {
-    color: #9ca3af;
-  }
-
-  /* General input and textarea styling for edit forms */
-  .add-stat-form input,
-  .add-mod-form input,
-  .add-resource-form input,
-  .modifier-edit input,
-  .modifier-edit textarea {
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .add-stat-form input::placeholder,
-  .add-mod-form input::placeholder,
-  .add-resource-form input::placeholder,
-  .modifier-edit input::placeholder,
-  .modifier-edit textarea::placeholder {
-    color: #9ca3af;
-  }
-
-  .add-stat-form input:focus,
-  .add-mod-form input:focus,
-  .add-resource-form input:focus,
-  .modifier-edit input:focus,
-  .modifier-edit textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .modifier-image-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .modifier-image-button {
-    background: none;
-    border: 2px solid #666;
-    border-radius: 4px;
-    padding: 0;
-    cursor: pointer;
-    width: 64px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modifier-image-button:hover {
-    border-color: #4a90e2;
-  }
-
-  .modifier-image-button img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 2px;
-  }
-
-  .modifier-stats-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-    margin: 0.5rem 0;
-  }
-
-  .form-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-top: 0.5rem;
-  }
-  .modifier {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    padding: 0.25rem;
-  }
-
-  .modifier-positive {
-    border-color: #22c55e; /* Green border for positive */
-  }
-
-  .modifier-neutral {
-    border-color: #ffffff; /* White border for neutral */
-  }
-
-  .modifier-negative {
-    border-color: #ef4444; /* Red border for negative */
-  }
-
-  .state-selector {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-  }
-
-  .state-selector label {
-    font-weight: bold;
-    min-width: 50px;
-  }
-
-  .state-selector select {
-    padding: 0.25rem;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    background: white;
-    font-size: 0.9em;
-  }
-  .modifier-values {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .modifier-values input {
-    width: 32px;
-    height: 32px;
-    text-align: center;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-  }
-  .modifier-values-edit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-
-    & input {
-      height: 32px;
-      width: 32px;
-    }
-  }
-  .modifier-edit {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .stats-editables {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .stat-name-input {
-    max-width: 100px;
-    text-align: center;
-  }
-
-  .stat-number {
-    display: flex;
-  }
-
-  .stat-number-input {
-    width: 30px;
-    text-align: center;
-  }
-
-  .stat-number-close {
-    width: 24px;
-    text-align: center;
-  }
-
-  .stat-view {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-weight: bold;
-  }
-
-  .add-resource-form {
-    display: flex;
-    gap: 0.25rem;
-    margin: 0.5rem 0;
-  }
-
-  .resource {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.25rem;
-  }
-  .modifier-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-  .standard-image {
-    width: 32px;
-    height: 32px;
-  }
-  .resource-container {
-    display: flex;
-    gap: 0.25rem;
-  }
-  .button-holder {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-  .stat-value {
-    display: flex;
-    align-items: center;
-    height: 32px;
-    font-size: 24px;
-    font-weight: bold;
-  }
-  .stat-name {
-    margin-bottom: 0.25rem;
-  }
-  .modifier-values-contain {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
-  /* Reputation Styles */
-  .reputation-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-
-  .reputation-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
-  .reputation-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    background: transparent;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
-  }
-
-  .reputation-display:hover {
-    transform: translateY(-2px);
-    border-color: #6b7280;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .reputation-display:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .reputation-image {
-    width: 100%;
-    height: 56px;
-    object-fit: cover;
-    border-radius: 8px;
-    flex-shrink: 0;
-    border: 2px solid #6b7280;
-  }
-
-  .reputation-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    align-items: center;
-  }
-
-  .reputation-name {
-    font-weight: bold;
-    font-size: 1em;
-    color: #f9fafb;
-    text-align: center;
-    line-height: 1.2;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-  }
-
-  .reputation-bar-container {
-    position: relative;
-    width: 100%;
-  }
-
-  .reputation-bar {
-    width: 100%;
-    height: 24px;
-    background: #000000;
-    border: 2px solid #374151;
-    border-radius: 12px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-
-  .reputation-fill {
-    height: 100%;
-    transition: width 0.4s ease;
-    border-radius: 0;
-    position: relative;
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
-  }
-
-  .reputation-tick {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.8) 0%,
-      rgba(0, 0, 0, 0.6) 50%,
-      rgba(0, 0, 0, 0.8) 100%);
-    z-index: 1;
-    border-radius: 1px;
-  }
-
-  .reputation-tick:first-child,
-  .reputation-tick:last-child {
-    opacity: 0; /* Hide first and last ticks */
-  }
-
-  .reputation-edit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid #6b7280;
-    border-radius: 8px;
-    background: transparent;
-  }
-
-  .rep-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    justify-content: center;
-  }
-
-  .reputation-edit input {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .reputation-edit input::placeholder {
-    color: #9ca3af;
-  }
-
-  .reputation-edit input[type="number"] {
-    width: 80px;
-  }
-
-  .add-reputation-form {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding: 0.75rem;
-    border: 2px solid #6b7280;
-    border-radius: 8px;
-    background: transparent;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .add-reputation-form input {
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid #6b7280;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-  }
-
-  .add-reputation-form input::placeholder {
-    color: #9ca3af;
-  }
-
-  .add-reputation-form textarea {
-    flex: 1;
-    min-height: 60px;
-    padding: 0.5rem;
-    border: 1px solid #6b7280;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    resize: vertical;
-    font-family: inherit;
-  }
-
-  .add-reputation-form textarea::placeholder {
-    color: #9ca3af;
-  }
-
-  .collapse-button {
-    font-size: 0.8em;
-    padding: 0.25rem 0.5rem;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .collapse-button:hover {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.5);
-  }
-
-  /* Responsive design for reputation grid */
-  @media (max-width: 1200px) {
-    .reputation-container {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  @media (max-width: 768px) {
-    .reputation-container {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .edit-button {
-    font-size: 0.85em;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .reputation-image-button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    border-radius: 8px;
-    overflow: hidden;
-    transition: transform 0.2s ease;
-  }
-
-  .reputation-image-button:hover {
-    transform: scale(1.05);
-  }
-
-  .reputation-image-button img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 2px solid #6b7280;
-  }
-
-  .reputation-image-edit{
-    height: 56px;
-    object-fit: cover;
-    width: 100%;
-  }
-
-  .reputation-edit-image-button {
-    width: 100%;
-    height: 56px;
-  }
-
-  /* Reputation details styles */
-  .reputation-details-toggle {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid #6b7280;
-    border-radius: 50%;
-    color: #f9fafb;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-    transition: all 0.2s ease;
-  }
-
-  .reputation-details-toggle:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
-  }
-
-  .reputation-details {
-    margin-top: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #374151;
-    border-radius: 6px;
-    font-size: 0.85em;
-    line-height: 1.4;
-    color: #d1d5db;
-  }
-
-  .reputation-details p {
-    margin: 0;
-  }
-
-  .reputation-display {
-    position: relative;
-  }
-
-  .reputation-edit textarea {
-    min-height: 60px;
-    resize: vertical;
-    background: rgba(0, 0, 0, 0.1);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-family: inherit;
-  }
-
-  .reputation-edit textarea::placeholder {
-    color: #9ca3af;
-  }
-</style>
 {#if showPopup}
   <div
     class="custom-popup"
@@ -1533,150 +671,33 @@
             <h3>Los Cuervos</h3>
             <div class="guard-container">
               <div class="stats-and-modifiers-container">
-                <div class="stats-section">
-                  <div class="button-holder">
-                    {#if editing}
-                      <button on:click={openAddStat}>Añadir Stat</button>
-                    {/if}
-                    <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
-                  </div>
+                <StatsSection 
+                  {stats} 
+                  {log} 
+                  {editing} 
+                  {showLog} 
+                  {getTotalStatValue}
+                  on:addStat={handleAddStat}
+                  on:removeStat={handleRemoveStat}
+                  on:updateStat={handleUpdateStat}
+                  on:toggleEditing={handleToggleEditing}
+                  on:toggleLog={handleToggleLog}
+                  on:imageClick={handleImageClick}
+                  on:fileChange={handleFileChange}
+                />
 
-                  {#if addingStat}
-                    <div class="add-stat-form">
-                      <input placeholder="Nombre" bind:value={newStat.name} />
-                      <input type="number" placeholder="Valor" bind:value={newStat.value} />
-                      <button on:click={confirmAddStat}>Agregar</button>
-                      <button on:click={cancelAddStat}>Cancelar</button>
-                    </div>
-                  {/if}
-
-                  <div class="stat-container">
-                    {#each stats as stat, i}
-                      <div class="stat">
-                        <button class="stat-img" on:click={() => onImageClick(stat)}>
-                          <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
-                        </button>
-                        <input
-                          id={`file-${stat.key}`}
-                          type="file"
-                          accept="image/*"
-                          on:change={(e) => onFileChange(stat, e)}
-                          style="display: none;"
-                        />
-                        {#if editing}
-                          <div class="stats-editables">
-                            <input
-                              class="stat-name-input"
-                              placeholder="Nombre"
-                              bind:value={stat.name}
-                              on:change={updateStat}
-                            />
-                          </div>
-                          <div class="stat-number">
-                            <input
-                              class="stat-number-input"
-                              type="number"
-                              placeholder="Valor"
-                              bind:value={stat.value}
-                              on:change={updateStat}
-                            />
-                            <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
-                          </div>
-                        {:else}
-                          <div class="stat-view">
-                            <div class="stat-name">{stat.name}</div>
-                            <div class="stat-value">{stat.value} ({getTotalStatValue(stat)})</div>
-                          </div>
-                        {/if}
-                      </div>
-                    {/each}
-                  </div>
-
-                  <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
-                  {#if showLog}
-                    <div class="log">
-                      {#each log as entry}
-                        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-
-                <div class="modifiers-section">
-                  <h4>Modificaciones Situacionales</h4>
-                  {#if editingMods}
-                    <button on:click={openAddModifier}>Añadir Modificador</button>
-                  {/if}
-                  <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
-                  {#if addingModifier}
-                    <div class="add-mod-form">
-                      <div class="modifier-image-section">
-                        <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
-                          <img src={newModifier.img} alt="" />
-                        </button>
-                      </div>
-                      <input placeholder="Nombre" bind:value={newModifier.name} />
-                      <textarea placeholder="Descripción" bind:value={newModifier.description}></textarea>
-                      <div class="state-selector">
-                        <label for="new-modifier-state">Estado:</label>
-                        <select id="new-modifier-state" bind:value={newModifier.state}>
-                          <option value="positive">Positive</option>
-                          <option value="neutral">Neutral</option>
-                          <option value="negative">Negative</option>
-                        </select>
-                      </div>
-                      <div class="modifier-stats-container">
-                        {#each stats as stat}
-                          <div class="modifier-values">
-                            <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="32" height="32" />
-                            <input type="number" bind:value={newModifier.mods[stat.key]} />
-                          </div>
-                        {/each}
-                      </div>
-                      <div class="form-buttons">
-                        <button on:click={confirmAddModifier}>Agregar</button>
-                        <button on:click={cancelAddModifier}>Cancelar</button>
-                      </div>
-                    </div>
-                  {/if}
-                  <div class="modifier-container">
-                    {#each modifiers as mod, i}
-                      <div class="modifier modifier-{mod.state || 'neutral'}">
-                        <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
-                          <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
-                            <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
-                          </button>
-                        </Tooltip>
-                        <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
-                        {#if editingMods}
-                          <div class="modifier-edit">
-                            <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
-                            <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
-                            <div class="state-selector">
-                              <label for="edit-modifier-state-{i}">Estado:</label>
-                              <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
-                                <option value="positive">Positive</option>
-                                <option value="neutral">Neutral</option>
-                                <option value="negative">Negative</option>
-                              </select>
-                            </div>
-                            <div class="modifier-values-contain">
-                              {#each stats as stat}
-                                <div class="modifier-values modifier-values-edit">
-                                  <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-                                  <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
-                                </div>
-                              {/each}
-                            </div>
-                            <button on:click={() => removeModifier(i)}>X</button>
-                          </div>
-                        {:else}
-                          <!-- content moved into tooltip -->
-                        {/if}
-                      </div>
-                    {/each}
-                  </div>
-                </div>
+                <ModifiersSection 
+                  {modifiers} 
+                  {stats} 
+                  {editingMods}
+                  on:addModifier={handleAddModifier}
+                  on:removeModifier={handleRemoveModifier}
+                  on:updateModifier={handleUpdateModifier}
+                  on:toggleEditingMods={handleToggleEditingMods}
+                  on:modImageClick={handleModImageClick}
+                  on:newModImageClick={handleNewModImageClick}
+                  on:modFileChange={handleModFileChange}
+                />
               </div>
 
               <!-- Guard Sub-tabs -->
@@ -1697,134 +718,33 @@
               
               <!-- Reputation Tab -->
               {#if activeGuardTab === 'reputation'}
-              <h3 style="display: flex; justify-content: space-between; align-items: center;">
-                Reputación
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                  <button class="edit-button" on:click={toggleEditingReputation}>
-                    {editingReputation ? 'Finalizar Edición' : 'Editar Reputación'}
-                  </button>
-                </div>
-              </h3>
-
-              {#if editingReputation}
-                <div class="button-holder">
-                  <button on:click={openAddReputation}>Añadir Reputación</button>
-                </div>
-              {/if}
-
-              {#if addingReputation}
-                  <div class="add-reputation-form">
-                    <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
-                      <img src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
-                    </button>
-                    <input placeholder="Nombre de la facción" bind:value={newReputation.name} />
-                    <input type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
-                    <textarea placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
-                    <button on:click={confirmAddReputation}>Agregar</button>
-                    <button on:click={cancelAddReputation}>Cancelar</button>
-                  </div>
-                {/if}
-
-                <div class="reputation-container">
-                  {#each reputation as rep, i}
-                    <div class="reputation-item">
-                      {#if editingReputation}
-
-                        <div class="reputation-edit">
-                          <button type="button" class="image-button reputation-edit-image-button" on:click={() => onRepImageClick(rep)}>
-                            <img class="reputation-image-edit" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
-                          </button>
-                          <input id={`rep-file-${rep.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onRepFileChange(rep,e)} />
-                          <input placeholder="Nombre" bind:value={rep.name} on:change={updateReputation} />
-                          <textarea placeholder="Detalles sobre la relación..." bind:value={rep.details} on:change={updateReputation}></textarea>
-                          <div class="rep-actions">
-                            <input type="number" min="0" max="10" bind:value={rep.value} on:change={updateReputation} />
-                            <button on:click={() => removeReputation(i)}>✕</button>
-                          </div>
-                        </div>
-                      {:else}
-                        <div class="reputation-display" role="button" tabindex="0"
-                             on:click={() => showReputationInChat(rep)}
-                             on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showReputationInChat(rep); } }}>
-                          <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
-                          <div class="reputation-info">
-                            <div class="reputation-name">{rep.name}</div>
-                            <div class="reputation-bar-container">
-                              <div class="reputation-bar">
-                                <div class="reputation-fill" style="width: {rep.value * 10}%; background: linear-gradient(90deg,
-                                  hsl({(rep.value / 10) * 120}, 70%, 40%) 0%,
-                                  hsl({(rep.value / 10) * 120}, 80%, 50%) 50%,
-                                  hsl({(rep.value / 10) * 120}, 70%, 60%) 100%);">
-                                </div>
-                                {#each Array(11) as _, j}
-                                  <div class="reputation-tick" style="left: {j * 10}%;"></div>
-                                {/each}
-                              </div>
-                            </div>
-                          </div>
-                          {#if rep.details && rep.details.trim()}
-                            <button class="reputation-details-toggle" on:click|stopPropagation={() => toggleReputationDetails(rep.key)}>
-                              📝
-                            </button>
-                          {/if}
-                        </div>
-                        {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
-                          <div class="reputation-details">
-                            <p>{rep.details}</p>
-                          </div>
-                        {/if}
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
+                <ReputationSection 
+                  {reputation} 
+                  {editingReputation} 
+                  {expandedReputationDetails}
+                  on:toggleEditingReputation={handleToggleEditingReputation}
+                  on:addReputation={handleAddReputation}
+                  on:removeReputation={handleRemoveReputation}
+                  on:updateReputation={handleUpdateReputation}
+                  on:repImageClick={handleRepImageClick}
+                  on:newRepImageClick={handleNewRepImageClick}
+                  on:repFileChange={handleRepFileChange}
+                  on:showReputationInChat={handleShowReputationInChat}
+                  on:toggleReputationDetails={handleToggleReputationDetails}
+                />
 
               <!-- Resources Tab -->
               {:else if activeGuardTab === 'resources'}
-              <h3 style="display: flex; justify-content: space-between; align-items: center;">
-                Recursos
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                  <button class="edit-button" on:click={toggleEditingResources}>
-                    {editingResources ? 'Finalizar Edición' : 'Editar Recursos'}
-                  </button>
-                </div>
-              </h3>
-
-              {#if editingResources}
-                <div class="button-holder">
-                  <button on:click={openAddResource}>Añadir Recurso</button>
-                </div>
-              {/if}
-
-              {#if addingResource}
-                  <div class="add-resource-form">
-                    <input placeholder="Nombre" bind:value={newResource.name} />
-                    <input type="number" bind:value={newResource.value} />
-                    <button on:click={confirmAddResource}>Agregar</button>
-                    <button on:click={cancelAddResource}>Cancelar</button>
-                  </div>
-                {/if}
-
-                <div class="resource-container">
-                  {#each resources as res, i}
-                    <div class="resource">
-                      <button type="button" class="image-button" on:click={() => editingResources ? onResImageClick(res) : null}>
-                        <img class="standard-image" src={res.img || 'icons/svg/item-bag.svg'} alt="res" />
-                      </button>
-                      <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
-
-                      {#if editingResources}
-                        <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
-                        <input type="number" bind:value={res.value} on:change={updateResource} />
-                        <button on:click={() => removeResource(i)}>✕</button>
-                      {:else}
-                        <div>
-                          <span>{res.name}</span>
-                          <span>{res.value}</span>
-                        </div>
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
+                <ResourcesSection 
+                  {resources} 
+                  {editingResources}
+                  on:toggleEditingResources={handleToggleEditingResources}
+                  on:addResource={handleAddResource}
+                  on:removeResource={handleRemoveResource}
+                  on:updateResource={handleUpdateResource}
+                  on:resImageClick={handleResImageClick}
+                  on:resFileChange={handleResFileChange}
+                />
               {/if}
             </div>
 

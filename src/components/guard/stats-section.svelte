@@ -1,0 +1,225 @@
+<script lang="ts">
+  import type { GuardStat, LogEntry } from '@/guard/stats';
+  import { createEventDispatcher } from 'svelte';
+
+  export let stats: GuardStat[] = [];
+  export let log: LogEntry[] = [];
+  export let editing = false;
+  export let showLog = false;
+  export let getTotalStatValue: (stat: GuardStat) => number;
+
+  const dispatch = createEventDispatcher();
+
+  let addingStat = false;
+  let newStat: GuardStat = { key: '', name: '', value: 0 };
+
+  function openAddStat() {
+    newStat = { key: crypto.randomUUID(), name: '', value: 0 };
+    addingStat = true;
+  }
+
+  function confirmAddStat() {
+    dispatch('addStat', { ...newStat });
+    addingStat = false;
+  }
+
+  function cancelAddStat() {
+    addingStat = false;
+  }
+
+  function removeStat(index: number) {
+    dispatch('removeStat', index);
+  }
+
+  function updateStat() {
+    dispatch('updateStat');
+  }
+
+  function onImageClick(stat: GuardStat) {
+    dispatch('imageClick', stat);
+  }
+
+  function onFileChange(stat: GuardStat, event: Event) {
+    dispatch('fileChange', { stat, event });
+  }
+
+  function toggleEditing() {
+    dispatch('toggleEditing');
+  }
+
+  function toggleLog() {
+    dispatch('toggleLog');
+  }
+</script>
+
+<div class="stats-section">
+  <div class="button-holder">
+    {#if editing}
+      <button on:click={openAddStat}>Añadir Stat</button>
+    {/if}
+    <button on:click={toggleEditing}>{editing ? 'Stop Editing' : 'Edit Stats'}</button>
+  </div>
+
+  {#if addingStat}
+    <div class="add-stat-form">
+      <input placeholder="Nombre" bind:value={newStat.name} />
+      <input type="number" placeholder="Valor" bind:value={newStat.value} />
+      <button on:click={confirmAddStat}>Agregar</button>
+      <button on:click={cancelAddStat}>Cancelar</button>
+    </div>
+  {/if}
+
+  <div class="stat-container">
+    {#each stats as stat, i}
+      <div class="stat">
+        <button class="stat-img" on:click={() => onImageClick(stat)}>
+          <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
+        </button>
+        <input
+          id={`file-${stat.key}`}
+          type="file"
+          accept="image/*"
+          on:change={(e) => onFileChange(stat, e)}
+          style="display: none;"
+        />
+        {#if editing}
+          <div class="stats-editables">
+            <input
+              class="stat-name-input"
+              placeholder="Nombre"
+              bind:value={stat.name}
+              on:change={updateStat}
+            />
+          </div>
+          <div class="stat-number">
+            <input
+              class="stat-number-input"
+              type="number"
+              placeholder="Valor"
+              bind:value={stat.value}
+              on:change={updateStat}
+            />
+            <button class="stat-number-close" on:click={() => removeStat(i)}>X</button>
+          </div>
+        {:else}
+          <div class="stat-view">
+            <div class="stat-name">{stat.name}</div>
+            <div class="stat-value">{stat.value} ({getTotalStatValue(stat)})</div>
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </div>
+
+  <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
+  {#if showLog}
+    <div class="log">
+      {#each log as entry}
+        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
+      {/each}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .stats-section {
+    flex: 0 0 60%;
+    min-width: 60%;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+  }
+
+  .stat img {
+    height: 42px;
+    width: 42px;
+  }
+
+  .stat-img {
+    background: none;
+    border: none;
+    padding: 0;
+    height: 42px;
+    width: 42px;
+    cursor: pointer;
+  }
+
+  .stat-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .log {
+    background: #333;
+    padding: 0.25rem;
+    margin-top: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .button-holder {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stats-editables {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .stat-name-input {
+    max-width: 100px;
+    text-align: center;
+  }
+
+  .stat-number {
+    display: flex;
+  }
+
+  .stat-number-input {
+    width: 30px;
+    text-align: center;
+  }
+
+  .stat-number-close {
+    width: 24px;
+    text-align: center;
+  }
+
+  .stat-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: bold;
+  }
+
+  .stat-value {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .stat-name {
+    margin-bottom: 0.25rem;
+  }
+
+  .standard-image {
+    width: 32px;
+    height: 32px;
+  }
+</style>
