@@ -52,12 +52,13 @@
   let addingReputation = false;
   let editingReputation = false;
   let newReputation: GuardReputation = { key: '', name: '', value: 0, img: 'icons/svg/aura.svg', details: '' };
-  let collapsedReputation = false;
-  let collapsedResources = false;
   let expandedReputationDetails: Record<string, boolean> = {};
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
+  
+  // Guard sub-tab system - Load last active guard sub-tab from localStorage
+  let activeGuardTab: 'reputation' | 'resources' = (localStorage.getItem('crow-nest-guard-subtab') as 'reputation' | 'resources') || 'reputation';
 
   // Data for tabs
   let patrols: any[] = [];
@@ -79,6 +80,12 @@
     activeTab = tab;
     // Save the active tab to localStorage
     localStorage.setItem('crow-nest-active-tab', tab);
+  }
+
+  function switchGuardTab(tab: 'reputation' | 'resources') {
+    activeGuardTab = tab;
+    // Save the active guard sub-tab to localStorage
+    localStorage.setItem('crow-nest-guard-subtab', tab);
   }
 
   function closePopup() {
@@ -338,8 +345,8 @@
     // Sort modifiers by state: positive -> neutral -> negative
     const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
     modifiers.sort((a, b) => {
-      const stateA = stateOrder[a.state] ?? 1; // Default to neutral if state is undefined
-      const stateB = stateOrder[b.state] ?? 1;
+      const stateA = stateOrder[a.state || 'neutral'] ?? 1; // Default to neutral if state is undefined
+      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
       return stateA - stateB;
     });
   }
@@ -786,6 +793,39 @@
     background: rgba(50, 60, 80, 1);
     color: #d4af37;
     border-left: 4px solid #d4af37;
+  }
+
+  .guard-sub-tabs {
+    display: flex;
+    margin: 1rem 0;
+    border-bottom: 2px solid #d4af37;
+  }
+
+  .guard-sub-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1.5rem;
+    background: rgba(20, 30, 50, 0.8);
+    border: 1px solid #8b6914;
+    border-bottom: none;
+    color: #f4f1e8;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 2px;
+  }
+
+  .guard-sub-tab:hover {
+    background: rgba(30, 40, 60, 0.9);
+    color: #d4af37;
+  }
+
+  .guard-sub-tab.active {
+    background: rgba(40, 50, 70, 1);
+    color: #d4af37;
+    border-top: 3px solid #d4af37;
   }
 
   .content-area {
@@ -1639,27 +1679,40 @@
                 </div>
               </div>
 
-              <hr />
+              <!-- Guard Sub-tabs -->
+              <div class="guard-sub-tabs">
+                <button 
+                  class="guard-sub-tab {activeGuardTab === 'reputation' ? 'active' : ''}"
+                  on:click={() => switchGuardTab('reputation')}
+                >
+                  Reputación
+                </button>
+                <button 
+                  class="guard-sub-tab {activeGuardTab === 'resources' ? 'active' : ''}"
+                  on:click={() => switchGuardTab('resources')}
+                >
+                  Recursos
+                </button>
+              </div>
+              
+              <!-- Reputation Tab -->
+              {#if activeGuardTab === 'reputation'}
               <h3 style="display: flex; justify-content: space-between; align-items: center;">
                 Reputación
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                   <button class="edit-button" on:click={toggleEditingReputation}>
                     {editingReputation ? 'Finalizar Edición' : 'Editar Reputación'}
                   </button>
-                  <button class="collapse-button" on:click={() => collapsedReputation = !collapsedReputation}>
-                    {collapsedReputation ? '▼' : '▲'}
-                  </button>
                 </div>
               </h3>
 
-              {#if !collapsedReputation}
-                {#if editingReputation}
-                  <div class="button-holder">
-                    <button on:click={openAddReputation}>Añadir Reputación</button>
-                  </div>
-                {/if}
+              {#if editingReputation}
+                <div class="button-holder">
+                  <button on:click={openAddReputation}>Añadir Reputación</button>
+                </div>
+              {/if}
 
-                {#if addingReputation}
+              {#if addingReputation}
                   <div class="add-reputation-form">
                     <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
                       <img src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
@@ -1724,29 +1777,25 @@
                     </div>
                   {/each}
                 </div>
-              {/if}
 
-              <hr />
+              <!-- Resources Tab -->
+              {:else if activeGuardTab === 'resources'}
               <h3 style="display: flex; justify-content: space-between; align-items: center;">
                 Recursos
-                <div style="display: flex, gap: 0.5rem, align-items: center;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
                   <button class="edit-button" on:click={toggleEditingResources}>
                     {editingResources ? 'Finalizar Edición' : 'Editar Recursos'}
-                  </button>
-                  <button class="collapse-button" on:click={() => collapsedResources = !collapsedResources}>
-                    {collapsedResources ? '▼' : '▲'}
                   </button>
                 </div>
               </h3>
 
-              {#if !collapsedResources}
-                {#if editingResources}
-                  <div class="button-holder">
-                    <button on:click={openAddResource}>Añadir Recurso</button>
-                  </div>
-                {/if}
+              {#if editingResources}
+                <div class="button-holder">
+                  <button on:click={openAddResource}>Añadir Recurso</button>
+                </div>
+              {/if}
 
-                {#if addingResource}
+              {#if addingResource}
                   <div class="add-resource-form">
                     <input placeholder="Nombre" bind:value={newResource.name} />
                     <input type="number" bind:value={newResource.value} />
@@ -1782,7 +1831,6 @@
           {:else if activeTab === 'patrullas'}
             <h3>Patrullas</h3>
             <Groups
-              groups={patrols}
               saveGroups={savePatrols}
               labels={{
                 groupSingular: 'Patrol',
@@ -1796,7 +1844,6 @@
           {:else if activeTab === 'admins'}
             <h3>Administración</h3>
             <Groups
-              groups={admins}
               saveGroups={saveAdmins}
               labels={{
                 groupSingular: 'Admin',
