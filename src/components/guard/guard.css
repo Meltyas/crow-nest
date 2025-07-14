@@ -46,7 +46,7 @@
 }
 
 .resize-handle::before {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 2px;
   right: 2px;
@@ -129,7 +129,12 @@
   border-bottom: 2px solid #d4af37;
   flex: 1;
   padding: 1rem;
-  background: linear-gradient(135deg, rgba(11, 10, 19, 0.95) 0%, rgba(20, 30, 50, 0.9) 50%, rgba(11, 10, 19, 0.95) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(11, 10, 19, 0.95) 0%,
+    rgba(20, 30, 50, 0.9) 50%,
+    rgba(11, 10, 19, 0.95) 100%
+  );
   backdrop-filter: blur(10px);
   color: #f4f1e8;
   overflow-y: auto;

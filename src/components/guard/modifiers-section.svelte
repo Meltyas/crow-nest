@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { GuardModifier, GuardStat } from '@/guard/stats';
   import Tooltip from '@/components/tooltip.svelte';
+  import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { createEventDispatcher } from 'svelte';
 
   export let modifiers: GuardModifier[] = [];
@@ -10,23 +10,23 @@
   const dispatch = createEventDispatcher();
 
   let addingModifier = false;
-  let newModifier: GuardModifier = { 
-    key: '', 
-    name: '', 
-    description: '', 
-    mods: {}, 
-    state: 'neutral', 
-    img: 'icons/svg/upgrade.svg' 
+  let newModifier: GuardModifier = {
+    key: '',
+    name: '',
+    description: '',
+    mods: {},
+    state: 'neutral',
+    img: 'icons/svg/upgrade.svg'
   };
 
   function openAddModifier() {
-    newModifier = { 
-      key: crypto.randomUUID(), 
-      name: '', 
-      description: '', 
-      mods: {}, 
-      state: 'neutral', 
-      img: 'icons/svg/upgrade.svg' 
+    newModifier = {
+      key: crypto.randomUUID(),
+      name: '',
+      description: '',
+      mods: {},
+      state: 'neutral',
+      img: 'icons/svg/upgrade.svg'
     };
     addingModifier = true;
   }
@@ -88,7 +88,7 @@
     <button on:click={openAddModifier}>Añadir Modificador</button>
   {/if}
   <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
-  
+
   {#if addingModifier}
     <div class="add-mod-form">
       <div class="modifier-image-section">
@@ -120,7 +120,7 @@
       </div>
     </div>
   {/if}
-  
+
   <div class="modifier-container">
     {#each modifiers as mod, i}
       <div class="modifier modifier-{mod.state || 'neutral'}">

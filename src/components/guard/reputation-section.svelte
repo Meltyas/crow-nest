@@ -9,12 +9,12 @@
   const dispatch = createEventDispatcher();
 
   let addingReputation = false;
-  let newReputation: GuardReputation = { 
-    key: '', 
-    name: '', 
-    value: 0, 
-    img: 'icons/svg/aura.svg', 
-    details: '' 
+  let newReputation: GuardReputation = {
+    key: '',
+    name: '',
+    value: 0,
+    img: 'icons/svg/aura.svg',
+    details: ''
   };
 
   function toggleEditingReputation() {
@@ -22,12 +22,12 @@
   }
 
   function openAddReputation() {
-    newReputation = { 
-      key: crypto.randomUUID(), 
-      name: '', 
-      value: 0, 
-      img: 'icons/svg/aura.svg', 
-      details: '' 
+    newReputation = {
+      key: crypto.randomUUID(),
+      name: '',
+      value: 0,
+      img: 'icons/svg/aura.svg',
+      details: ''
     };
     addingReputation = true;
   }

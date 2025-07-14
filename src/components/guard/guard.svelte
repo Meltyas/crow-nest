@@ -6,10 +6,6 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
-  import StatsSection from './stats-section.svelte';
-  import ModifiersSection from './modifiers-section.svelte';
-  import ReputationSection from './reputation-section.svelte';
-  import ResourcesSection from './resources-section.svelte';
   import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
   import {
@@ -27,6 +23,10 @@
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import './guard.css';
+  import ModifiersSection from './modifiers-section.svelte';
+  import ReputationSection from './reputation-section.svelte';
+  import ResourcesSection from './resources-section.svelte';
+  import StatsSection from './stats-section.svelte';
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -52,7 +52,7 @@
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
-  
+
   // Guard sub-tab system - Load last active guard sub-tab from localStorage
   let activeGuardTab: 'reputation' | 'resources' = (localStorage.getItem('crow-nest-guard-subtab') as 'reputation' | 'resources') || 'reputation';
 
@@ -671,11 +671,11 @@
             <h3>Los Cuervos</h3>
             <div class="guard-container">
               <div class="stats-and-modifiers-container">
-                <StatsSection 
-                  {stats} 
-                  {log} 
-                  {editing} 
-                  {showLog} 
+                <StatsSection
+                  {stats}
+                  {log}
+                  {editing}
+                  {showLog}
                   {getTotalStatValue}
                   on:addStat={handleAddStat}
                   on:removeStat={handleRemoveStat}
@@ -686,9 +686,9 @@
                   on:fileChange={handleFileChange}
                 />
 
-                <ModifiersSection 
-                  {modifiers} 
-                  {stats} 
+                <ModifiersSection
+                  {modifiers}
+                  {stats}
                   {editingMods}
                   on:addModifier={handleAddModifier}
                   on:removeModifier={handleRemoveModifier}
@@ -702,25 +702,25 @@
 
               <!-- Guard Sub-tabs -->
               <div class="guard-sub-tabs">
-                <button 
+                <button
                   class="guard-sub-tab {activeGuardTab === 'reputation' ? 'active' : ''}"
                   on:click={() => switchGuardTab('reputation')}
                 >
                   Reputación
                 </button>
-                <button 
+                <button
                   class="guard-sub-tab {activeGuardTab === 'resources' ? 'active' : ''}"
                   on:click={() => switchGuardTab('resources')}
                 >
                   Recursos
                 </button>
               </div>
-              
+
               <!-- Reputation Tab -->
               {#if activeGuardTab === 'reputation'}
-                <ReputationSection 
-                  {reputation} 
-                  {editingReputation} 
+                <ReputationSection
+                  {reputation}
+                  {editingReputation}
                   {expandedReputationDetails}
                   on:toggleEditingReputation={handleToggleEditingReputation}
                   on:addReputation={handleAddReputation}
@@ -735,8 +735,8 @@
 
               <!-- Resources Tab -->
               {:else if activeGuardTab === 'resources'}
-                <ResourcesSection 
-                  {resources} 
+                <ResourcesSection
+                  {resources}
                   {editingResources}
                   on:toggleEditingResources={handleToggleEditingResources}
                   on:addResource={handleAddResource}
