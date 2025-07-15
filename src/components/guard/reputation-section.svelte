@@ -226,11 +226,11 @@
             <img class="reputation-image" src={rep.img || 'icons/svg/aura.svg'} alt="reputation" />
             <div class="reputation-info">
               <div class="reputation-name">{rep.name}</div>
-                          {#if rep.details && rep.details.trim() && expandedReputationDetails[rep.key]}
-              <div class="reputation-details">
-                <p>{rep.details}</p>
-              </div>
-            {/if}
+              {#if rep.details && rep.details.trim()}
+                <div class="reputation-details" class:expanded={expandedReputationDetails[rep.key]}>
+                  <p>{rep.details}</p>
+                </div>
+              {/if}
               <div class="reputation-bar-container">
                 <div class="reputation-bar">
                   <div class="reputation-fill" style="width: {rep.value * 10}%; background: linear-gradient(90deg,
@@ -534,9 +534,27 @@
     line-height: 1.4;
     color: #000000;
     width: 100%;
+    max-height: 4.2em; /* Aproximadamente 3 líneas */
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    position: relative;
+  }
+
+  .reputation-details.expanded {
+    max-height: none;
+  }
+
+  .reputation-details:not(.expanded)::after {
+    content: "...";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(to right, transparent, #ffffff 50%);
+    padding-left: 20px;
   }
 
   .reputation-details p {
+    min-height: 60px;
     margin: 0;
   }
 
