@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GuardResource } from '@/guard/stats';
   import { createEventDispatcher } from 'svelte';
+  import AddItemForm from './add-item-form.svelte';
   import ItemCard from './item-card.svelte';
 
   export let resources: GuardResource[] = [];
@@ -185,16 +186,14 @@
   </h3>
 
   {#if addingResource}
-    <div class="add-resource-form">
-      <button type="button" class="resource-edit-image-button" on:click={onNewResImageClick}>
-        <img class="resource-image" src={newResource.img || 'icons/svg/item-bag.svg'} alt="resource" />
-      </button>
-      <input class="resource-input resource-name" placeholder="Nombre del recurso" bind:value={newResource.name} />
-      <input class="resource-input number"type="number" min="0" placeholder="Cantidad" bind:value={newResource.value} />
-      <textarea class="resource-textarea" placeholder="Descripción del recurso..." bind:value={newResource.details}></textarea>
-      <button class="standard-button" on:click={confirmAddResource}>Agregar</button>
-      <button class="standard-button" on:click={cancelAddResource}>Cancelar</button>
-    </div>
+    <AddItemForm
+      type="resource"
+      item={newResource}
+      visible={addingResource}
+      on:imageClick={onNewResImageClick}
+      on:confirm={confirmAddResource}
+      on:cancel={cancelAddResource}
+    />
   {/if}
 
   <div class="resource-container">

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GuardReputation } from '@/guard/stats';
   import { createEventDispatcher } from 'svelte';
+  import AddItemForm from './add-item-form.svelte';
   import ItemCard from './item-card.svelte';
 
   export let reputation: GuardReputation[] = [];
@@ -172,16 +173,14 @@
   </h3>
 
   {#if addingReputation}
-    <div class="add-reputation-form">
-      <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
-        <img class="reputation-image" src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
-      </button>
-      <input class="reputation-input reputation-name" placeholder="Nombre de la facción" bind:value={newReputation.name} />
-      <input class="reputation-input number" type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
-      <textarea class="reputation-textarea" placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
-      <button class="standard-button" on:click={confirmAddReputation}>Agregar</button>
-      <button class="standard-button" on:click={cancelAddReputation}>Cancelar</button>
-    </div>
+    <AddItemForm
+      type="reputation"
+      item={newReputation}
+      visible={addingReputation}
+      on:imageClick={onNewRepImageClick}
+      on:confirm={confirmAddReputation}
+      on:cancel={cancelAddReputation}
+    />
   {/if}
 
   <div class="reputation-container">
