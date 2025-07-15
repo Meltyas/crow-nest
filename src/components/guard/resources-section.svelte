@@ -62,7 +62,8 @@
   }
 
   function toggleResourceDetails(resKey: string) {
-    dispatch('toggleResourceDetails', resKey);
+    expandedResourceDetails[resKey] = !expandedResourceDetails[resKey];
+    expandedResourceDetails = { ...expandedResourceDetails };
   }
 
   function showResourceInChat(res: GuardResource) {
