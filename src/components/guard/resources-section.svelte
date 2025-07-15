@@ -177,10 +177,10 @@
   <h3 style="display: flex; justify-content: space-between; align-items: center; font-family: 'Eveleth', 'Overpass', Arial, sans-serif; font-size: 1.5rem; color: #f9fafb; font-weight: bold;">
     Recursos
     <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <button class="edit-button small-button" on:click={toggleEditingResources}>
+      <button class="edit-button standard-button" on:click={toggleEditingResources}>
         ✏️ {editingResources ? 'Finalizar' : 'Editar'}
       </button>
-      <button class="add-button small-button" on:click={openAddResource}>➕ Añadir</button>
+      <button class="add-button standard-button" on:click={openAddResource}>➕ Añadir</button>
     </div>
   </h3>
 
@@ -192,8 +192,8 @@
       <input class="resource-input resource-name" placeholder="Nombre del recurso" bind:value={newResource.name} />
       <input class="resource-input number"type="number" min="0" placeholder="Cantidad" bind:value={newResource.value} />
       <textarea class="resource-textarea" placeholder="Descripción del recurso..." bind:value={newResource.details}></textarea>
-      <button on:click={confirmAddResource}>Agregar</button>
-      <button on:click={cancelAddResource}>Cancelar</button>
+      <button class="standard-button" on:click={confirmAddResource}>Agregar</button>
+      <button class="standard-button" on:click={cancelAddResource}>Cancelar</button>
     </div>
   {/if}
 
@@ -258,6 +258,7 @@
 
   .resource-edit-image-button {
     align-self: center;
+    padding: 0;
     width: 100%;
     height: 56px;
   }
@@ -275,6 +276,16 @@
     margin-bottom: 1rem;
     max-width: 31.7%;
   }
+
+  .resource-image {
+    background:#000000;
+    width: 100%;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #d4af37;
+  }
+
 
   /* Responsive design for resource grid */
   @media (max-width: 1200px) {

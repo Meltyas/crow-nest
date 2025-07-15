@@ -633,7 +633,7 @@
 /* Button Styles */
 .crow-nest .edit-button,
 .crow-nest .add-button,
-.crow-nest .small-button {
+.crow-nest .standard-button {
   background: #3b82f6;
   color: white;
   border: none;
@@ -648,7 +648,7 @@
 
 .crow-nest .edit-button:hover,
 .crow-nest .add-button:hover,
-.crow-nest .small-button:hover {
+.crow-nest .standard-button:hover {
   background: #2563eb;
 }
 

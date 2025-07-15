@@ -1,6 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
 
+  // ChatMessage is provided by Foundry at runtime
+  declare const ChatMessage: any;
+
   export let item: any; // GuardReputation | GuardResource
   export let index: number;
   export let type: 'reputation' | 'resource'; // Para determinar el comportamiento
@@ -57,7 +60,211 @@
   }
 
   function handleShowInChat() {
-    dispatch('showInChat', item);
+    if (editing) return;
+
+    if (type === 'reputation') {
+      showReputationInChat();
+    } else if (type === 'resource') {
+      showResourceInChat();
+    }
+  }
+
+  function showReputationInChat() {
+    const hue = (item[config.valueProperty] / 10) * 120;
+    const reputationColor = `hsl(${hue}, 70%, 50%)`;
+
+    const detailsSection = item[config.detailsProperty] && item[config.detailsProperty].trim()
+      ? `<div style="
+          margin-bottom: 0.5rem;
+          font-family: 'Overpass', sans-serif;
+          font-size: 14px;
+          line-height: 1.4;
+          color: #000000;
+          width: 100%;
+        ">
+          <p style="margin: 0;">${item[config.detailsProperty]}</p>
+        </div>`
+      : "";
+
+    const content = `
+      <div style="
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        border: 1px solid #d4af37;
+        border-radius: 8px;
+        position: relative;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      ">
+        <img src="${item.img || config.imageDefault}" alt="${item[config.nameProperty]}" style="
+          background: #000000;
+          width: 100%;
+          height: 56px;
+          object-fit: cover;
+          border-radius: 8px 8px 0 0;
+          flex-shrink: 0;
+          border-bottom: 2px solid #d4af37;
+        " />
+        <div style="
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          width: 100%;
+          padding: 0.75rem;
+          position: relative;
+        ">
+          <div style="
+            font-family: 'Eveleth';
+            font-size: 1rem;
+            color: #000000;
+            line-height: 1.4;
+          ">${item[config.nameProperty]}</div>
+
+          ${detailsSection}
+
+          <div style="position: relative; width: 100%;">
+            <div style="
+              width: 100%;
+              height: 24px;
+              background: #000000;
+              border: 2px solid #d4af37;
+              border-radius: 12px;
+              position: relative;
+              overflow: hidden;
+              box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            ">
+              <div style="
+                height: 100%;
+                width: ${item[config.valueProperty] * 10}%;
+                background: linear-gradient(90deg,
+                  hsl(${(item[config.valueProperty] / 10) * 120}, 70%, 40%) 0%,
+                  hsl(${(item[config.valueProperty] / 10) * 120}, 80%, 50%) 50%,
+                  hsl(${(item[config.valueProperty] / 10) * 120}, 70%, 60%) 100%);
+                transition: width 0.4s ease;
+                border-radius: 0;
+                position: relative;
+                box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
+              "></div>
+              ${Array(9).fill(0).map((_, j) => {
+                const position = (j + 1) * 10;
+                return `<div style="
+                  position: absolute;
+                  top: 0;
+                  bottom: 0;
+                  left: ${position}%;
+                  width: 2px;
+                  background: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 0.8) 0%,
+                    rgba(0, 0, 0, 0.6) 50%,
+                    rgba(0, 0, 0, 0.8) 100%);
+                  z-index: 1;
+                  border-radius: 1px;
+                  transform: rotate(2deg);
+                "></div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    ChatMessage.create({
+      speaker: { alias: "Los Cuervos - Reputación" },
+      content: content,
+      whisper: null,
+    });
+  }
+
+  function showResourceInChat() {
+    const detailsSection = item[config.detailsProperty] && item[config.detailsProperty].trim()
+      ? `<div style="
+          margin-bottom: 0.5rem;
+          font-family: 'Overpass', sans-serif;
+          font-size: 14px;
+          line-height: 1.4;
+          color: #000000;
+          width: 100%;
+        ">
+          <p style="margin: 0;">${item[config.detailsProperty]}</p>
+        </div>`
+      : "";
+
+    const chatData = {
+      content: `
+        <div style="
+          background: #ffffff;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          width: 100%;
+          border: 1px solid #d4af37;
+          border-radius: 8px;
+          position: relative;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        ">
+          <img src="${item.img || config.imageDefault}" alt="${item[config.nameProperty]}" style="
+            background: #000000;
+            width: 100%;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 8px 8px 0 0;
+            flex-shrink: 0;
+            border-bottom: 2px solid #d4af37;
+          " />
+          <div style="
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem;
+            position: relative;
+            align-items: flex-start;
+          ">
+            <div style="
+              font-family: 'Eveleth';
+              font-size: 1rem;
+              color: #000000;
+              line-height: 1.4;
+            ">${item[config.nameProperty]}</div>
+
+            ${detailsSection}
+
+            <div style="
+              display: flex;
+              justify-content: flex-end;
+              width: 100%;
+            ">
+              <span style="
+                background: #374151;
+                color: #d1d5db;
+                padding: 0.25rem 0.5rem;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 0.8rem;
+                border: 1px solid #6b7280;
+                min-width: 3rem;
+                text-align: center;
+                font-family: 'Overpass', Arial, sans-serif;
+                height: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">${item[config.valueProperty]}</span>
+            </div>
+          </div>
+        </div>
+      `,
+      speaker: { alias: "Recursos del Guardia" }
+    };
+
+    ChatMessage.create(chatData);
   }
 
   function handleToggleDetails() {
@@ -228,11 +435,6 @@
 
   .item-display:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .resource-item .item-display:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   .item-display:focus {

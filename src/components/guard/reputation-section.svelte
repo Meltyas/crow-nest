@@ -164,10 +164,10 @@
   <h3 style="display: flex; justify-content: space-between; align-items: center;">
     Reputación
     <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <button class="edit-button small-button" on:click={toggleEditingReputation}>
+      <button class="edit-button standard-button" on:click={toggleEditingReputation}>
         ✏️ {editingReputation ? 'Finalizar' : 'Editar'}
       </button>
-      <button class="add-button small-button" on:click={openAddReputation}>➕ Añadir</button>
+      <button class="add-button standard-button" on:click={openAddReputation}>➕ Añadir</button>
     </div>
   </h3>
 
@@ -179,8 +179,8 @@
       <input class="reputation-input reputation-name" placeholder="Nombre de la facción" bind:value={newReputation.name} />
       <input class="reputation-input number" type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
       <textarea class="reputation-textarea" placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
-      <button on:click={confirmAddReputation}>Agregar</button>
-      <button on:click={cancelAddReputation}>Cancelar</button>
+      <button class="standard-button" on:click={confirmAddReputation}>Agregar</button>
+      <button class="standard-button" on:click={cancelAddReputation}>Cancelar</button>
     </div>
   {/if}
 
@@ -231,6 +231,14 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin-top: 0.5rem;
+  }
+
+  .reputation-image {
+    width: 100%;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #d4af37;
   }
 
   .reputation-image-button {
