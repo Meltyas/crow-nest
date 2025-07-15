@@ -9,6 +9,7 @@
   const dispatch = createEventDispatcher();
 
   let addingResource = false;
+  let editingQuantity: Record<string, boolean> = {};
   let newResource: GuardResource = {
     key: '',
     name: '',
@@ -64,6 +65,17 @@
   function toggleResourceDetails(resKey: string) {
     expandedResourceDetails[resKey] = !expandedResourceDetails[resKey];
     expandedResourceDetails = { ...expandedResourceDetails };
+  }
+
+  function toggleQuantityEdit(resKey: string) {
+    editingQuantity[resKey] = !editingQuantity[resKey];
+    editingQuantity = { ...editingQuantity };
+  }
+
+  function finishQuantityEdit(resKey: string) {
+    editingQuantity[resKey] = false;
+    editingQuantity = { ...editingQuantity };
+    updateResource();
   }
 
   function showResourceInChat(res: GuardResource) {
@@ -229,7 +241,26 @@
             <div class="resource-info">
               <div class="resource-header">
                 <span class="resource-name">{res.name}</span>
-                <span class="resource-quantity">{res.value}</span>
+                {#if editingQuantity[res.key]}
+                  <input
+                    class="resource-quantity-input"
+                    type="number"
+                    min="0"
+                    bind:value={res.value}
+                    on:keydown={(e) => { if (e.key === 'Enter') finishQuantityEdit(res.key); }}
+                    autofocus
+                  />
+                {:else}
+                  <span
+                    class="resource-quantity"
+                    role="button"
+                    tabindex="0"
+                    on:click|stopPropagation={() => toggleQuantityEdit(res.key)}
+                    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleQuantityEdit(res.key); } }}
+                  >
+                    {res.value}
+                  </span>
+                {/if}
               </div>
               {#if res.details && res.details.trim()}
                 <div class="resource-details" class:expanded={expandedResourceDetails[res.key]}>
@@ -406,9 +437,40 @@
     font-weight: bold;
     font-size: 0.8rem;
     border: 1px solid #6b7280;
-    min-width: 2rem;
+    min-width: 3rem;
     text-align: center;
     font-family: 'Overpass', Arial, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 26px;
+  }
+
+  .resource-quantity:hover {
+    background: #4b5563;
+    border-color: #9ca3af;
+  }
+
+  .resource-quantity-input {
+    background: #374151;
+    color: #d1d5db;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    border: 1px solid #6b7280;
+    min-width: 3rem;
+    text-align: center;
+    font-family: 'Overpass', Arial, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 0;
+    width: auto;
+    height: 26px;
+  }
+
+  .resource-quantity-input:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 1px #1d4ed8;
   }
 
   .resource-details-toggle {
