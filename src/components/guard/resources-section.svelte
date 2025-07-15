@@ -62,8 +62,7 @@
   }
 
   function toggleResourceDetails(resKey: string) {
-    expandedResourceDetails[resKey] = !expandedResourceDetails[resKey];
-    expandedResourceDetails = { ...expandedResourceDetails };
+    dispatch('toggleResourceDetails', resKey);
   }
 
   function showResourceInChat(res: GuardResource) {
@@ -231,11 +230,11 @@
                 <span class="resource-name">{res.name}</span>
                 <span class="resource-quantity">{res.value}</span>
               </div>
-                          {#if res.details && res.details.trim() && expandedResourceDetails[res.key]}
-              <div class="resource-details">
-                <p>{res.details}</p>
-              </div>
-            {/if}
+              {#if res.details && res.details.trim()}
+                <div class="resource-details" class:expanded={expandedResourceDetails[res.key]}>
+                  <p>{res.details}</p>
+                </div>
+              {/if}
             </div>
             {#if res.details && res.details.trim()}
               <button class="resource-details-toggle" on:click|stopPropagation={() => toggleResourceDetails(res.key)}>
@@ -442,10 +441,25 @@
     line-height: 1.4;
     color: #000000;
     width: 100%;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .resource-details:not(.expanded) {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .resource-details.expanded {
+    display: block;
   }
 
   .resource-details p {
     margin: 0;
+    min-height: 60px;
   }
 
   /* Edit Mode Styles */

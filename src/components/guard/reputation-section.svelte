@@ -534,23 +534,20 @@
     line-height: 1.4;
     color: #000000;
     width: 100%;
-    max-height: 4.2em; /* Aproximadamente 3 líneas */
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: all 0.3s ease;
     position: relative;
   }
 
-  .reputation-details.expanded {
-    max-height: none;
+  .reputation-details:not(.expanded) {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .reputation-details:not(.expanded)::after {
-    content: "...";
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(to right, transparent, #ffffff 50%);
-    padding-left: 20px;
+  .reputation-details.expanded {
+    display: block;
   }
 
   .reputation-details p {
