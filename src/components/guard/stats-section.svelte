@@ -1,11 +1,9 @@
 <script lang="ts">
-  import type { GuardStat, LogEntry } from '@/guard/stats';
+  import type { GuardStat } from '@/guard/stats';
   import { createEventDispatcher } from 'svelte';
 
   export let stats: GuardStat[] = [];
-  export let log: LogEntry[] = [];
   export let editing = false;
-  export let showLog = false;
   export let getTotalStatValue: (stat: GuardStat) => number;
 
   const dispatch = createEventDispatcher();
@@ -45,10 +43,6 @@
 
   function toggleEditing() {
     dispatch('toggleEditing');
-  }
-
-  function toggleLog() {
-    dispatch('toggleLog');
   }
 </script>
 
@@ -110,15 +104,6 @@
       </div>
     {/each}
   </div>
-
-  <button on:click={toggleLog}>{showLog ? 'Ocultar Log' : 'Mostrar Log'}</button>
-  {#if showLog}
-    <div class="log">
-      {#each log as entry}
-        <div>{new Date(entry.time).toLocaleString()} - {entry.user}: {entry.action}</div>
-      {/each}
-    </div>
-  {/if}
 </div>
 
 <style>
@@ -159,14 +144,6 @@
     gap: 0.5rem;
     width: 100%;
     flex-wrap: wrap;
-  }
-
-  .log {
-    background: #333;
-    padding: 0.25rem;
-    margin-top: 0.5rem;
-    max-height: 150px;
-    overflow-y: auto;
   }
 
   .button-holder {

@@ -3,7 +3,6 @@ import type {
   GuardReputation,
   GuardResource,
   GuardStat,
-  LogEntry,
 } from "@/guard/stats";
 import {
   saveModifiers,
@@ -23,7 +22,6 @@ declare const Hooks: any;
 export class GuardHandlers {
   // Data references (passed from component)
   private stats: GuardStat[] = [];
-  private log: LogEntry[] = [];
   private modifiers: GuardModifier[] = [];
   private resources: GuardResource[] = [];
   private reputation: GuardReputation[] = [];
@@ -43,7 +41,6 @@ export class GuardHandlers {
   // Update data references from component
   updateData(data: {
     stats: GuardStat[];
-    log: LogEntry[];
     modifiers: GuardModifier[];
     resources: GuardResource[];
     reputation: GuardReputation[];
@@ -57,7 +54,6 @@ export class GuardHandlers {
     expandedResourceDetails: Record<string, boolean>;
   }) {
     this.stats = data.stats;
-    this.log = data.log;
     this.modifiers = data.modifiers;
     this.resources = data.resources;
     this.reputation = data.reputation;
@@ -75,7 +71,6 @@ export class GuardHandlers {
   handleStatsSync = (event: SyncEvent) => {
     if (event.type === "stats" && event.data) {
       this.stats = event.data.stats || [];
-      this.log = event.data.log || [];
       this.updateComponent();
     }
   };
@@ -120,15 +115,6 @@ export class GuardHandlers {
   handleAddStat = (event: CustomEvent) => {
     const newStat = event.detail;
     this.stats = [...this.stats, { ...newStat }];
-    this.log = [
-      ...this.log,
-      {
-        user: game.user?.name ?? "unknown",
-        time: Date.now(),
-        action: `create ${newStat.key}`,
-        next: { ...newStat },
-      },
-    ];
     this.persistStats();
     this.updateComponent();
   };
@@ -137,28 +123,11 @@ export class GuardHandlers {
     const index = event.detail;
     const [removed] = this.stats.splice(index, 1);
     this.stats = [...this.stats];
-    this.log = [
-      ...this.log,
-      {
-        user: game.user?.name ?? "unknown",
-        time: Date.now(),
-        action: `delete ${removed.key}`,
-        previous: removed,
-      },
-    ];
     this.persistStats();
     this.updateComponent();
   };
 
   handleUpdateStat = () => {
-    this.log = [
-      ...this.log,
-      {
-        user: game.user?.name ?? "unknown",
-        time: Date.now(),
-        action: "edit",
-      },
-    ];
     this.stats = [...this.stats];
     this.persistStats();
     this.updateComponent();
@@ -421,55 +390,47 @@ export class GuardHandlers {
           <img src="${res.img}" alt="${res.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
           <div>
             <h4 style="margin: 0; color: #fff; font-size: 14px;">${res.name}</h4>
-            <p style="margin: 0; color: #ccc; font-size: 12px;">${res.details || res.description || 'Sin descripción'}</p>
+            <p style="margin: 0; color: #ccc; font-size: 12px;">${res.details || res.description || "Sin descripción"}</p>
           </div>
         </div>
       `,
-      speaker: { alias: "Recursos del Guardia" }
+      speaker: { alias: "Recursos del Guardia" },
     };
-    
+
     ChatMessage.create(chatData);
   };
 
   reorderResources = (event: CustomEvent) => {
-    console.log('🔄 HANDLER reorderResources received:', event.detail);
     const { dragIndex, dropIndex } = event.detail;
     if (dragIndex === dropIndex) return;
-    
+
     const newResources = [...this.resources];
     const draggedResource = newResources[dragIndex];
-    
-    console.log('📦 Moving resource:', draggedResource.name, 'from', dragIndex, 'to', dropIndex);
-    
+
     // Remove the dragged item
     newResources.splice(dragIndex, 1);
-    
+
     // Insert it at the new position
     newResources.splice(dropIndex, 0, draggedResource);
-    
+
     this.resources = newResources;
-    console.log('✅ Resources reordered successfully');
     this.handleUpdateResource();
   };
 
   reorderReputation = (event: CustomEvent) => {
-    console.log('🔄 HANDLER reorderReputation received:', event.detail);
     const { dragIndex, dropIndex } = event.detail;
     if (dragIndex === dropIndex) return;
-    
+
     const newReputation = [...this.reputation];
     const draggedReputation = newReputation[dragIndex];
-    
-    console.log('🏆 Moving reputation:', draggedReputation.name, 'from', dragIndex, 'to', dropIndex);
-    
+
     // Remove the dragged item
     newReputation.splice(dragIndex, 1);
-    
+
     // Insert it at the new position
     newReputation.splice(dropIndex, 0, draggedReputation);
-    
+
     this.reputation = newReputation;
-    console.log('✅ Reputation reordered successfully');
     this.handleUpdateReputation();
   };
 
@@ -528,7 +489,7 @@ export class GuardHandlers {
   // Persistence methods
   private async persistStats() {
     if (game.user?.isGM) {
-      await saveStats(this.stats, this.log);
+      await saveStats(this.stats);
     }
   }
 
@@ -554,7 +515,6 @@ export class GuardHandlers {
   getData() {
     return {
       stats: this.stats,
-      log: this.log,
       modifiers: this.modifiers,
       resources: this.resources,
       reputation: this.reputation,

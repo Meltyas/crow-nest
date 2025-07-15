@@ -6,10 +6,9 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
-  import { MODULE_ID, SETTING_LOG, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
-  import type { GuardModifier, GuardReputation, GuardResource, GuardStat, LogEntry } from '@/guard/stats';
+  import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
+  import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
-    getLog,
     getModifiers,
     getReputation,
     getResources,
@@ -33,8 +32,6 @@
   interface Stat extends GuardStat {}
 
   let stats: Stat[] = [];
-  let log: LogEntry[] = [];
-  let showLog = false;
   let editing = false;
 
   let modifiers: GuardModifier[] = [];
@@ -164,7 +161,6 @@
     if (handlers) {
       const data = handlers.getData();
       stats = data.stats;
-      log = data.log;
       modifiers = data.modifiers;
       resources = data.resources;
       reputation = data.reputation;
@@ -194,10 +190,6 @@
     updateHandlersData();
   }
 
-  function handleToggleLog() {
-    showLog = !showLog;
-  }
-
   function handleToggleEditingMods() {
     editingMods = !editingMods;
     if (!editingMods) {
@@ -218,7 +210,6 @@
 
   onMount(() => {
     stats = getStats() as Stat[];
-    log = getLog();
     modifiers = getModifiers();
     sortModifiersByState();
     resources = getResources();
@@ -245,11 +236,6 @@
     Hooks.on('updateSetting', (setting: any) => {
       if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
         stats = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_LOG}`) {
-        log = setting.value || [];
         updateHandlersData();
       }
 

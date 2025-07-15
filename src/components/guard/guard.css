@@ -4,6 +4,7 @@
   border-radius: 12px;
   overflow: hidden;
   z-index: 80;
+  min-width: 730px;
 }
 
 .crow-nest-guard .image-button {

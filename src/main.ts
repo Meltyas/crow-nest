@@ -6,7 +6,6 @@ import {
 import {
   MODULE_ID,
   SETTING_ADMINS,
-  SETTING_LOG,
   SETTING_MODIFIERS,
   SETTING_PATROLS,
   SETTING_REPUTATION,
@@ -26,12 +25,6 @@ import "./styles/global.pcss";
 
 Hooks.once("init", () => {
   game.settings.register(MODULE_ID, SETTING_STATS, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
-  game.settings.register(MODULE_ID, SETTING_LOG, {
     scope: "world",
     config: false,
     type: Array,

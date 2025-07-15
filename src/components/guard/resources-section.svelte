@@ -89,7 +89,6 @@
   let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};
 
   function handleDragStart(event: DragEvent, index: number) {
-    console.log('🚀 DRAG START - Resource index:', index);
     draggedIndex = index;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
@@ -107,8 +106,6 @@
       const centerX = rect.left + rect.width / 2;
       const side = x < centerX ? 'left' : 'right';
 
-      console.log('👆 DRAG OVER - Resource index:', index, 'side:', side, 'dragged:', draggedIndex);
-
       // Clear other drop zones first
       dropZoneVisible = {};
       dropZoneVisible[index] = side;
@@ -117,12 +114,10 @@
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'move';
       }
-      console.log('✨ DROP ZONE VISIBLE:', dropZoneVisible);
     }
   }
 
   function handleDragLeave(event: DragEvent, index: number) {
-    console.log('👈 DRAG LEAVE - Resource index:', index);
     // Only hide if we're actually leaving the item
     const rect = (event.currentTarget as Element).getBoundingClientRect();
     const x = event.clientX;
@@ -131,7 +126,6 @@
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       dropZoneVisible[index] = null;
       dropZoneVisible = { ...dropZoneVisible };
-      console.log('🚫 DROP ZONE HIDDEN:', dropZoneVisible);
     }
   }
 
@@ -156,8 +150,6 @@
         newIndex = newIndex - 1;
       }
 
-      console.log('🎯 DROP EVENT - from:', draggedIndex, 'to:', side, 'of index:', dropIndex, 'final newIndex:', newIndex);
-      console.log('✅ DISPATCHING REORDER - dragIndex:', draggedIndex, 'newIndex:', newIndex);
       dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex: newIndex });
     } else {
       console.log('❌ NO REORDER - same index or null draggedIndex');
@@ -168,7 +160,6 @@
   }
 
   function handleDragEnd() {
-    console.log('🏁 DRAG END - Resources');
     draggedIndex = null;
     dropZoneVisible = {};
   }

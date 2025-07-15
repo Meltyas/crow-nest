@@ -147,6 +147,13 @@
     event.dataTransfer?.setData('text/plain', JSON.stringify(payload));
   }
 
+  function openActorSheet(memberId: string) {
+    const actor = game.actors?.get(memberId);
+    if (actor) {
+      actor.sheet.render(true);
+    }
+  }
+
   async function actorFromDrop(event: DragEvent): Promise<Actor | null> {
     event.preventDefault();
     const raw = event.dataTransfer?.getData("text/plain");
@@ -387,7 +394,7 @@
     padding-left: 120px; /* Always reserve space for officer area */
     margin-bottom: 0.5rem;
     position: relative;
-    min-height: 140px; /* Always use the larger height */
+    min-height: 178px; /* Always use the larger height */
   }
 
   .officer-image {
@@ -501,28 +508,13 @@
   .stats-and-edit-container {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
     margin-bottom: 0.5rem;
     gap: 1rem;
   }
 
   .collapsed .stats-and-edit-container {
     margin-bottom: 0;
-  }
-
-  .collapsed-soldiers {
-    display: flex;
-    gap: 0.25rem;
-    margin-left: 1rem;
-    align-items: center;
-  }
-
-  .collapsed-soldiers .soldier-mini {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #666;
   }
 
   .drop-zone {
@@ -537,6 +529,7 @@
     flex-wrap: wrap;
     gap: 0.25rem;
     align-items: start;
+    flex: 1 1 auto;
   }
 
   .drop-zone.soldiers em {
@@ -545,9 +538,10 @@
   }
 
   .drop-zone.soldiers .member {
-    flex: 1 1 calc(33.333% - 0.17rem); /* 3 per line with gap compensation */
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: calc(33.333% - 0.17rem);
+    max-width: 49%;
+    width: 100%;
   }
 
   .skills {
@@ -557,7 +551,6 @@
 
   .skills strong {
     color: #d4af37;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .skill {
@@ -565,20 +558,19 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: rgba(212, 175, 55, 0.05);
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: #ffffff;
+    border: 1px solid #d4af37;
     border-radius: 8px;
     margin-bottom: 0.5rem;
     transition: all 0.3s ease;
   }
 
   .skill:hover {
-    background: rgba(212, 175, 55, 0.1);
     border-color: rgba(212, 175, 55, 0.4);
   }
 
   .skill-image-button {
-    background: none;
+    background: #000000;
     border: 2px solid rgba(212, 175, 55, 0.5);
     border-radius: 8px;
     padding: 0;
@@ -612,6 +604,7 @@
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.3s ease;
+    align-items: flex-start;
   }
 
   .skill-image {
@@ -619,6 +612,7 @@
   }
 
   .skill-image img {
+    background: #000000;
     width: 72px;
     height: 72px;
     object-fit: cover;
@@ -631,29 +625,30 @@
   }
 
   .skill-info strong {
+    font-family: "Eveleth Dot", "Eveleth", "Overpass", Arial, sans-serif;
     display: block;
-    color: #d4af37;
+    color: #000000;
     font-size: 1rem;
     margin-bottom: 0.25rem;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .skill-info p {
+    font-family: "Overpass", Arial, sans-serif;
     margin: 0;
-    color: #f4f1e8;
+    color: #000000;
     font-size: 0.9rem;
     line-height: 1.4;
-    opacity: 0.9;
   }
 
   .skill input,
   .skill textarea {
-    background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(212, 175, 55, 0.5);
     border-radius: 6px;
     color: #f4f1e8;
     padding: 0.5rem;
-    font-family: inherit;
+    background: white;
+    color: black;
+    border-color: black;
   }
 
   .skill input:focus,
@@ -671,6 +666,16 @@
   .skill textarea {
     resize: vertical;
     min-height: 60px;
+  }
+
+  .skill .input-title {
+    font-family: "Eveleth Dot", "Eveleth", "Overpass", Arial, sans-serif;
+    color: #000000;
+  }
+
+  .skill .input-text {
+    font-family: "Overpass", Arial, sans-serif;
+    color: #000000;
   }
 
   .member {
@@ -697,14 +702,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
 
   .stat-values {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
   }
 
   .stat-values input {
@@ -726,7 +730,6 @@
   }
 
   .stat-mod {
-    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -760,6 +763,7 @@
     padding: 0;
     cursor: pointer;
     transition: transform 0.2s ease;
+    height: 100%;
   }
 
   .stat-icon:hover {
@@ -772,10 +776,11 @@
   }
 
   .group-stat-container {
+    align-self: flex-start;
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    flex: 1;
+    flex: 0 0 auto;
   }
 
   .delete-button {
@@ -825,6 +830,9 @@
         aria-label={labels.officerDrop}
         on:dragover|preventDefault
         on:drop={(e) => onDropOfficer(e, group)}
+        on:dblclick={() => group.officer ? openActorSheet(group.officer.id) : null}
+        style="cursor: {group.officer ? 'pointer' : 'default'};"
+        title={group.officer ? "Double-click to open character sheet" : labels.officerDrop}
       >
         {#if !group.officer}
           <em style="text-align: center; font-size: 0.8em; color: #999;">
@@ -851,35 +859,35 @@
         <div class="group-header-buttons">
                     {#if editing[group.id]}
 
-          <button class="header-button" on:click={() => removeGroup(i)} style="background: #ff4444; color: white;">
+          <button class="standard-button" on:click={() => removeGroup(i)} >
             X
           </button>
                     {/if}
 
-          <button class="header-button" on:click={() => toggleEditing(group)}>
+          <button class="standard-button" on:click={() => toggleEditing(group)}>
             {editing[group.id] ? 'Save' : 'Edit'}
           </button>
           {#if game.user?.isGM}
-            <button class="header-button" on:click={() => showPatrolSheet(group)} style="background: #4a90e2; color: white;" title="Abrir ficha para mí">
+            <button class="standard-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
               Ficha
             </button>
-            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} style="background: #dc2626; color: white;" title="Mostrar ficha a todos los jugadores">
+            <button class="standard-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
               Ficha→All
             </button>
           {:else}
-            <button class="header-button" on:click={() => showPatrolSheet(group)}>
+            <button class="standard-button" on:click={() => showPatrolSheet(group)}>
               Ficha
             </button>
           {/if}
           <button
-            class="header-button"
+            class="standard-button"
             draggable="true"
             on:click={() => deployGroup(group)}
             on:dragstart={(e) => onDragDeploy(e, group)}
           >
             Deploy
           </button>
-          <button class="header-button" on:click={() => toggleCollapsed(group)}>
+          <button class="standard-button" on:click={() => toggleCollapsed(group)}>
             {collapsed[group.id] ? '▼' : '▲'}
           </button>
         </div>
@@ -888,13 +896,7 @@
       <!-- Main Content Area -->
       <div class="group-content">
         <!-- Officer Info (moved above soldiers) -->
-        {#if group.officer}
-          <div class="officer-info-top">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span><strong>Officer:</strong> {group.officer.name}</span>
-            </div>
-          </div>
-        {/if}
+
 
         <!-- Group Stats and Edit Button -->
         <div class="stats-and-edit-container">
@@ -922,23 +924,7 @@
             {/each}
           </div>
 
-          <!-- Soldiers in collapsed view -->
-          {#if collapsed[group.id] && group.soldiers && group.soldiers.length > 0}
-            <div class="collapsed-soldiers">
-              {#each group.soldiers as soldier}
-                <img
-                  src={soldier.img}
-                  alt={soldier.name}
-                  class="soldier-mini"
-                  title={soldier.name}
-                />
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        {#if !collapsed[group.id]}
-          <!-- Soldiers Section -->
+                <!-- Soldiers Section -->
         <div
           class="drop-zone soldiers"
           role="button"
@@ -955,7 +941,9 @@
                 tabindex="0"
                 draggable="true"
                 on:dragstart={(e) => onDragMember(e, soldier)}
-                style={`background-image: url('${soldier.img}');`}
+                on:dblclick={() => openActorSheet(soldier.id)}
+                style={`background-image: url('${soldier.img}'); cursor: pointer;`}
+                title="Double-click to open character sheet"
               >
                 <span>{soldier.name}</span>
                 {#if editing[group.id]}
@@ -967,6 +955,9 @@
             <em>{labels.soldierDrop}</em>
           {/if}
         </div>
+        </div>
+
+        {#if !collapsed[group.id]}
 
         <!-- Skills -->
         {#if group.skills.length > 0 || editing[group.id]}
@@ -985,12 +976,14 @@
                   </button>
                   <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
                     <input
+                      class="input-title"
                       placeholder="Name"
                       bind:value={sk.name}
                       on:change={persist}
                       on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
                     />
                     <textarea
+                      class="input-text"
                       placeholder="Description"
                       bind:value={sk.description}
                       on:change={persist}

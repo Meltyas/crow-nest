@@ -1,6 +1,5 @@
 import {
   MODULE_ID,
-  SETTING_LOG,
   SETTING_MODIFIERS,
   SETTING_REPUTATION,
   SETTING_RESOURCES,
@@ -13,14 +12,6 @@ export interface GuardStat {
   name: string;
   value: number;
   img?: string;
-}
-
-export interface LogEntry {
-  user: string;
-  time: number;
-  action: string;
-  previous?: unknown;
-  next?: unknown;
 }
 
 export interface GuardModifier {
@@ -52,10 +43,6 @@ export function getStats(): GuardStat[] {
   return (game.settings.get(MODULE_ID, SETTING_STATS) as GuardStat[]) ?? [];
 }
 
-export function getLog(): LogEntry[] {
-  return (game.settings.get(MODULE_ID, SETTING_LOG) as LogEntry[]) ?? [];
-}
-
 export function getModifiers(): GuardModifier[] {
   const modifiers =
     (game.settings.get(MODULE_ID, SETTING_MODIFIERS) as GuardModifier[]) ?? [];
@@ -69,22 +56,16 @@ export function getModifiers(): GuardModifier[] {
   });
 }
 
-export async function saveStats(
-  stats: GuardStat[],
-  log: LogEntry[]
-): Promise<void> {
+export async function saveStats(stats: GuardStat[]): Promise<void> {
   if (!game.user?.isGM) {
     return;
   }
 
   await game.settings.set(MODULE_ID, SETTING_STATS, stats);
-  await game.settings.set(MODULE_ID, SETTING_LOG, log);
 
   // Broadcast changes to all players
   const syncManager = SyncManager.getInstance();
-  await syncManager.broadcast(
-    createSyncEvent("stats", "update", { stats, log })
-  );
+  await syncManager.broadcast(createSyncEvent("stats", "update", { stats }));
 }
 
 export async function saveModifiers(modifiers: GuardModifier[]): Promise<void> {
