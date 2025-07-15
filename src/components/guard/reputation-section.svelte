@@ -173,11 +173,11 @@
   {#if addingReputation}
     <div class="add-reputation-form">
       <button type="button" class="reputation-image-button" on:click={onNewRepImageClick}>
-        <img src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
+        <img class="reputation-image" src={newReputation.img || 'icons/svg/aura.svg'} alt="reputation" />
       </button>
       <input class="reputation-input reputation-name" placeholder="Nombre de la facción" bind:value={newReputation.name} />
-      <input type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
-      <textarea class="reputation-area" placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
+      <input class="reputation-input number" type="number" min="0" max="10" placeholder="Reputación (0-10)" bind:value={newReputation.value} />
+      <textarea class="reputation-textarea" placeholder="Detalles sobre tu relación con esta facción..." bind:value={newReputation.details}></textarea>
       <button on:click={confirmAddReputation}>Agregar</button>
       <button on:click={cancelAddReputation}>Cancelar</button>
     </div>
@@ -257,6 +257,19 @@
 </div>
 
 <style>
+
+  .add-reputation-form {
+      display: flex;
+    font-family: "Overpass", sans-serif;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #6b7280;
+    border-radius: 8px;
+    background: #ffffff;
+    margin-bottom: 1rem;
+    max-width: 31.7%;
+}
   /* Reputation Styles */
   .reputation-container {
     display: grid;
@@ -469,25 +482,13 @@
   }
 
   .reputation-image-button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    border-radius: 8px;
-    overflow: hidden;
-    transition: transform 0.2s ease;
+    align-self: center;
+    width: 100%;
+    height: 56px;
   }
 
   .reputation-image-button:hover {
     transform: scale(1.05);
-  }
-
-  .reputation-image-button img {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 2px solid #6b7280;
   }
 
   .reputation-image-edit{

@@ -173,12 +173,12 @@
 
   {#if addingResource}
     <div class="add-resource-form">
-      <button type="button" class="resource-image-button" on:click={onNewResImageClick}>
-        <img src={newResource.img || 'icons/svg/item-bag.svg'} alt="resource" />
+      <button type="button" class="resource-edit-image-button" on:click={onNewResImageClick}>
+        <img class="resource-image" src={newResource.img || 'icons/svg/item-bag.svg'} alt="resource" />
       </button>
-      <input placeholder="Nombre del recurso" bind:value={newResource.name} />
-      <input type="number" min="0" placeholder="Cantidad" bind:value={newResource.value} />
-      <textarea placeholder="Descripción del recurso..." bind:value={newResource.details}></textarea>
+      <input class="resource-input resource-name" placeholder="Nombre del recurso" bind:value={newResource.name} />
+      <input class="resource-input number"type="number" min="0" placeholder="Cantidad" bind:value={newResource.value} />
+      <textarea class="resource-textarea" placeholder="Descripción del recurso..." bind:value={newResource.details}></textarea>
       <button on:click={confirmAddResource}>Agregar</button>
       <button on:click={cancelAddResource}>Cancelar</button>
     </div>
@@ -209,12 +209,15 @@
             <button type="button" class="image-button resource-edit-image-button" on:click={() => onResImageClick(res)}>
               <img class="resource-image-edit" src={res.img || 'icons/svg/item-bag.svg'} alt="resource" />
             </button>
+                        <div class="resource-edit-text-container">
             <input id={`res-file-${res.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onResFileChange(res,e)} />
-            <input placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
-            <textarea placeholder="Descripción del recurso..." bind:value={res.details} on:change={updateResource}></textarea>
+            <input class="resource-input resource-name" placeholder="Nombre" bind:value={res.name} on:change={updateResource} />
+            <textarea class="resource-textarea" placeholder="Descripción del recurso..." bind:value={res.details} on:change={updateResource}></textarea>
             <div class="res-actions">
-              <input type="number" min="0" bind:value={res.value} on:change={updateResource} />
+              <input class="resource-input number" type="number" min="0" bind:value={res.value} on:change={updateResource} />
               <button on:click={() => removeResource(i)}>✕</button>
+              </div>
+
             </div>
           </div>
         {:else}
@@ -228,16 +231,16 @@
                 <span class="resource-name">{res.name}</span>
                 <span class="resource-quantity">{res.value}</span>
               </div>
+                          {#if res.details && res.details.trim() && expandedResourceDetails[res.key]}
+              <div class="resource-details">
+                <p>{res.details}</p>
+              </div>
+            {/if}
             </div>
             {#if res.details && res.details.trim()}
               <button class="resource-details-toggle" on:click|stopPropagation={() => toggleResourceDetails(res.key)}>
                 📝
               </button>
-            {/if}
-            {#if res.details && res.details.trim() && expandedResourceDetails[res.key]}
-              <div class="resource-details">
-                <p>{res.details}</p>
-              </div>
             {/if}
           </div>
         {/if}
@@ -269,6 +272,7 @@
   }
 
   .resource-display {
+    background: #ffffff;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -276,7 +280,6 @@
     width: 100%;
     border: 1px solid #d4af37;
     border-radius: 8px;
-    background: transparent;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
     position: relative;
@@ -360,6 +363,7 @@
   }
 
   .resource-image {
+    background: #000000;
     width: 100%;
     height: 56px;
     object-fit: cover;
@@ -386,17 +390,13 @@
     gap: 0.5rem;
   }
 
-  .resource-name {
-    font-weight: bold;
-    font-size: 1em;
-    color: #f9fafb;
-    text-align: center;
-    line-height: 1.2;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-    font-family: 'Eveleth', 'Overpass', Arial, sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+ .resource-name {
+    font-family: "Eveleth";
+    font-size: 1rem;
+    color: #000000;
+    line-height: 1.4;
   }
+
 
   .resource-quantity {
     background: #374151;
@@ -437,14 +437,11 @@
 
   .resource-details {
     margin-bottom: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #374151;
-    border-radius: 6px;
-    font-size: 0.85em;
+    font-family: "Overpass", sans-serif;
+    font-size: 14px;
     line-height: 1.4;
-    color: #d1d5db;
-    width: calc(100% - 1.5rem);
+    color: #000000;
+    width: 100%;
   }
 
   .resource-details p {
@@ -453,6 +450,8 @@
 
   /* Edit Mode Styles */
   .resource-edit {
+    background: white;
+
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -460,26 +459,30 @@
     flex: 1;
     border: 1px solid #6b7280;
     border-radius: 8px;
-    background: transparent;
-    padding: 0.75rem;
   }
 
-  .resource-edit input,
-  .resource-edit textarea {
-    background: rgba(17, 24, 39, 0.8);
-    color: #f9fafb;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    padding: 0.5rem;
-    font-family: 'Overpass', Arial, sans-serif;
+
+  .resource-input {
+    background: transparent;
+    border: solid 1px #000000;
+    color: #000000;
+  }
+
+  .resource-input.number {
+    width: 48px;
+  }
+
+  .resource-textarea {
+    background: transparent;
+    border: solid 1px #000000;
+    margin-bottom: 0.5rem;
+    font-family: "Overpass", sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #000000;
     width: 100%;
   }
 
-  .resource-edit input:focus,
-  .resource-edit textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
 
   .resource-edit-image-button {
     align-self: center;
@@ -488,6 +491,7 @@
   }
 
   .resource-image-edit {
+    background: #000000;
     height: 56px;
     object-fit: cover;
     width: 100%;
@@ -546,77 +550,27 @@
   /* Add Resource Form */
   .add-resource-form {
     display: flex;
+    font-family: "Overpass", sans-serif;
     flex-direction: column;
     gap: 0.5rem;
     padding: 1rem;
     border: 1px solid #6b7280;
     border-radius: 8px;
-    background: rgba(31, 41, 55, 0.8);
+    background: #ffffff;
     margin-bottom: 1rem;
-  }
-
-  .add-resource-form .resource-image-button {
-    align-self: center;
-  }
-
-  .add-resource-form .resource-image-button img {
-    width: 56px;
-    height: 56px;
-    border: 2px solid #6b7280;
-    transition: border-color 0.2s ease;
+    max-width: 31.7%;
   }
 
   .add-resource-form .resource-image-button:hover img {
     border-color: #9ca3af;
   }
 
-  .add-resource-form input,
-  .add-resource-form textarea {
+  .resource-edit-text-container {
+    display: flex;
+    flex-direction: column;
     padding: 0.5rem;
-    border: 1px solid #6b7280;
-    border-radius: 4px;
-    background: rgba(17, 24, 39, 0.8);
-    color: #f9fafb;
-    font-family: 'Overpass', Arial, sans-serif;
-  }
-
-  .add-resource-form input:focus,
-  .add-resource-form textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-
-  .add-resource-form textarea {
-    min-height: 80px;
-    resize: vertical;
-  }
-
-  .add-resource-form button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    font-family: 'Overpass', Arial, sans-serif;
-    font-weight: bold;
-  }
-
-  .add-resource-form button:first-of-type {
-    background: #059669;
-    color: white;
-  }
-
-  .add-resource-form button:first-of-type:hover {
-    background: #047857;
-  }
-
-  .add-resource-form button:last-of-type {
-    background: #6b7280;
-    color: white;
-  }
-
-  .add-resource-form button:last-of-type:hover {
-    background: #4b5563;
+    gap: 0.5rem;
+    width: 100%;
   }
 
   /* Responsive design for resource grid */
