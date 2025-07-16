@@ -7,9 +7,10 @@
 <script lang="ts">
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
   import Tooltip from '@/components/tooltip.svelte';
+  import RollDialog from '@/components/roll-dialog/roll-dialog.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
-  import type { Group, GroupMember, GroupSkill } from "@/shared/group";
+  import type { Group, GroupMember, GroupSkill, GroupExperience } from "@/shared/group";
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
@@ -35,6 +36,13 @@
   let modifiers: GuardModifier[] = [];
   let editing: Record<string, boolean> = {};
   let patrolExtraInfo: Record<string, boolean> = {}; // Track which extra info containers are floating
+
+  // Roll dialog state
+  let rollDialogOpen = false;
+  let rollDialogStat: GuardStat | null = null;
+  let rollDialogGroup: Group | null = null;
+  let rollDialogBaseValue = 0;
+  let rollDialogTotalModifier = 0;
 
   // Sync manager
   let syncManager: SyncManager;
@@ -385,29 +393,17 @@
   }
 
   function roll(stat: GuardStat, group: Group) {
-    const total = totalStat(stat, group);
-    const r = new Roll(`1d20 + ${total}`);
-    r.evaluate();
+    rollDialogStat = stat;
+    rollDialogGroup = group;
+    rollDialogBaseValue = stat.value;
+    rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0);
+    rollDialogOpen = true;
+  }
 
-    const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
-    const guardMod = guardBonus(stat.key);
-    if (guardMod) {
-      lines.push(`Guard modifier ${guardMod > 0 ? '+' : ''}${guardMod}`);
-    }
-    const groupMod = group.mods[stat.key];
-    if (groupMod) {
-      lines.push(`Patrol modifier ${groupMod > 0 ? '+' : ''}${groupMod}`);
-    }
-
-    const alias =
-      group.name || (group.officer ? `The Patrol of ${group.officer.name}` : 'The Patrol');
-    const headerImg = group.officer
-      ? `<img src="${group.officer.img}" alt="${group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
-      : '';
-    const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${alias}</strong></div>`;
-
-    const flavor = `${header}<br/>${lines.join('<br/>')}`;
-    r.toMessage({ speaker: { alias }, flavor });
+  function closeRollDialog() {
+    rollDialogOpen = false;
+    rollDialogStat = null;
+    rollDialogGroup = null;
   }
 
   async function deployGroup(group: Group) {
@@ -1601,3 +1597,13 @@
     <button on:click={addGroup} style="padding: 0.5rem 1rem;">{labels.addGroup}</button>
   </div>
 </div>
+
+<!-- Roll Dialog Component -->
+<RollDialog 
+  bind:isOpen={rollDialogOpen}
+  stat={rollDialogStat}
+  group={rollDialogGroup}
+  baseValue={rollDialogBaseValue}
+  totalModifier={rollDialogTotalModifier}
+  on:close={closeRollDialog}
+/>
