@@ -6,9 +6,9 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
+  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
-  import type { Group } from '@/shared/group';
   import {
     getModifiers,
     getReputation,
@@ -24,7 +24,6 @@
   import ReputationSection from './reputation-section.svelte';
   import ResourcesSection from './resources-section.svelte';
   import StatsSection from './stats-section.svelte';
-  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -489,8 +488,9 @@
             </div>
 
           {:else if activeTab === 'patrullas'}
-            <h3>Patrullas</h3>
             <Groups
+              sectionTitle="PATRULLAS"
+              sectionImage="icons/svg/pawprint.svg"
               saveGroups={savePatrols}
               labels={{
                 groupSingular: 'Patrol',
@@ -502,8 +502,9 @@
             />
 
           {:else if activeTab === 'admins'}
-            <h3>Administración</h3>
             <Groups
+              sectionTitle="ADMINISTRACIÓN"
+              sectionImage="icons/svg/castle.svg"
               isAdminMode={true}
               saveGroups={saveAdmins}
               labels={{

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { GuardStat, GuardModifier } from "@/guard/stats";
-  import type { Group } from "@/shared/group";
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
+  import type { GuardModifier, GuardStat } from "@/guard/stats";
+  import type { Group } from "@/shared/group";
   import { createEventDispatcher, onMount } from 'svelte';
   import { PatrolHandlers } from './patrol-handlers';
   import './patrol-sheet.css';

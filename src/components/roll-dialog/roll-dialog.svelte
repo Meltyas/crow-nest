@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import type { Group } from '@/shared/group';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { groupsStore, persistGroups } from '@/stores/groups';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
   export let isOpen = false;
   export let stat: GuardStat | null = null;
@@ -56,7 +56,7 @@
     } else {
       selectedExperiences.add(expName);
     }
-    
+
     // Force reactivity update
     selectedExperiences = new Set(selectedExperiences);
   }
@@ -124,7 +124,7 @@
     if (hopeCost > 0) {
       // Actually deduct Hope from the group
       group.hope -= hopeCost;
-      
+
       // Update the store and persist the change
       let updatedGroups: Group[];
       groupsStore.update(groups => {
@@ -135,7 +135,7 @@
         updatedGroups = groups;
         return groups;
       });
-      
+
       await persistGroups(updatedGroups);
     }
 

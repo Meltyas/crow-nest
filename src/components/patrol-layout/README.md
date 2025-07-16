@@ -16,7 +16,7 @@ A reusable component that extracts the existing formation system from the groups
 ```svelte
 <script>
   import PatrolLayout from '@/components/patrol-layout/patrol-layout.svelte';
-  
+
   let group = {
     id: 'patrol-1',
     officer: { id: '1', name: 'Captain Smith', img: '/path/to/image.jpg' },
@@ -80,16 +80,19 @@ All events dispatch the exact same data structure as the original implementation
 ## Formation Layouts
 
 The component automatically handles different soldier counts:
+
 - **5 soldiers**: Pentagon formation around the officer
 - **6 soldiers**: Hexagon formation around the officer
 
 Positions are calculated using the exact same CSS classes as the original:
+
 - `.formation-5-sided.formation-point-{index}`
 - `.formation-6-sided.formation-point-{index}`
 
 ## Styling
 
 All styles are preserved from the original implementation:
+
 - `.formation-container`: Main container
 - `.formation-slot`: Individual member slots
 - `.formation-avatar`: Member images

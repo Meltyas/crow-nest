@@ -124,7 +124,10 @@
   <div class="modifier-container">
     {#each modifiers as mod, i}
       <div class="modifier modifier-{mod.state || 'neutral'}">
-        <Tooltip content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}>
+        <Tooltip
+          content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}
+          size="42px"
+        >
           <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
             <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
           </button>
@@ -224,19 +227,24 @@
     margin-bottom: 0.5rem;
     border: 2px solid transparent;
     border-radius: 4px;
-    padding: 0.25rem;
+  }
+
+  .modifier .standard-image {
+    background: #000000;
+    width: 42px;
+    height: 42px;
   }
 
   .modifier-positive {
-    border-color: #22c55e; /* Green border for positive */
+    border: solid 2px #22c55e; /* Green border for positive */
   }
 
   .modifier-neutral {
-    border-color: #ffffff; /* White border for neutral */
+    border: solid 2px #ffffff; /* White border for neutral */
   }
 
   .modifier-negative {
-    border-color: #ef4444; /* Red border for negative */
+    border: solid 2px #ef4444; /* Red border for negative */
   }
 
   .state-selector {

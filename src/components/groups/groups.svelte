@@ -12,7 +12,7 @@
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
-  import type { Group, GroupMember, GroupSkill } from "@/shared/group";
+  import type { Group, GroupMember, GroupSkill, GroupTemporaryModifiers, GroupTemporaryModifier } from "@/shared/group";
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
@@ -32,6 +32,8 @@
     soldierDrop: 'Drag soldiers here',
   };
   export let isAdminMode = false; // Flag to detect if we're in admin mode
+  export let sectionTitle = ''; // Optional section title
+  export let sectionImage = ''; // Optional decorative image for section title
 
   // Use appropriate store based on isAdminMode
   $: currentStore = isAdminMode ? adminsStore : groupsStore;
@@ -92,6 +94,31 @@
           return exp;
         });
         if (experiencesUpdated) {
+          needsUpdate = true;
+        }
+      }
+      if (group.temporaryModifiers === undefined) {
+        group.temporaryModifiers = {};
+        needsUpdate = true;
+      } else {
+        // Migrate old temporaryModifiers format (single stat) to new format (multi-stat)
+        let modifiersUpdated = false;
+        for (const [modifierId, modifier] of Object.entries(group.temporaryModifiers)) {
+          // Check if it's the old format (has statKey and value)
+          if ('statKey' in modifier && 'value' in modifier && !('statEffects' in modifier)) {
+            // Convert to new format
+            const oldModifier = modifier as any;
+            group.temporaryModifiers[modifierId] = {
+              name: oldModifier.name,
+              description: oldModifier.description,
+              statEffects: {
+                [oldModifier.statKey]: oldModifier.value
+              }
+            };
+            modifiersUpdated = true;
+          }
+        }
+        if (modifiersUpdated) {
           needsUpdate = true;
         }
       }
@@ -181,22 +208,36 @@
   }
 
   function addGroup() {
+    const newGroupId = crypto.randomUUID();
     groups = [
       ...groups,
       {
-        id: crypto.randomUUID(),
+        id: newGroupId,
         name: '',
         officer: null,
         soldiers: [],
         mods: {},
         skills: [],
         experiences: [],
+        temporaryModifiers: {},
         maxSoldiers: 5,
         hope: 0,
         maxHope: 3,
       },
     ];
     persist();
+
+    // Scroll to the new group after it's been added
+    setTimeout(() => {
+      const newGroupElement = document.querySelector(`[data-group-id="${newGroupId}"]`);
+      if (newGroupElement) {
+        newGroupElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   }
 
   function removeGroup(index: number) {
@@ -425,14 +466,23 @@
   }
 
   function totalStat(stat: GuardStat, group: Group): number {
-    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0);
+    // Calculate temporary modifiers for this stat
+    const temporaryMod = Object.values(group.temporaryModifiers || {})
+      .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+    
+    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
   }
 
   function roll(stat: GuardStat, group: Group) {
     rollDialogStat = stat;
     rollDialogGroup = group;
     rollDialogBaseValue = stat.value;
-    rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0);
+    
+    // Calculate temporary modifiers for this stat
+    const temporaryMod = Object.values(group.temporaryModifiers || {})
+      .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+    
+    rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
     rollDialogOpen = true;
   }
 
@@ -619,6 +669,122 @@
 
   function removeExperience(group: Group, index: number) {
     group.experiences.splice(index, 1);
+    persist();
+  }
+
+  function addTemporaryModifier(group: Group) {
+    // Use Foundry's Dialog system to create multi-stat modifier
+    if (!Dialog) {
+      console.error("Dialog not available");
+      return;
+    }
+
+    // Create checkboxes for each stat
+    const statCheckboxes = stats.map(stat => `
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <input type="checkbox" id="stat-${stat.key}" name="statCheckbox" value="${stat.key}">
+        <label for="stat-${stat.key}" style="flex: 1;">${stat.name}</label>
+        <input type="number" id="value-${stat.key}" name="statValue" placeholder="±" value="0" style="width: 60px;" disabled>
+      </div>
+    `).join('');
+
+    new Dialog({
+      title: "Añadir Modificador Temporal Multi-Stat",
+      content: `
+        <form>
+          <div class="form-group">
+            <label>Nombre del modificador:</label>
+            <input type="text" name="modifierName" placeholder="Ej: Falta de personal, Bendición divina..." autofocus />
+            <small>Un modificador puede afectar múltiples stats a la vez</small>
+          </div>
+          <div class="form-group">
+            <label>Descripción:</label>
+            <textarea name="modifierDescription" placeholder="Descripción del modificador" rows="3" style="width: 100%; resize: vertical;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Stats afectados y valores:</label>
+            <div style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+              ${statCheckboxes}
+            </div>
+            <small>Selecciona los stats y asigna valores. Valores positivos dan bonificaciones, negativos dan penalizaciones.</small>
+          </div>
+        </form>
+      `,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-check"></i>',
+          label: "Añadir",
+          callback: (html: any) => {
+            const form = html[0].querySelector("form");
+            const modifierName = form.modifierName.value.trim();
+            const modifierDescription = form.modifierDescription.value.trim();
+            
+            // Collect selected stats and their values
+            const statEffects: Record<string, number> = {};
+            const checkedBoxes = form.querySelectorAll('input[name="statCheckbox"]:checked');
+            
+            checkedBoxes.forEach((checkbox: HTMLInputElement) => {
+              const statKey = checkbox.value;
+              const valueInput = form.querySelector(`#value-${statKey}`) as HTMLInputElement;
+              const value = parseInt(valueInput.value) || 0;
+              if (value !== 0) { // Only include non-zero values
+                statEffects[statKey] = value;
+              }
+            });
+            
+            if (modifierName && Object.keys(statEffects).length > 0) {
+              // Initialize temporaryModifiers if undefined
+              if (!group.temporaryModifiers) {
+                group.temporaryModifiers = {};
+              }
+              
+              // Generate unique ID for this modifier
+              const modifierId = crypto.randomUUID();
+              
+              group.temporaryModifiers[modifierId] = {
+                name: modifierName,
+                description: modifierDescription,
+                statEffects: statEffects
+              };
+              
+              groups = [...groups]; // Trigger reactivity
+              persist();
+            } else if (Object.keys(statEffects).length === 0) {
+              ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancelar"
+        }
+      },
+      default: "ok",
+      render: (html: any) => {
+        // Add checkbox functionality after dialog is rendered
+        const checkboxes = html[0].querySelectorAll('input[name="statCheckbox"]');
+        checkboxes.forEach((checkbox: HTMLInputElement) => {
+          const valueInput = html[0].querySelector(`#value-${checkbox.value}`) as HTMLInputElement;
+          checkbox.addEventListener('change', () => {
+            valueInput.disabled = !checkbox.checked;
+            if (!checkbox.checked) valueInput.value = '0';
+          });
+        });
+      }
+    }).render(true);
+  }
+
+  function removeTemporaryModifier(group: Group, modifierId: string) {
+    if (group.temporaryModifiers && group.temporaryModifiers[modifierId]) {
+      delete group.temporaryModifiers[modifierId];
+      groups = [...groups];
+      persist();
+    }
+  }
+
+  function clearAllTemporaryModifiers(group: Group) {
+    group.temporaryModifiers = {};
+    groups = [...groups];
     persist();
   }
 </script>
@@ -977,11 +1143,84 @@
   }
 
   .groups {
-    padding: 0.5rem;
     display: flex;
     flex-wrap: wrap;
+    padding: 0.5rem;
     gap: 1rem;
     overflow: visible; /* Allow floating containers to extend outside */
+  }
+
+  /* Header Banner Styles */
+  .header-banner {
+    background-image: url("../../modules/crow-nest/static/img/patrol-banner.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-bottom: solid 2px #d4af37;
+    width: 100%;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1rem;
+
+    &.admin {
+    background-image: url("../../modules/crow-nest/static/img/admin-banner.png");
+    }
+  }
+
+  .header-banner::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+  }
+
+  .title-display {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: #ffffffff;
+    font-size: 1.8rem;
+    font-weight: bold;
+    font-family: "Eveleth Dot", "Eveleth", "Overpass", Arial, sans-serif;
+    text-shadow: 5px 5px 1px rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+  }
+
+  .add-button {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 2;
+    height: 40px;
+    border: 2px solid #d4af37;
+    background: rgba(0, 0, 0, 0.8);
+    font-size: 1rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .add-button:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #ffd700;
+    color: #ffd700;
+    transform: scale(1.1);
   }
 
   /* Dynamic Formation Styles - Pentagon/Hexagon */
@@ -1096,10 +1335,21 @@
   }
 </style>
 
-<div class="groups">
+<div class="groups-container">
+  <!-- Section Title (if provided) -->
+  {#if sectionTitle}
+    <div class="header-banner {isAdminMode ? 'admin' : ''}">
+      <h3 class="title-display">{sectionTitle}</h3>
+      <button class="add-button" on:click={addGroup} title="{labels.addGroup}">
+        + Add
+      </button>
+    </div>
+  {/if}
+  <div class="groups">
   {#each groups as group, i}
     <div
       class="group {group.officer ? 'has-officer' : ''}"
+      data-group-id="{group.id}"
     >
 
       <!-- Group Header with editable name -->
@@ -1233,7 +1483,7 @@
           <div class="group-stat-container">
             {#each stats as stat, index}
               <div class="group-stat">
-                <Tooltip content={`<span>${stat.name}</span>`}>
+                <Tooltip content={`<span>${stat.name}</span>`} size="36px">
                   <button class="stat-icon" on:click={() => roll(stat, group)}>
                     <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
                   </button>
@@ -1270,48 +1520,170 @@
                 <button on:click={() => addSkill(group)}>+</button>
               {/if}
             </div>
-            {#each group.skills as sk, j}
-              <div class="skill">
+            {#if group.skills.length === 0}
+              <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
+                Edit para añadir skills
+              </div>
+            {:else}
+              {#each group.skills as sk, j}
+                <div class="skill">
+                  {#if editing[group.id]}
+                    <div style="position: relative;">
+                      <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
+                        <img src={sk.img} alt="" />
+                      </button>
+                      <button class="skill-delete-floating" on:click={() => removeSkill(group, j)}>×</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
+                      <input
+                        class="input-title"
+                        placeholder="Name"
+                        bind:value={sk.name}
+                        on:change={persist}
+                        on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
+                      />
+                      <textarea
+                        class="input-text"
+                        placeholder="Description"
+                        bind:value={sk.description}
+                        on:change={persist}
+                        on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
+                      ></textarea>
+                    </div>
+                  {:else}
+                    <div class="skill-display" role="button" tabindex="0"
+                         on:click={() => showSkillInChat(sk, group)}
+                         on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
+                      <div class="skill-image">
+                        <img src={sk.img} alt="" />
+                      </div>
+                      <div class="skill-info">
+                        <strong>{sk.name}</strong>
+                        <p>{sk.description}</p>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            {/if}
+
+            <!-- Experiences Section -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <strong style="margin: 0;">Experiences</strong>
                 {#if editing[group.id]}
-                  <div style="position: relative;">
-                    <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
-                      <img src={sk.img} alt="" />
+                  <button on:click={() => addExperience(group)}>+</button>
+                {/if}
+              </div>
+              {#if group.experiences.length === 0}
+                <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
+                  Edit para añadir experiences
+                </div>
+              {:else}
+                {#each group.experiences as exp, expIndex}
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    {#if editing[group.id]}
+                      <input
+                        type="text"
+                        bind:value={exp.name}
+                        placeholder="Experience name"
+                        style="flex: 1; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
+                        on:change={persist}
+                      />
+                      <input
+                        type="number"
+                        bind:value={exp.value}
+                        placeholder="Value"
+                        style="width: 60px; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
+                        on:change={persist}
+                      />
+                      <button
+                        on:click={() => removeExperience(group, expIndex)}
+                        style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                      >
+                        ×
+                      </button>
+                    {:else}
+                      <div style="flex: 1; padding: 0.25rem; background: rgba(255, 255, 255, 0.9); border-radius: 4px; color: #000; display: flex; align-items: center; justify-content: space-between;">
+                        <span>{exp.name}</span>
+                        <span style="font-weight: bold; color: {exp.value >= 0 ? '#28a745' : '#dc3545'};">
+                          {exp.value >= 0 ? '+' : ''}{exp.value || 0}
+                        </span>
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              {/if}
+            </div>
+
+            <!-- Modificadores Temporales Section -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <div>
+                  <strong style="margin: 0;">Modificadores Temporales</strong>
+                  <div style="font-size: 0.75em; color: #888; font-style: italic; margin-top: 0.25rem;">Cada modificador puede afectar múltiples stats</div>
+                </div>
+                {#if editing[group.id]}
+                  <div style="display: flex; gap: 0.25rem;">
+                    <button on:click={() => addTemporaryModifier(group)} style="padding: 0.25rem 0.5rem; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Añadir nuevo modificador temporal">
+                      + Añadir
                     </button>
-                    <button class="skill-delete-floating" on:click={() => removeSkill(group, j)}>×</button>
-                  </div>
-                  <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
-                    <input
-                      class="input-title"
-                      placeholder="Name"
-                      bind:value={sk.name}
-                      on:change={persist}
-                      on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); persist(); } }}
-                    />
-                    <textarea
-                      class="input-text"
-                      placeholder="Description"
-                      bind:value={sk.description}
-                      on:change={persist}
-                      on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
-                    ></textarea>
-                  </div>
-                {:else}
-                  <div class="skill-display" role="button" tabindex="0"
-                       on:click={() => showSkillInChat(sk, group)}
-                       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showSkillInChat(sk, group); } }}>
-                    <div class="skill-image">
-                      <img src={sk.img} alt="" />
-                    </div>
-                    <div class="skill-info">
-                      <strong>{sk.name}</strong>
-                      <p>{sk.description}</p>
-                    </div>
+                    <button on:click={() => clearAllTemporaryModifiers(group)} style="padding: 0.25rem 0.5rem; background: #ff6666; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Limpiar todos los modificadores">
+                      Clear All
+                    </button>
                   </div>
                 {/if}
               </div>
-            {/each}
+              
+              {#if Object.entries(group.temporaryModifiers || {}).length === 0}
+                <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
+                  Edit para añadir modificadores temporales
+                </div>
+              {:else}
+                {#each Object.entries(group.temporaryModifiers || {}) as [modifierId, modifier]}
+                  <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.95); border: 2px solid #d4af37; border-radius: 8px;">
+                    <!-- Modifier Header -->
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+                      <div style="flex: 1;">
+                        <strong style="color: #000; font-size: 1.2em; display: block; margin-bottom: 0.5rem;">{modifier.name}</strong>
+                        {#if modifier.description}
+                          <div style="color: #666; font-size: 0.9em; line-height: 1.4; margin-bottom: 0.75rem;">
+                            {modifier.description}
+                          </div>
+                        {/if}
+                      </div>
+                      {#if editing[group.id]}
+                        <button
+                          on:click={() => removeTemporaryModifier(group, modifierId)}
+                          style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
+                          title="Eliminar modificador"
+                        >
+                          ×
+                        </button>
+                      {/if}
+                    </div>
+                    
+                    <!-- Stats Effects -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                      {#each Object.entries(modifier.statEffects) as [statKey, value]}
+                        {@const stat = stats.find(s => s.key === statKey)}
+                        {#if stat}
+                          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid #d4af37; border-radius: 6px;">
+                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} style="width: 24px; height: 24px;" />
+                            <span style="font-weight: bold; color: #000; font-size: 0.9em;">{stat.name}</span>
+                            <span style="font-weight: bold; color: {value >= 0 ? '#28a745' : '#dc3545'}; font-size: 1.1em;">
+                              {value >= 0 ? '+' : ''}{value}
+                            </span>
+                          </div>
+                        {/if}
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            </div>
 
-            <!-- Soldados Máximos Section -->
+                       <!-- Soldados Máximos Section -->
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <label for="maxSoldiers-{group.id}" style="color: #d4af37; font-weight: bold;">Soldados Máximos:</label>
@@ -1344,55 +1716,11 @@
               </div>
             </div>
 
-            <!-- Experiences Section -->
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <strong style="margin: 0;">Experiences</strong>
-                {#if editing[group.id]}
-                  <button on:click={() => addExperience(group)}>+</button>
-                {/if}
-              </div>
-              {#each group.experiences as exp, expIndex}
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                  {#if editing[group.id]}
-                    <input
-                      type="text"
-                      bind:value={exp.name}
-                      placeholder="Experience name"
-                      style="flex: 1; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
-                      on:change={persist}
-                    />
-                    <input
-                      type="number"
-                      bind:value={exp.value}
-                      placeholder="Value"
-                      style="width: 60px; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
-                      on:change={persist}
-                    />
-                    <button
-                      on:click={() => removeExperience(group, expIndex)}
-                      style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                    >
-                      ×
-                    </button>
-                  {:else}
-                    <div style="flex: 1; padding: 0.25rem; background: rgba(255, 255, 255, 0.9); border-radius: 4px; color: #000; display: flex; align-items: center; justify-content: space-between;">
-                      <span>{exp.name}</span>
-                      <span style="font-weight: bold; color: {exp.value >= 0 ? '#28a745' : '#dc3545'};">
-                        {exp.value >= 0 ? '+' : ''}{exp.value || 0}
-                      </span>
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
           </div>
         </div>
       {/if}
     </div>
   {/each}
-  <div style="width: 100%; display: flex; justify-content: center; margin-top: 1rem;">
-    <button on:click={addGroup} style="padding: 0.5rem 1rem;">{labels.addGroup}</button>
   </div>
 </div>
 

@@ -55,7 +55,7 @@
     } else {
       selectedExperiences.add(expName);
     }
-    
+
     // Force reactivity update
     selectedExperiences = new Set(selectedExperiences);
   }
@@ -123,7 +123,7 @@
     if (hopeCost > 0) {
       // Actually deduct Hope from the group
       group.hope -= hopeCost;
-      
+
       // Dispatch event to update the group
       dispatch('updateGroup', group);
     }

@@ -12,13 +12,15 @@
             <div class="formation-center officer-position">
               <div class="formation-slot officer-slot...">
                 <!-- código del officer -->
+
               </div>
             </div>
-            
+
             {#each Array(group.maxSoldiers || 5) as _, slotIndex}
               <!-- código de soldiers -->
             {/each}
           </div>
+
 -->
 
 <!-- CON esta nueva implementación: -->
@@ -53,14 +55,14 @@
     // Logic para agregar soldado (puede abrir dialog de selección)
     // o simplemente agregar un placeholder
     if (!group.soldiers) group.soldiers = [];
-    
+
     // Ejemplo: agregar placeholder que se puede editar después
     const newSoldier: GroupMember = {
       id: `temp-${Date.now()}`,
       name: 'New Soldier',
       img: 'icons/svg/mystery-man.svg' // Default Foundry icon
     };
-    
+
     group.soldiers.push(newSoldier);
     updateGroups(groups);
   }

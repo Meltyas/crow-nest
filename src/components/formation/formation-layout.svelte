@@ -40,39 +40,39 @@
       case 0:
         return { rows: [], class: 'formation-empty' };
       case 1:
-        return { 
-          rows: [[0]], 
-          class: 'formation-single' 
+        return {
+          rows: [[0]],
+          class: 'formation-single'
         };
       case 2:
-        return { 
-          rows: [[0, 1]], 
-          class: 'formation-pair' 
+        return {
+          rows: [[0, 1]],
+          class: 'formation-pair'
         };
       case 3:
-        return { 
-          rows: [[0], [1, 2]], 
-          class: 'formation-triangle' 
+        return {
+          rows: [[0], [1, 2]],
+          class: 'formation-triangle'
         };
       case 4:
-        return { 
-          rows: [[0, 1], [2, 3]], 
-          class: 'formation-square' 
+        return {
+          rows: [[0, 1], [2, 3]],
+          class: 'formation-square'
         };
       case 5:
-        return { 
-          rows: [[0, 1], [2], [3, 4]], 
-          class: 'formation-diamond' 
+        return {
+          rows: [[0, 1], [2], [3, 4]],
+          class: 'formation-diamond'
         };
       case 6:
-        return { 
-          rows: [[0, 1], [2, 3], [4, 5]], 
-          class: 'formation-rectangle' 
+        return {
+          rows: [[0, 1], [2, 3], [4, 5]],
+          class: 'formation-rectangle'
         };
       default:
-        return { 
-          rows: [[0, 1], [2, 3], [4, 5]], 
-          class: 'formation-rectangle' 
+        return {
+          rows: [[0, 1], [2, 3], [4, 5]],
+          class: 'formation-rectangle'
         };
     }
   }
@@ -90,7 +90,7 @@
     {#each formation.rows as row, rowIndex}
       <div class="formation-row" data-row={rowIndex}>
         {#each row as position}
-          <div 
+          <div
             class="soldier-slot {soldiers[position] ? 'occupied' : 'empty'}"
             data-position={position}
             on:drop={(e) => handleDrop(e, position)}
@@ -101,14 +101,14 @@
           >
             {#if soldiers[position]}
               <div class="soldier-card">
-                <img 
-                  src={soldiers[position]?.img || 'icons/svg/mystery-man.svg'} 
-                  alt={soldiers[position]?.name || 'Soldier'} 
+                <img
+                  src={soldiers[position]?.img || 'icons/svg/mystery-man.svg'}
+                  alt={soldiers[position]?.name || 'Soldier'}
                   class="soldier-image"
                 />
                 <div class="soldier-name">{soldiers[position]?.name || 'Unknown'}</div>
                 {#if editing}
-                  <button 
+                  <button
                     class="remove-soldier-btn"
                     on:click={() => removeSoldier(position)}
                     type="button"

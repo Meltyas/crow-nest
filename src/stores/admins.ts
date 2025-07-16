@@ -1,6 +1,6 @@
-import { writable } from 'svelte/store';
-import type { Admin } from '@/admin/admins';
-import { getAdmins, saveAdmins } from '@/admin/admins';
+import type { Admin } from "@/admin/admins";
+import { getAdmins, saveAdmins } from "@/admin/admins";
+import { writable } from "svelte/store";
 
 // Create writable store for admins
 export const adminsStore = writable<Admin[]>([]);

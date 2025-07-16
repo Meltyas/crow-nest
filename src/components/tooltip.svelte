@@ -1,10 +1,15 @@
 <script lang="ts">
   import { tick } from 'svelte';
   export let content = '';
+  export let size: string | number = ''; // New prop for size control
+
   let show = false;
   let tooltipEl: HTMLDivElement;
   let wrapperEl: HTMLDivElement;
   let containerEl: HTMLElement | null = null;
+
+  // Convert size to CSS value
+  $: sizeStyle = size ? (typeof size === 'number' ? `${size}px` : size) : '';
 
   async function position() {
     await tick();
@@ -51,7 +56,9 @@
 </script>
 
 <div class="tooltip-wrapper" role="tooltip" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>
-  <slot></slot>
+  <div class="tooltip-content" style:width={sizeStyle} style:height={sizeStyle}>
+    <slot></slot>
+  </div>
   <div class="tooltip" bind:this={tooltipEl} style:display={show ? undefined : 'none'}>
     {@html content}
   </div>
@@ -62,6 +69,13 @@
     position: relative;
     display: inline-block;
   }
+
+  .tooltip-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .tooltip {
     position: absolute;
     background: rgba(11, 10, 19, 0.95);

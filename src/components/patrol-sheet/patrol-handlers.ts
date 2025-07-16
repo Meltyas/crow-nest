@@ -11,13 +11,25 @@ export class PatrolHandlers {
   private modifiers: any[] = [];
   private group: Group;
   private labels: any;
-  private onRollStat?: (stat: GuardStat, group: Group, baseValue: number, totalModifier: number, guardModifiers: any[]) => void;
+  private onRollStat?: (
+    stat: GuardStat,
+    group: Group,
+    baseValue: number,
+    totalModifier: number,
+    guardModifiers: any[]
+  ) => void;
 
   constructor(
     group: Group,
     labels: any,
     private updateComponent: () => void,
-    onRollStat?: (stat: GuardStat, group: Group, baseValue: number, totalModifier: number, guardModifiers: any[]) => void
+    onRollStat?: (
+      stat: GuardStat,
+      group: Group,
+      baseValue: number,
+      totalModifier: number,
+      guardModifiers: any[]
+    ) => void
   ) {
     this.group = group;
     this.labels = labels;
@@ -56,8 +68,15 @@ export class PatrolHandlers {
     if (this.onRollStat) {
       // Use the roll dialog if callback is provided
       const baseValue = stat.value;
-      const totalModifier = this.guardBonus(stat.key) + (this.group.mods[stat.key] || 0);
-      this.onRollStat(stat, this.group, baseValue, totalModifier, this.modifiers);
+      const totalModifier =
+        this.guardBonus(stat.key) + (this.group.mods[stat.key] || 0);
+      this.onRollStat(
+        stat,
+        this.group,
+        baseValue,
+        totalModifier,
+        this.modifiers
+      );
     } else {
       // Fallback to simple d20 roll
       const total = this.totalStat(stat, this.group);
