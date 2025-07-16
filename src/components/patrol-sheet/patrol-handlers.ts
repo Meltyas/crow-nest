@@ -60,7 +60,11 @@ export class PatrolHandlers {
 
   // Calculate total stat value including group modifiers
   totalStat = (stat: GuardStat, group: Group): number => {
-    return stat.value + this.guardBonus(stat.key) + (group.mods[stat.key] || 0);
+    // Calculate temporary modifiers for this stat
+    const temporaryMod = Object.values(group.temporaryModifiers || {})
+      .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+
+    return stat.value + this.guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
   };
 
   // Handle stat roll - either trigger dialog or fallback to simple roll
@@ -68,8 +72,13 @@ export class PatrolHandlers {
     if (this.onRollStat) {
       // Use the roll dialog if callback is provided
       const baseValue = stat.value;
+      
+      // Calculate temporary modifiers for this stat
+      const temporaryMod = Object.values(this.group.temporaryModifiers || {})
+        .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+      
       const totalModifier =
-        this.guardBonus(stat.key) + (this.group.mods[stat.key] || 0);
+        this.guardBonus(stat.key) + (this.group.mods[stat.key] || 0) + temporaryMod;
       this.onRollStat(
         stat,
         this.group,
