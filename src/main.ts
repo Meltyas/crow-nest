@@ -83,6 +83,14 @@ Hooks.once("init", () => {
     type: Array,
     default: [],
   });
+
+  // Used roll buttons tracking - to prevent multiple uses
+  game.settings.register(MODULE_ID, "usedRollButtons", {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
 });
 
 // Function to handle patrol sheet setting changes directly
@@ -299,6 +307,11 @@ Hooks.once("ready", () => {
   container.style.position = "absolute";
   document.body.appendChild(container);
   new Hud({ target: container });
+
+  // Clean up old button records on startup
+  if (game.user?.isGM) {
+    cleanupOldButtonRecords();
+  }
 });
 
 Hooks.on("getActorSheetHeaderButtons", (sheet: any, buttons: any[]) => {
@@ -467,6 +480,22 @@ Hooks.on("renderChatMessage", (message: any, html: JQuery) => {
 
     if (!action || !rollId) return;
 
+    // Check if this button has already been used
+    const usedButtons = (game as any).settings.get(
+      MODULE_ID,
+      "usedRollButtons"
+    ) as string[];
+    const buttonKey = `${rollId}-${action}`;
+
+    if (usedButtons.includes(buttonKey)) {
+      // Button already used, don't allow action
+      button.disabled = true;
+      button.textContent =
+        action === "add-hope" ? "Hope Added!" : "Fear Added!";
+      button.style.background = "#6c757d";
+      return;
+    }
+
     // Find the roll container to get group data
     const rollContainer = html.find(`[data-roll-id="${rollId}"]`);
     if (rollContainer.length === 0) return;
@@ -480,22 +509,94 @@ Hooks.on("renderChatMessage", (message: any, html: JQuery) => {
         button.disabled = true;
         button.textContent = "Hope Added!";
         button.style.background = "#6c757d";
+
+        // Mark button as used
+        await markButtonAsUsed(buttonKey);
       } else if (action === "add-fear") {
         await handleAddFear();
         button.disabled = true;
         button.textContent = "Fear Added!";
         button.style.background = "#6c757d";
+
+        // Mark button as used
+        await markButtonAsUsed(buttonKey);
       }
     } catch (error) {
       console.error("Error handling roll action:", error);
       ui.notifications?.error("Failed to update counters");
     }
   });
+
+  // Check and disable already used buttons on render
+  html.find(".roll-action-btn").each((index, button) => {
+    const action = button.dataset.action;
+    const rollId = button.dataset.rollId;
+
+    if (!action || !rollId) return;
+
+    const usedButtons = (game as any).settings.get(
+      MODULE_ID,
+      "usedRollButtons"
+    ) as string[];
+    const buttonKey = `${rollId}-${action}`;
+
+    if (usedButtons.includes(buttonKey)) {
+      button.disabled = true;
+      button.textContent =
+        action === "add-hope" ? "Hope Added!" : "Fear Added!";
+      button.style.background = "#6c757d";
+    }
+  });
 });
+
+// Helper function to mark a button as used
+async function markButtonAsUsed(buttonKey: string) {
+  const usedButtons = (game as any).settings.get(
+    MODULE_ID,
+    "usedRollButtons"
+  ) as string[];
+  if (!usedButtons.includes(buttonKey)) {
+    usedButtons.push(buttonKey);
+    await (game as any).settings.set(MODULE_ID, "usedRollButtons", usedButtons);
+  }
+}
+
+// Optional: Clean up old button records (older than 24 hours)
+async function cleanupOldButtonRecords() {
+  const usedButtons = (game as any).settings.get(
+    MODULE_ID,
+    "usedRollButtons"
+  ) as string[];
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+  // Filter out old roll IDs (they contain timestamp)
+  const cleanedButtons = usedButtons.filter((buttonKey) => {
+    const rollId = buttonKey.split("-")[1]; // Extract roll ID
+    if (rollId && rollId.startsWith("roll-")) {
+      const timestamp = parseInt(rollId.split("-")[1]);
+      return timestamp > oneDayAgo;
+    }
+    return true; // Keep if we can't parse timestamp
+  });
+
+  if (cleanedButtons.length !== usedButtons.length) {
+    await (game as any).settings.set(
+      MODULE_ID,
+      "usedRollButtons",
+      cleanedButtons
+    );
+    console.log(
+      `Cleaned up ${usedButtons.length - cleanedButtons.length} old button records`
+    );
+  }
+}
 
 async function handleAddHope(groupId: string) {
   // Get current groups
-  const groups = game.settings.get(MODULE_ID, SETTING_PATROLS) as any[];
+  const groups = (game as any).settings.get(
+    MODULE_ID,
+    SETTING_PATROLS
+  ) as any[];
   const groupIndex = groups.findIndex((g) => g.id === groupId);
 
   if (groupIndex === -1) {
@@ -510,12 +611,13 @@ async function handleAddHope(groupId: string) {
   groups[groupIndex] = { ...group, hope: newHope };
 
   // Save and broadcast the change
-  await game.settings.set(MODULE_ID, SETTING_PATROLS, groups);
+  await (game as any).settings.set(MODULE_ID, SETTING_PATROLS, groups);
 
   // Broadcast sync event
   const syncManager = SyncManager.getInstance();
   syncManager.broadcast({
     type: "groups",
+    action: "update",
     data: groups,
     timestamp: Date.now(),
     user: game.user?.name || "unknown",
@@ -535,16 +637,18 @@ async function handleAddFear() {
     try {
       // Use the correct setting name: "ResourcesFear" (not "Resources.Fear")
       const currentFear =
-        game.settings.get("daggerheart", "ResourcesFear") || 0;
+        (game as any).settings.get("daggerheart", "ResourcesFear") || 0;
       console.log("Current Fear value:", currentFear);
 
       // Use default max fear of 12
       const maxFear = 12;
-      const newFear = Math.min(currentFear + 1, maxFear);
+      const newFear = Math.min(Number(currentFear) + 1, maxFear);
       console.log(`Updating Fear from ${currentFear} to ${newFear}`);
 
       // Update the Fear setting
-      await game.settings.set("daggerheart", "ResourcesFear", newFear);
+      await (game as any).settings.set("daggerheart", "ResourcesFear", newFear);
+
+      ui.notifications?.info(`Fear increased to ${newFear}/${maxFear}`);
 
       // Send chat message about the fear increase
       ChatMessage.create({
@@ -553,7 +657,6 @@ async function handleAddFear() {
           <i class="fas fa-skull" style="color: #dc3545;"></i>
           <strong style="color: #dc3545;">Fear increased to ${newFear}/${maxFear}</strong>
         </div>`,
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       });
 
       console.log("Fear successfully updated!");
@@ -570,7 +673,6 @@ async function handleAddFear() {
           <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
           <strong style="color: #ffc107;">Fear roll result - GM please add 1 Fear manually</strong>
         </div>`,
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       });
     }
   } else {
@@ -583,7 +685,6 @@ async function handleAddFear() {
         <i class="fas fa-info-circle" style="color: #ffc107;"></i>
         <strong style="color: #ffc107;">Fear result noted - Requires Daggerheart system</strong>
       </div>`,
-      type: CONST.CHAT_MESSAGE_TYPES.OTHER,
     });
   }
 }
