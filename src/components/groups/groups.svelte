@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
   declare const FilePicker: any;
   declare const game: any;
+  declare const Dialog: any;
 </script>
 
 <script lang="ts">
@@ -16,6 +17,7 @@
   // Access game through global window object to avoid declaration issues
   const game = (globalThis as any).game;
   const FilePicker = (globalThis as any).FilePicker;
+  const Dialog = (globalThis as any).Dialog;
 
   export const saveGroups: (groups: Group[]) => Promise<void> = async () => {}; // Legacy prop, not used anymore
   export let labels = {
@@ -41,12 +43,24 @@
     stats = getStats() as GuardStat[];
     modifiers = getModifiers();
 
-    // Migrate existing groups to have maxSoldiers if they don't have it
+    // Migrate existing groups to have maxSoldiers, hope and maxHope if they don't have them
     let needsUpdate = false;
     const currentGroups = [...groups];
     for (const group of currentGroups) {
       if (group.maxSoldiers === undefined) {
         group.maxSoldiers = 5;
+        needsUpdate = true;
+      }
+      if (group.hope === undefined) {
+        group.hope = 0;
+        needsUpdate = true;
+      }
+      if (group.maxHope === undefined) {
+        group.maxHope = 3;
+        needsUpdate = true;
+      }
+      if (group.experiences === undefined) {
+        group.experiences = [];
         needsUpdate = true;
       }
     }
@@ -132,7 +146,10 @@
         soldiers: [],
         mods: {},
         skills: [],
+        experiences: [],
         maxSoldiers: 5,
+        hope: 0,
+        maxHope: 3,
       },
     ];
     persist();
@@ -498,6 +515,71 @@
     groups = [...groups];
     persist();
   }
+
+  function setHopeLevel(group: Group, level: number) {
+    const maxHope = group.maxHope || 3;
+    group.hope = Math.min(level, maxHope); // Ensure hope doesn't exceed maxHope
+    groups = [...groups];
+    persist();
+  }
+
+  function handleMaxHopeChange(group: Group) {
+    const maxHope = group.maxHope || 3;
+
+    // If current hope exceeds new max, reduce it to new max
+    if (group.hope > maxHope) {
+      group.hope = maxHope;
+    }
+
+    groups = [...groups];
+    persist();
+  }
+
+  function addExperience(group: Group) {
+    // Use Foundry's Dialog system instead of prompt()
+    if (!Dialog) {
+      console.error("Dialog not available");
+      return;
+    }
+
+    new Dialog({
+      title: "Añadir Experiencia",
+      content: `
+        <form>
+          <div class="form-group">
+            <label>Nombre de la experiencia:</label>
+            <input type="text" name="experienceName" placeholder="Introduce el nombre" autofocus />
+          </div>
+        </form>
+      `,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-check"></i>',
+          label: "Añadir",
+          callback: (html: any) => {
+            const form = html[0].querySelector("form");
+            const experienceName = form.experienceName.value.trim();
+            if (experienceName) {
+              group.experiences = group.experiences || [];
+              group.experiences.push({ name: experienceName });
+              groups = [...groups]; // Trigger reactivity
+              persist();
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancelar"
+        }
+      },
+      default: "ok"
+    }).render(true);
+  }
+
+  function removeExperience(group: Group, index: number) {
+    group.experiences.splice(index, 1);
+    persist();
+  }
 </script>
 
 <style>
@@ -582,14 +664,6 @@
 
   .group-content {
     padding-top: 4.5rem; /* Space for the header and buttons */
-  }
-
-  .formation-and-stats-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0.5rem;
-    gap: 1rem;
   }
 
   .drop-zone {
@@ -899,8 +973,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    margin: 1rem 0 0 0;
+    gap: .5rem;
+    margin: .25rem 0 0 0;
   }
 
   .formation-container {
@@ -1126,6 +1200,74 @@
   .floating-extra-info-content .skill {
     background: rgba(255, 255, 255, 0.95);
   }
+
+  /* Hope Meter Styles */
+  .hope-meter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .hope-label {
+    font-weight: bold;
+    color: #d4af37;
+    font-size: 1rem;
+    margin-right: 0.5rem;
+  }
+
+  .hope-circles {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .hope-circle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    position: relative;
+  }
+
+  .hope-circle:hover {
+    transform: scale(1.1);
+  }
+
+  .hope-circle-shape {
+    width: 14px;
+    height: 14px;
+    transition: all 0.2s ease;
+  }
+
+  /* Empty circle */
+  .hope-circle-empty {
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: 2px solid #d4af37;
+    background: transparent;
+  }
+
+  /* Filled diamond */
+  .hope-circle-filled {
+    background: #d4af37;
+    transform: rotate(45deg);
+    border-radius: 2px;
+  }
+
+  .hope-circle:hover .hope-circle-empty {
+    border-color: #ffd700;
+  }
+
+  .hope-circle:hover .hope-circle-filled {
+    background: #ffd700;
+  }
 </style>
 
 <div class="groups">
@@ -1146,7 +1288,7 @@
               on:change={persist}
             />
           {:else}
-            <strong>{group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'New ' + labels.groupSingular)}</strong>
+            <strong>{group.name || (group.officer ? `${labels.groupSingular} de ${group.officer.name}` : 'New ' + labels.groupSingular)}</strong>
           {/if}
         </div>
       </div>
@@ -1231,6 +1373,22 @@
 
         <!-- Formation and Stats Container -->
         <div class="formation-and-stats-container">
+          <!-- Hope Meter -->
+          <div class="hope-meter">
+            <span class="hope-label">HOPE</span>
+            <div class="hope-circles">
+              {#each Array(group.maxHope || 3) as _, index}
+                <button
+                  class="hope-circle"
+                  on:click={() => setHopeLevel(group, index + 1)}
+                  title="Hope level {index + 1}"
+                >
+                  <div class="hope-circle-shape {(group.hope || 0) > index ? 'hope-circle-filled' : 'hope-circle-empty'}"></div>
+                </button>
+              {/each}
+            </div>
+          </div>
+
           <!-- Dynamic Formation (Officer + Soldiers) -->
           <div class="formation-container">
             <!-- Officer Center Position -->
@@ -1388,6 +1546,51 @@
                   <option value={6}>6</option>
                 </select>
               </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label for="maxHope-{group.id}" style="color: #d4af37; font-weight: bold;">Hope Máximo:</label>
+                <select id="maxHope-{group.id}" bind:value={group.maxHope} on:change={() => handleMaxHopeChange(group)} style="background: rgba(255, 255, 255, 0.9); border: 1px solid #d4af37; border-radius: 4px; padding: 0.25rem; color: #000;">
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                  <option value={6}>6</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Experiences Section -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <strong style="margin: 0;">Experiences</strong>
+                {#if editing[group.id]}
+                  <button on:click={() => addExperience(group)}>+</button>
+                {/if}
+              </div>
+              {#each group.experiences as exp, expIndex}
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  {#if editing[group.id]}
+                    <input
+                      type="text"
+                      bind:value={exp.name}
+                      placeholder="Experience name"
+                      style="flex: 1; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
+                      on:change={persist}
+                    />
+                    <button
+                      on:click={() => removeExperience(group, expIndex)}
+                      style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                    >
+                      ×
+                    </button>
+                  {:else}
+                    <div style="flex: 1; padding: 0.25rem; background: rgba(255, 255, 255, 0.9); border-radius: 4px; color: #000;">
+                      {exp.name}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
             </div>
           </div>
         </div>

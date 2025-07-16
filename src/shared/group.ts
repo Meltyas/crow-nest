@@ -4,6 +4,10 @@ export interface GroupSkill {
   img: string;
 }
 
+export interface GroupExperience {
+  name: string;
+}
+
 export interface GroupMember {
   id: string;
   name: string;
@@ -17,5 +21,8 @@ export interface Group {
   soldiers: GroupMember[];
   mods: Record<string, number>;
   skills: GroupSkill[];
+  experiences: GroupExperience[];
   maxSoldiers: number;
+  hope: number; // 0-6 hope level
+  maxHope: number; // 1-6 maximum hope level
 }
