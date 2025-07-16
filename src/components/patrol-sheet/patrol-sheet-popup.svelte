@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { GuardStat } from "@/guard/stats";
+  import type { GuardStat, GuardModifier } from "@/guard/stats";
   import type { Group } from "@/shared/group";
+  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import { createEventDispatcher, onMount } from 'svelte';
   import { PatrolHandlers } from './patrol-handlers';
   import './patrol-sheet.css';
@@ -11,6 +12,14 @@
   export let initialPosition: { x: number; y: number } | null = null;
 
   const dispatch = createEventDispatcher();
+
+  // Roll dialog state
+  let rollDialogOpen = false;
+  let rollDialogStat: GuardStat | null = null;
+  let rollDialogGroup: Group | null = null;
+  let rollDialogBaseValue = 0;
+  let rollDialogTotalModifier = 0;
+  let rollDialogGuardModifiers: GuardModifier[] = [];
 
   // Drag functionality
   let isDragging = false;
@@ -63,7 +72,7 @@
   }
 
   onMount(() => {
-    handlers = new PatrolHandlers(group, labels, updateComponentData);
+    handlers = new PatrolHandlers(group, labels, updateComponentData, openRollDialog);
     updateComponentData();
   });
 
@@ -119,6 +128,22 @@
 
     // Emit position change event for persistence
     dispatch('positionChange', { x: position.x, y: position.y });
+  }
+
+  // Roll dialog functions
+  function openRollDialog(stat: GuardStat, group: Group, baseValue: number, totalModifier: number, guardModifiers: GuardModifier[]) {
+    rollDialogStat = stat;
+    rollDialogGroup = group;
+    rollDialogBaseValue = baseValue;
+    rollDialogTotalModifier = totalModifier;
+    rollDialogGuardModifiers = guardModifiers;
+    rollDialogOpen = true;
+  }
+
+  function closeRollDialog() {
+    rollDialogOpen = false;
+    rollDialogStat = null;
+    rollDialogGroup = null;
   }
 </script>
 
@@ -178,3 +203,14 @@
     </div>
   </div>
 {/if}
+
+<!-- Roll Dialog Component - Independent from popup -->
+<RollDialogStandalone
+  bind:isOpen={rollDialogOpen}
+  stat={rollDialogStat}
+  group={rollDialogGroup}
+  baseValue={rollDialogBaseValue}
+  totalModifier={rollDialogTotalModifier}
+  guardModifiers={rollDialogGuardModifiers}
+  on:close={closeRollDialog}
+/>

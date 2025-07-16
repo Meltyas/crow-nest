@@ -11,14 +11,17 @@ export class PatrolHandlers {
   private modifiers: any[] = [];
   private group: Group;
   private labels: any;
+  private onRollStat?: (stat: GuardStat, group: Group, baseValue: number, totalModifier: number, guardModifiers: any[]) => void;
 
   constructor(
     group: Group,
     labels: any,
-    private updateComponent: () => void
+    private updateComponent: () => void,
+    onRollStat?: (stat: GuardStat, group: Group, baseValue: number, totalModifier: number, guardModifiers: any[]) => void
   ) {
     this.group = group;
     this.labels = labels;
+    this.onRollStat = onRollStat;
     this.loadData();
   }
 
@@ -48,34 +51,42 @@ export class PatrolHandlers {
     return stat.value + this.guardBonus(stat.key) + (group.mods[stat.key] || 0);
   };
 
-  // Handle stat roll with chat message
+  // Handle stat roll - either trigger dialog or fallback to simple roll
   handleRollStat = (stat: GuardStat) => {
-    const total = this.totalStat(stat, this.group);
-    const r = new Roll(`1d20 + ${total}`);
-    r.evaluate();
+    if (this.onRollStat) {
+      // Use the roll dialog if callback is provided
+      const baseValue = stat.value;
+      const totalModifier = this.guardBonus(stat.key) + (this.group.mods[stat.key] || 0);
+      this.onRollStat(stat, this.group, baseValue, totalModifier, this.modifiers);
+    } else {
+      // Fallback to simple d20 roll
+      const total = this.totalStat(stat, this.group);
+      const r = new Roll(`1d20 + ${total}`);
+      r.evaluate();
 
-    const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
-    const guardMod = this.guardBonus(stat.key);
-    if (guardMod) {
-      lines.push(`Guard modifier ${guardMod > 0 ? "+" : ""}${guardMod}`);
+      const lines: string[] = [stat.name, `Guard base value ${stat.value}`];
+      const guardMod = this.guardBonus(stat.key);
+      if (guardMod) {
+        lines.push(`Guard modifier ${guardMod > 0 ? "+" : ""}${guardMod}`);
+      }
+      const groupMod = this.group.mods[stat.key];
+      if (groupMod) {
+        lines.push(`Patrol modifier ${groupMod > 0 ? "+" : ""}${groupMod}`);
+      }
+
+      const groupName =
+        this.group.name ||
+        (this.group.officer
+          ? `${this.labels.groupSingular} de ${this.group.officer.name}`
+          : "Grupo");
+      const headerImg = this.group.officer
+        ? `<img src="${this.group.officer.img}" alt="${this.group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
+        : "";
+      const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${groupName}</strong></div>`;
+
+      const flavor = `${header}<br/>${lines.join("<br/>")}`;
+      r.toMessage({ speaker: { alias: groupName }, flavor });
     }
-    const groupMod = this.group.mods[stat.key];
-    if (groupMod) {
-      lines.push(`Patrol modifier ${groupMod > 0 ? "+" : ""}${groupMod}`);
-    }
-
-    const groupName =
-      this.group.name ||
-      (this.group.officer
-        ? `${this.labels.groupSingular} de ${this.group.officer.name}`
-        : "Grupo");
-    const headerImg = this.group.officer
-      ? `<img src="${this.group.officer.img}" alt="${this.group.officer.name}" width="32" height="32" style="vertical-align:middle;margin-right:0.5rem;"/>`
-      : "";
-    const header = `<div style="display:flex;align-items:center;gap:0.5rem;">${headerImg}<strong>${groupName}</strong></div>`;
-
-    const flavor = `${header}<br/>${lines.join("<br/>")}`;
-    r.toMessage({ speaker: { alias: groupName }, flavor });
   };
 
   // Handle deploy patrol

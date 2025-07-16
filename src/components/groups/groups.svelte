@@ -6,7 +6,7 @@
 
 <script lang="ts">
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
-  import RollDialog from '@/components/roll-dialog/roll-dialog.svelte';
+  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
@@ -1631,7 +1631,7 @@
 </div>
 
 <!-- Roll Dialog Component -->
-<RollDialog
+<RollDialogStandalone
   bind:isOpen={rollDialogOpen}
   stat={rollDialogStat}
   group={rollDialogGroup}

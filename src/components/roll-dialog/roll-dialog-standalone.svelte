@@ -13,7 +13,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let popupElement: HTMLElement;
+  let dialogElement: HTMLElement;
   let hopeDie = 'd12';
   let fearDie = 'd12';
   let hasAdvantage = false;
@@ -86,7 +86,7 @@
       position.y = event.clientY - dragOffset.y;
 
       // Keep within viewport bounds
-      const rect = popupElement?.getBoundingClientRect();
+      const rect = dialogElement?.getBoundingClientRect();
       if (rect) {
         position.x = Math.max(0, Math.min(window.innerWidth - rect.width, position.x));
         position.y = Math.max(0, Math.min(window.innerHeight - rect.height, position.y));
@@ -371,8 +371,8 @@
 {#if isOpen}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
-    class="roll-dialog-popup"
-    bind:this={popupElement}
+    class="roll-dialog-standalone"
+    bind:this={dialogElement}
     style="left: {position.x}px; top: {position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}"
     on:mousedown={startDrag}
   >
@@ -498,7 +498,7 @@
 {/if}
 
 <style>
-  .roll-dialog-popup {
+  .roll-dialog-standalone {
     position: fixed;
     background: var(--color-bg, #2a2a2a);
     border: 2px solid var(--color-border-dark, #666);
@@ -506,7 +506,7 @@
     min-width: 400px;
     max-width: 500px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 2000; /* Higher than popups to appear on top */
     user-select: none;
   }
 
