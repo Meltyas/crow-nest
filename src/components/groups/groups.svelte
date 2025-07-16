@@ -807,6 +807,10 @@
   .delete-button:hover {
     background: #ff6666;
   }
+
+  .groups {
+    padding: 0.5rem;
+  }
 </style>
 
 <div class="groups">

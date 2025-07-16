@@ -179,11 +179,15 @@
 .crow-nest-patrol .patrol-name {
   margin: 0;
   color: #d4af37;
-  font-size: 1.3em;
+  font-size: 1rem;
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   font-family: "Cinzel", serif;
   padding-top: 0.25rem;
+  width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .crow-nest-patrol .officer-name {
@@ -200,7 +204,7 @@
   width: 100%;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  padding: 0.25rem;
+  padding: 0.25rem 0;
 }
 
 .crow-nest-patrol .stat-button {

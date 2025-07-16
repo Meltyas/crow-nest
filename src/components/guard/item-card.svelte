@@ -3,6 +3,7 @@
 
   // ChatMessage is provided by Foundry at runtime
   declare const ChatMessage: any;
+  declare const FilePicker: any;
 
   export let item: any; // GuardReputation | GuardResource
   export let index: number;
@@ -44,24 +45,25 @@
   }[type];
 
   function handleImageClick() {
-    // Crear un input file temporal para seleccionar la imagen
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-
-    // Agregar evento para manejar la selección
-    fileInput.addEventListener('change', (event) => {
-      handleFileChange(event);
-    });
-
-    // Agregar al DOM, hacer click y remover
-    document.body.appendChild(fileInput);
-    fileInput.click();
-    document.body.removeChild(fileInput);
-
-    // También disparar el evento original por compatibilidad
-    dispatch('imageClick', item);
+    // Usar el selector de imágenes nativo de Foundry
+    if (typeof FilePicker !== "undefined") {
+      new FilePicker({
+        type: "image",
+        current: item.img || config.imageDefault,
+        callback: (path: string) => {
+          // Actualizar la imagen del item
+          item.img = path;
+          handleUpdate();
+          
+          // Disparar evento para compatibilidad
+          dispatch('imageClick', item);
+        },
+      }).render(true);
+    } else {
+      // Fallback si FilePicker no está disponible
+      console.warn("FilePicker no está disponible");
+      dispatch('imageClick', item);
+    }
   }
 
   function handleFileChange(event: Event) {
