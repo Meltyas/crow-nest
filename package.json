@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:watch": "vite build --watch",
+    "build:auto": "nodemon --watch src --ext ts,svelte,css,pcss --exec \"npm run build\"",
     "format": "prettier --write ."
   },
   "devDependencies": {

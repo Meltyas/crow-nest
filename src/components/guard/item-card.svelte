@@ -44,6 +44,23 @@
   }[type];
 
   function handleImageClick() {
+    // Crear un input file temporal para seleccionar la imagen
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+
+    // Agregar evento para manejar la selección
+    fileInput.addEventListener('change', (event) => {
+      handleFileChange(event);
+    });
+
+    // Agregar al DOM, hacer click y remover
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+
+    // También disparar el evento original por compatibilidad
     dispatch('imageClick', item);
   }
 
@@ -102,7 +119,7 @@
         <img src="${item.img || config.imageDefault}" alt="${item[config.nameProperty]}" style="
           background: #000000;
           width: 100%;
-          height: 56px;
+          aspect-ratio: 2 / 1;
           object-fit: cover;
           border-radius: 8px 8px 0 0;
           flex-shrink: 0;
@@ -211,7 +228,7 @@
           <img src="${item.img || config.imageDefault}" alt="${item[config.nameProperty]}" style="
             background: #000000;
             width: 100%;
-            height: 56px;
+            aspect-ratio: 2 / 1;
             object-fit: cover;
             border-radius: 8px 8px 0 0;
             flex-shrink: 0;
@@ -512,11 +529,12 @@
   .item-image {
     background: #000000;
     width: 100%;
-    height: 56px;
+    aspect-ratio: 2 / 1;
     object-fit: cover;
     border-radius: 8px 8px 0 0;
     flex-shrink: 0;
     border-bottom: 2px solid #d4af37;
+    max-height: 150px;
   }
 
   .item-info {
@@ -708,14 +726,16 @@
   .item-edit-image-button {
     align-self: center;
     width: 100%;
-    height: 56px;
+    aspect-ratio: 2 / 1;
+    flex: 1;
   }
 
   .item-image-edit {
     background: #000000;
-    height: 56px;
+    aspect-ratio: 2 / 1;
     object-fit: cover;
     width: 100%;
+    max-height: 150px;
   }
 
   .item-edit-text-container {

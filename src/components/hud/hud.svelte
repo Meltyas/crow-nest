@@ -120,42 +120,94 @@
 
 <style>
   .hud-crow {
+    border: 2px solid #d4af37;
     position: absolute;
     top: 0;
     left: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: #ffffff;
     color: white;
-    padding: 0.5rem;
     border-radius: 0.5rem;
     user-select: none;
     z-index: 50;
-    width: max-content;
-  }
-
-  .hud-crow.expanded {
-    background: rgba(0, 0, 0, 1);
+    width: 200px;
   }
 
   .drag-area {
     cursor: move;
     margin-bottom: 0.25rem;
+    height: 1rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 5;
+  }
+
+  /* Header Image */
+  .hud-header-image {
+    width: 100%;
+    height: 60px;
+    background-image: url('modules/crow-nest/static/img/hud-banner.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-bottom: 2px solid #d4af37;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    transition: all 0.2s ease;
+    color: white;
+    position: relative;
+  }
+
+  .hud-header-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+  }
+
+  .hud-header-image span {
+    position: relative;
+    z-index: 1;
+    font-family: "Overpass", Arial, sans-serif;
   }
 
   /* Game Tokens in HUD */
   .hud-tokens {
     display: flex;
     gap: 0.5rem;
-    margin-top: 0.5rem;
+    padding: 0.5rem;
+    justify-content: space-around;
   }
 
   .hud-token-group {
+    background: #000000;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
+    border: solid 2px #ff6b6b;
+    padding: .5rem;
+    border-radius: .25rem;
+    min-width: 80px;
+  }
+
+  .hud-token-group.cheers {
+    border: solid 2px #51cf66;
   }
 
   .hud-token-label {
+    font-family: "Overpass", Arial, sans-serif;
     font-size: 0.7rem;
     font-weight: bold;
     text-transform: uppercase;
@@ -163,6 +215,7 @@
   }
 
   .hud-token-value {
+    font-family: "Eveleth Dot", "Eveleth", "Overpass", Arial, sans-serif;
     font-size: 1.2rem;
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
@@ -174,27 +227,20 @@
   }
 
   .hud-token-button {
-    width: 20px;
-    height: 20px;
+font-size: .8rem;
+    padding: .4rem .8rem;
+    border-radius: 4px;
     border: 1px solid #d4af37;
-    background: rgba(139, 105, 20, 0.9);
-    color: #f4f1e8;
-    border-radius: 50%;
-    font-size: 0.8rem;
-    font-weight: bold;
+    background: #000;
+    color: #f9fafb;
     cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
+    transition: all .2s ease;
+    display: flex
+;
     align-items: center;
-    justify-content: center;
-    line-height: 1;
+    gap: .3rem;
   }
 
-  .hud-token-button:hover {
-    background: rgba(212, 175, 55, 0.9);
-    color: #1a0f08;
-    transform: scale(1.1);
-  }
 
   .hud-token-button:disabled {
     opacity: 0.5;
@@ -216,8 +262,12 @@
   class:expanded={showPopup}
   style="transform: translate({pos.x}px, {pos.y}px);"
 >
-  <div class="drag-area" role="button" tabindex="0" on:mousedown={onMouseDown} on:keydown={(e) => e.key === 'Enter' && onMouseDown(e)}>Crow Nest</div>
-  <button on:click|stopPropagation={togglePopup}>Abrir Popup</button>
+  <div class="drag-area" role="button" tabindex="0" on:mousedown={onMouseDown} on:keydown={(e) => e.key === 'Enter' && onMouseDown(e)}></div>
+
+  <!-- Header Image that opens popup when clicked -->
+  <div class="hud-header-image" on:click|stopPropagation={togglePopup} on:keydown={(e) => e.key === 'Enter' && togglePopup()} role="button" tabindex="0">
+    <span>Crow's Nest</span>
+  </div>
 
   <!-- Game Tokens (Visible to all, buttons only for GM) -->
   <div class="hud-tokens">

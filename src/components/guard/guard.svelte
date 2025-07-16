@@ -51,6 +51,10 @@
   // Guard sub-tab system - Load last active guard sub-tab from localStorage
   let activeGuardTab: 'reputation' | 'resources' = (localStorage.getItem('crow-nest-guard-subtab') as 'reputation' | 'resources') || 'reputation';
 
+  // Header title and subtitle
+  let headerTitle = localStorage.getItem('crow-nest-title') || 'Los Cuervos';
+  let headerSubtitle = localStorage.getItem('crow-nest-subtitle') || 'Guardianes del Reino';
+
   // Data for tabs
   let patrols: any[] = [];
   let admins: any[] = [];
@@ -286,6 +290,23 @@
     editingResources = !editingResources;
     updateHandlersData();
   }
+
+  // Handle title and subtitle changes
+  function handleTitleChange(event: Event, type: 'title' | 'subtitle') {
+    const target = event.target as HTMLElement;
+    const newText = target.textContent?.trim() || '';
+
+    // Update the reactive variables and save to localStorage
+    if (type === 'title') {
+      headerTitle = newText;
+      localStorage.setItem('crow-nest-title', newText);
+    } else {
+      headerSubtitle = newText;
+      localStorage.setItem('crow-nest-subtitle', newText);
+    }
+  }
+
+  // ...existing code...
 </script>
 
 {#if showPopup}
@@ -331,7 +352,26 @@
         <!-- Content Area -->
         <div class="content-area">
           {#if activeTab === 'guardia'}
-            <h3>Los Cuervos</h3>
+            <div class="header-banner">
+              <h3
+                class="title-editable"
+                contenteditable="true"
+                on:dblclick={(e) => e.target.focus()}
+                on:blur={(e) => handleTitleChange(e, 'title')}
+                bind:textContent={headerTitle}
+              >
+                {headerTitle}
+              </h3>
+              <p
+                class="subtitle-editable"
+                contenteditable="true"
+                on:dblclick={(e) => e.target.focus()}
+                on:blur={(e) => handleTitleChange(e, 'subtitle')}
+                bind:textContent={headerSubtitle}
+              >
+                {headerSubtitle}
+              </p>
+            </div>
             <div class="guard-container">
               <div class="stats-and-modifiers-container">
                 <StatsSection
