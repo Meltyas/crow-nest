@@ -54,7 +54,7 @@
           // Actualizar la imagen del item
           item.img = path;
           handleUpdate();
-          
+
           // Disparar evento para compatibilidad
           dispatch('imageClick', item);
         },
