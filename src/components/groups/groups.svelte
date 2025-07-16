@@ -70,6 +70,19 @@
       if (group.experiences === undefined) {
         group.experiences = [];
         needsUpdate = true;
+      } else {
+        // Migrate experiences to include value if missing
+        let experiencesUpdated = false;
+        group.experiences = group.experiences.map(exp => {
+          if (exp.value === undefined) {
+            experiencesUpdated = true;
+            return { name: exp.name, value: 0 };
+          }
+          return exp;
+        });
+        if (experiencesUpdated) {
+          needsUpdate = true;
+        }
       }
     }
     if (needsUpdate) {
@@ -546,6 +559,11 @@
             <label>Nombre de la experiencia:</label>
             <input type="text" name="experienceName" placeholder="Introduce el nombre" autofocus />
           </div>
+          <div class="form-group">
+            <label>Valor de la experiencia:</label>
+            <input type="number" name="experienceValue" placeholder="Introduce el valor (+/-)" value="0" />
+            <small>Valores positivos dan bonificaciones, valores negativos dan penalizaciones</small>
+          </div>
         </form>
       `,
       buttons: {
@@ -555,9 +573,13 @@
           callback: (html: any) => {
             const form = html[0].querySelector("form");
             const experienceName = form.experienceName.value.trim();
+            const experienceValue = parseInt(form.experienceValue.value) || 0;
             if (experienceName) {
               group.experiences = group.experiences || [];
-              group.experiences.push({ name: experienceName });
+              group.experiences.push({ 
+                name: experienceName, 
+                value: experienceValue 
+              });
               groups = [...groups]; // Trigger reactivity
               persist();
             }
@@ -1574,6 +1596,13 @@
                       style="flex: 1; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
                       on:change={persist}
                     />
+                    <input
+                      type="number"
+                      bind:value={exp.value}
+                      placeholder="Value"
+                      style="width: 60px; padding: 0.25rem; border: 1px solid #d4af37; border-radius: 4px; background: rgba(255, 255, 255, 0.9); color: #000;"
+                      on:change={persist}
+                    />
                     <button
                       on:click={() => removeExperience(group, expIndex)}
                       style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;"
@@ -1581,8 +1610,11 @@
                       ×
                     </button>
                   {:else}
-                    <div style="flex: 1; padding: 0.25rem; background: rgba(255, 255, 255, 0.9); border-radius: 4px; color: #000;">
-                      {exp.name}
+                    <div style="flex: 1; padding: 0.25rem; background: rgba(255, 255, 255, 0.9); border-radius: 4px; color: #000; display: flex; align-items: center; justify-content: space-between;">
+                      <span>{exp.name}</span>
+                      <span style="font-weight: bold; color: {exp.value >= 0 ? '#28a745' : '#dc3545'};">
+                        {exp.value >= 0 ? '+' : ''}{exp.value || 0}
+                      </span>
                     </div>
                   {/if}
                 </div>

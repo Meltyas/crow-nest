@@ -2,6 +2,7 @@
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import type { Group } from '@/shared/group';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { groupsStore, persistGroups } from '@/stores/groups';
 
   export let isOpen = false;
   export let stat: GuardStat | null = null;
@@ -55,7 +56,9 @@
     } else {
       selectedExperiences.add(expName);
     }
-    selectedExperiences = new Set(selectedExperiences); // Trigger reactivity
+    
+    // Force reactivity update
+    selectedExperiences = new Set(selectedExperiences);
   }
 
   function close() {
@@ -65,7 +68,7 @@
 
   // Drag functionality
   function startDrag(event: MouseEvent) {
-    if ((event.target as HTMLElement).closest('.close-button, .roll-button, select, input, button')) {
+    if ((event.target as HTMLElement).closest('.close-button, .roll-button, select, input, button, .experience-chip')) {
       return; // Don't drag if clicking on interactive elements
     }
 
@@ -99,6 +102,42 @@
 
   async function rollDice() {
     if (!stat || !group) return;
+
+    // Calculate experience modifiers and cost
+    const selectedExpArray = Array.from(selectedExperiences);
+    const selectedExpObjects = group.experiences.filter(exp => selectedExperiences.has(exp.name));
+    const experienceModifier = selectedExpObjects.reduce((sum, exp) => sum + exp.value, 0);
+    const hopeCost = selectedExpArray.length; // 1 Hope per selected experience
+
+    // Check if we have enough Hope
+    if (hopeCost > group.hope) {
+      // Show warning message
+      ChatMessage.create({
+        speaker: { alias: 'System' },
+        content: `<div class="crow-nest-warning">Not enough Hope! Need ${hopeCost} Hope but only have ${group.hope}.</div>`,
+        whisper: [game.user.id]
+      });
+      return;
+    }
+
+    // Deduct Hope cost if experiences are selected
+    if (hopeCost > 0) {
+      // Actually deduct Hope from the group
+      group.hope -= hopeCost;
+      
+      // Update the store and persist the change
+      let updatedGroups: Group[];
+      groupsStore.update(groups => {
+        const groupIndex = groups.findIndex(g => g.id === group.id);
+        if (groupIndex !== -1) {
+          groups[groupIndex].hope = group.hope;
+        }
+        updatedGroups = groups;
+        return groups;
+      });
+      
+      await persistGroups(updatedGroups);
+    }
 
     // Roll the dice individually to get separate results
     const hopeRoll = new Roll(`1${hopeDie}`);
@@ -142,8 +181,8 @@
     // Add situational bonus
     const bonus = parseInt(situationalBonus) || 0;
 
-    // Calculate final total
-    let finalTotal = hopeResult + fearResult + baseTotal + bonus;
+    // Calculate final total with experience modifier
+    let finalTotal = hopeResult + fearResult + baseTotal + bonus + experienceModifier;
     if (hasAdvantage) {
       finalTotal += advantageResult;
     } else if (hasDisadvantage) {
@@ -168,9 +207,9 @@
     if (bonus !== 0) {
       modifiers.push(`Situational ${bonus >= 0 ? '+' : ''}${bonus}`);
     }
-
-    // Build experiences display
-    const selectedExpArray = Array.from(selectedExperiences);
+    if (experienceModifier !== 0) {
+      modifiers.push(`Experiences ${experienceModifier >= 0 ? '+' : ''}${experienceModifier}`);
+    }
 
     // Calculate individual modifiers for display
     const guardStatModifiers = guardModifiers.filter(mod => mod.mods[stat.key] && mod.mods[stat.key] !== 0);
@@ -194,10 +233,10 @@
     </div>` : ''}
     ${selectedExpArray.length > 0 ? `
     <div class="duality-modifiers">
-      <div class="duality-modifier">Experiences: ${selectedExpArray.join(', ')}</div>
+      <div class="duality-modifier experience-usage">Used Experiences (${hopeCost} Hope): ${selectedExpObjects.map(exp => `${exp.name} ${exp.value >= 0 ? '+' : ''}${exp.value}`).join(', ')}</div>
     </div>` : ''}
     <div class="dice-result">
-      <div class="dice-formula">${hopeDie} + ${fearDie}${baseTotal !== 0 ? ` ${baseTotal >= 0 ? '+' : ''}${baseTotal}` : ''}${hasAdvantage ? ` +${advantageDie}` : ''}${hasDisadvantage ? ` -${advantageDie}` : ''}${bonus !== 0 ? ` ${bonus >= 0 ? '+' : ''}${bonus}` : ''}</div>
+      <div class="dice-formula">${hopeDie} + ${fearDie}${baseTotal !== 0 ? ` ${baseTotal >= 0 ? '+' : ''}${baseTotal}` : ''}${hasAdvantage ? ` +${advantageDie}` : ''}${hasDisadvantage ? ` -${advantageDie}` : ''}${bonus !== 0 ? ` ${bonus >= 0 ? '+' : ''}${bonus}` : ''}${experienceModifier !== 0 ? ` ${experienceModifier >= 0 ? '+' : ''}${experienceModifier}` : ''}</div>
       <div class="dice-tooltip">
         <div class="wrapper">
           <section class="tooltip-part">
@@ -244,7 +283,7 @@
         <div class="dice-total-label">${hopeWins ? 'Hope' : fearWins ? 'Fear' : 'Critical Success'}</div>
         <div class="dice-total-value">${finalTotal}</div>
       </div>
-      ${baseValue !== 0 || guardStatModifiers.length > 0 || patrolModifier !== 0 || bonus !== 0 || (hasAdvantage || hasDisadvantage) ? `
+      ${baseValue !== 0 || guardStatModifiers.length > 0 || patrolModifier !== 0 || bonus !== 0 || experienceModifier !== 0 || (hasAdvantage || hasDisadvantage) ? `
       <div class="total-bonuses">
         <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
@@ -252,6 +291,7 @@
           ${guardStatModifiers.map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
           ${patrolModifier !== 0 ? `<span class="bonus-item">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
           ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
+          ${selectedExpObjects.map(exp => `<span class="bonus-item experience">${exp.name}: ${exp.value >= 0 ? '+' : ''}${exp.value}</span>`).join('')}
           ${hasAdvantage ? `<span class="bonus-item">Advantage: +${advantageResult}</span>` : ''}
           ${hasDisadvantage ? `<span class="bonus-item">Disadvantage: -${advantageResult}</span>` : ''}
         </div>
@@ -282,6 +322,10 @@
       speaker: { alias: groupName },
       content: content
     });
+
+    // Reset selected experiences after rolling
+    selectedExperiences.clear();
+    selectedExperiences = new Set();
 
     close();
   }
@@ -316,9 +360,11 @@
   });
 
   // Reset experiences when group changes
-  $: if (group) {
+  let previousGroupId: string | undefined;
+  $: if (group && group.id !== previousGroupId) {
     selectedExperiences.clear();
     selectedExperiences = new Set();
+    previousGroupId = group.id;
   }
 </script>
 
@@ -372,19 +418,32 @@
       <!-- Experiences Section -->
       {#if group?.experiences && group.experiences.length > 0}
         <fieldset class="experience-container">
-          <legend>Experiences</legend>
+          <legend>Experiences ({group.hope} Hope available)</legend>
           <div class="experiences-list">
             {#each group.experiences as exp}
               <button
                 class="experience-chip {selectedExperiences.has(exp.name) ? 'selected' : ''}"
-                on:click={() => toggleExperience(exp.name)}
+                on:click={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleExperience(exp.name);
+                }}
                 type="button"
+                disabled={!selectedExperiences.has(exp.name) && selectedExperiences.size >= group.hope}
               >
                 <span><i class="fa-regular {selectedExperiences.has(exp.name) ? 'fa-circle-check' : 'fa-circle'}"></i></span>
                 <span class="label">{exp.name}</span>
+                <span class="experience-value" class:positive={exp.value > 0} class:negative={exp.value < 0}>
+                  {exp.value >= 0 ? '+' : ''}{exp.value}
+                </span>
               </button>
             {/each}
           </div>
+          {#if selectedExperiences.size > 0}
+            <div class="experience-cost">
+              Cost: {selectedExperiences.size} Hope
+            </div>
+          {/if}
         </fieldset>
       {/if}
 
@@ -578,8 +637,14 @@
   }
 
   .experience-chip.selected, .advantage-chip.selected {
-    background: var(--color-bg-success, #28a745);
-    border-color: var(--color-border-success, #1e7e34);
+    background: var(--color-bg-success, #28a745) !important;
+    border-color: var(--color-border-success, #1e7e34) !important;
+    color: white !important;
+  }
+
+  .experience-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .disadvantage-chip.selected {
@@ -682,6 +747,16 @@
     color: var(--color-text-secondary, #ccc);
   }
 
+  :global(.crow-nest-roll .duality-modifier.experience-usage) {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #8b6914;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    border: 1px solid #daa520;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(218, 165, 32, 0.3);
+  }
+
   :global(.crow-nest-roll .dice-result) {
     padding: 0.5rem;
   }
@@ -776,6 +851,14 @@
     color: var(--color-text-primary, #333);
   }
 
+  :global(.crow-nest-roll .bonus-item.experience) {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #8b6914;
+    border: 1px solid #daa520;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(218, 165, 32, 0.3);
+  }
+
   :global(.crow-nest-roll .roll-action-buttons) {
     display: flex;
     gap: 0.5rem;
@@ -820,5 +903,40 @@
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+  }
+
+  /* Experience styles - Additional properties */
+  .experience-chip .label {
+    flex: 1;
+  }
+
+  .experience-value {
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.85em;
+    min-width: 2rem;
+    text-align: center;
+  }
+
+  .experience-value.positive {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .experience-value.negative {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .experience-cost {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 4px;
+    color: var(--color-text-primary, #fff);
+    font-weight: bold;
+    text-align: center;
   }
 </style>

@@ -6,6 +6,7 @@ export interface GroupSkill {
 
 export interface GroupExperience {
   name: string;
+  value: number; // Positive or negative modifier for the roll
 }
 
 export interface GroupMember {
