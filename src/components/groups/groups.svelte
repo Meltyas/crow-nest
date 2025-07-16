@@ -32,7 +32,7 @@
   let stats: GuardStat[] = [];
   let modifiers: GuardModifier[] = [];
   let editing: Record<string, boolean> = {};
-  let collapsed: Record<string, boolean> = {};
+  let patrolExtraInfo: Record<string, boolean> = {}; // Track which extra info containers are floating
 
   // Sync manager
   let syncManager: SyncManager;
@@ -41,12 +41,51 @@
     stats = getStats() as GuardStat[];
     modifiers = getModifiers();
 
+    // Migrate existing groups to have maxSoldiers if they don't have it
+    let needsUpdate = false;
+    const currentGroups = [...groups];
+    for (const group of currentGroups) {
+      if (group.maxSoldiers === undefined) {
+        group.maxSoldiers = 5;
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      groupsStore.set(currentGroups);
+      persist();
+    }
+
     // Setup real-time synchronization only for stats and modifiers
     syncManager = SyncManager.getInstance();
 
     // Listen for stats and modifiers updates (for UI updates)
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
+
+    // Add global click listener to close floating containers
+    const handleGlobalClick = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (target && !target.closest('.floating-extra-info-container') && !target.closest('.header-button') && !target.closest('.skill-delete-floating')) {
+        // Close any open floating containers
+        let hasOpenContainers = false;
+        for (const groupId in patrolExtraInfo) {
+          if (patrolExtraInfo[groupId]) {
+            patrolExtraInfo[groupId] = false;
+            hasOpenContainers = true;
+          }
+        }
+        if (hasOpenContainers) {
+          patrolExtraInfo = { ...patrolExtraInfo };
+        }
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
 
     // Groups sync is handled globally, no need to subscribe here
   });
@@ -93,6 +132,7 @@
         soldiers: [],
         mods: {},
         skills: [],
+        maxSoldiers: 5,
       },
     ];
     persist();
@@ -107,11 +147,6 @@
   function toggleEditing(group: Group) {
     editing[group.id] = !editing[group.id];
     editing = { ...editing }; // Trigger reactivity
-  }
-
-  function toggleCollapsed(group: Group) {
-    collapsed[group.id] = !collapsed[group.id];
-    collapsed = { ...collapsed }; // Trigger reactivity
   }
 
   function removeOfficer(group: Group) {
@@ -196,9 +231,11 @@
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    // Find the first empty slot in the pentagon formation
+    const maxSoldiers = group.maxSoldiers || 5;
+
+    // Find the first empty slot in the formation
     let targetIndex = -1;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < maxSoldiers; i++) {
       if (!group.soldiers[i]) {
         targetIndex = i;
         break;
@@ -207,11 +244,11 @@
 
     if (targetIndex === -1) {
       // All slots are occupied, replace the last one
-      targetIndex = 4;
+      targetIndex = maxSoldiers - 1;
     }
 
-    // Ensure soldiers array has 5 slots
-    while (group.soldiers.length < 5) {
+    // Ensure soldiers array has the correct number of slots
+    while (group.soldiers.length < maxSoldiers) {
       group.soldiers.push(null);
     }
 
@@ -230,8 +267,10 @@
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    // Ensure soldiers array has 5 slots
-    while (group.soldiers.length < 5) {
+    const maxSoldiers = group.maxSoldiers || 5;
+
+    // Ensure soldiers array has the correct number of slots
+    while (group.soldiers.length < maxSoldiers) {
       group.soldiers.push(null);
     }
 
@@ -435,6 +474,30 @@
     const groupName = group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'Group');
     ui.notifications?.info(`${groupName} deployed on the map (${members.length} members, ${tokensToMove.length} moved, ${tokensToCreate.length} created)`);
   }
+
+  function toggleSkillsFloating(group: Group) {
+    patrolExtraInfo[group.id] = !patrolExtraInfo[group.id];
+    patrolExtraInfo = { ...patrolExtraInfo }; // Trigger reactivity
+  }
+
+  function handleMaxSoldiersChange(group: Group) {
+    const maxSoldiers = group.maxSoldiers || 5;
+
+    // Adjust soldiers array to match the new max
+    if (group.soldiers.length < maxSoldiers) {
+      // Add null slots if we need more
+      while (group.soldiers.length < maxSoldiers) {
+        group.soldiers.push(null);
+      }
+    } else if (group.soldiers.length > maxSoldiers) {
+      // When reducing from 6 to 5, remove the 6th soldier (index 5)
+      // This will free up the soldier that was in the 6th position
+      group.soldiers = group.soldiers.slice(0, maxSoldiers);
+    }
+
+    groups = [...groups];
+    persist();
+  }
 </script>
 
 <style>
@@ -446,6 +509,7 @@
     min-height: 120px;
     width: calc(50% - 0.5rem);
     flex: 0 0 calc(50% - 0.5rem);
+    overflow: visible; /* Allow floating container to extend outside */
   }
 
   .group-header {
@@ -520,16 +584,12 @@
     padding-top: 4.5rem; /* Space for the header and buttons */
   }
 
-  .pentagon-and-stats-container {
+  .formation-and-stats-container {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 0.5rem;
     gap: 1rem;
-  }
-
-  .collapsed .pentagon-and-stats-container {
-    margin-bottom: 0;
   }
 
   .drop-zone {
@@ -547,30 +607,14 @@
     flex: 1 1 auto;
   }
 
-  .drop-zone.soldiers em {
-    width: 100%;
-    text-align: center;
-  }
-
-  .drop-zone.soldiers .member {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 49%;
-    width: 100%;
-  }
-
   .skills {
     border-radius: 8px;
     padding-top: .25rem;
   }
 
-  .skills strong {
-    color: #d4af37;
-  }
-
   .skill {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
     padding: 0.75rem;
     background: #ffffff;
@@ -597,6 +641,7 @@
     justify-content: center;
     transition: all 0.3s ease;
     flex-shrink: 0;
+    position: relative;
   }
 
   .skill-image-button:hover {
@@ -609,6 +654,28 @@
     height: 68px;
     object-fit: cover;
     border-radius: 8px;
+  }
+
+  .skill-delete-floating {
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 20px;
+    background: #ff4444;
+    color: white;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+  }
+
+  .skill-delete-floating:hover {
+    background: #ff0000;
   }
 
   .skill-display {
@@ -664,6 +731,7 @@
     background: white;
     color: black;
     border-color: black;
+    width: 100%;
   }
 
   .skill input:focus,
@@ -703,14 +771,6 @@
     background-position: left center !important;
     min-height: 32px;
     font-size: 0.85em;
-  }
-
-  .member span {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
   }
 
   .group-stat {
@@ -831,10 +891,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
+    overflow: visible; /* Allow floating containers to extend outside */
   }
 
-  /* Pentagon Formation Styles */
-  .pentagon-and-stats-container {
+  /* Dynamic Formation Styles - Pentagon/Hexagon */
+  .formation-and-stats-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -842,7 +903,7 @@
     margin: 1rem 0 0 0;
   }
 
-  .pentagon-formation {
+  .formation-container {
     position: relative;
     width: 100%;
     flex-shrink: 0;
@@ -850,7 +911,7 @@
     max-width: 200px;
   }
 
-  .pentagon-center {
+  .formation-center {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -862,34 +923,75 @@
     position: absolute;
   }
 
-  /* Pentagon point positions */
-  .pentagon-point-0 { /* Top */
+  .formation-point {
+    position: absolute;
+  }
+
+  /* Pentagon point positions (5 soldiers) */
+  .formation-5-sided.formation-point-0 { /* Top */
     top: 0;
     left: 50%;
     transform: translateX(-50%);
   }
 
-  .pentagon-point-1 { /* Top Right */
+  .formation-5-sided.formation-point-1 { /* Top Right */
     top: 25%;
     right: 0;
   }
 
-  .pentagon-point-2 { /* Bottom Right */
+  .formation-5-sided.formation-point-2 { /* Bottom Right */
     bottom: 5%;
     right: 10%;
   }
 
-  .pentagon-point-3 { /* Bottom Left */
+  .formation-5-sided.formation-point-3 { /* Bottom Left */
     bottom: 5%;
     left: 10%;
   }
 
-  .pentagon-point-4 { /* Top Left */
+  .formation-5-sided.formation-point-4 { /* Top Left */
     top: 25%;
     left: 0;
   }
 
-  .pentagon-slot {
+  /* Hexagon point positions (6 soldiers) - 2 top, 2 bottom, 1 each side */
+  .formation-6-sided.formation-point-0 { /* Top Left */
+    top: 10%;
+    left: 25%;
+    transform: translateX(-50%);
+  }
+
+  .formation-6-sided.formation-point-1 { /* Top Right */
+    top: 10%;
+    left: 75%;
+    transform: translateX(-50%);
+  }
+
+  .formation-6-sided.formation-point-2 { /* Right Side */
+    top: 50%;
+    left: 90%;
+    transform: translate(-50%, -50%);
+  }
+
+  .formation-6-sided.formation-point-3 { /* Bottom Right */
+    top: 65%;
+    left: 75%;
+    transform: translateX(-50%);
+  }
+
+  .formation-6-sided.formation-point-4 { /* Bottom Left */
+    top: 65%;
+    left: 25%;
+    transform: translateX(-50%);
+  }
+
+  .formation-6-sided.formation-point-5 { /* Left Side */
+    top: 50%;
+    left: 10%;
+    transform: translate(-50%, -50%);
+  }
+
+  .formation-slot {
     width: 50px;
     height: 50px;
     border-radius: 50%;
@@ -905,32 +1007,32 @@
     overflow: hidden;
   }
 
-  .pentagon-slot.officer-slot {
+  .formation-slot.officer-slot {
     width: 85px;
     height: 85px;
     border-width: 3px;
     border-color: #ff6b35;
   }
 
-  .pentagon-slot.empty:hover {
+  .formation-slot.empty:hover {
     border-color: #ffd700;
     background: rgba(255, 215, 0, 0.2);
     transform: scale(1.05);
   }
 
-  .pentagon-slot.occupied:hover {
+  .formation-slot.occupied:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   }
 
-  .pentagon-avatar {
+  .formation-avatar {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
   }
 
-  .pentagon-name {
+  .formation-name {
     position: absolute;
     bottom: -25px;
     left: 50%;
@@ -947,7 +1049,7 @@
     z-index: 20;
   }
 
-  .pentagon-placeholder {
+  .formation-placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -956,43 +1058,80 @@
     color: #666;
   }
 
-  .pentagon-icon {
+  .formation-icon {
     font-size: 1.5rem;
   }
 
-  .pentagon-label {
+  .formation-label {
     font-size: 0.6rem;
     text-align: center;
     line-height: 1;
   }
 
-  .pentagon-remove {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 20px;
-    height: 20px;
+  .formation-remove {
+        position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
     border-radius: 50%;
     background: #ff4444;
     color: white;
     border: none;
     font-size: 12px;
     cursor: pointer;
-    display: flex;
+    display: flex
+;
     align-items: center;
     justify-content: center;
     z-index: 30;
+    width: 100%;
+    height: 100%;
+    opacity: 0.5;
   }
 
-  .pentagon-remove:hover {
+  .formation-remove:hover {
     background: #ff0000;
+  }
+
+  /* Floating Extra Info Container */
+  .floating-extra-info-container {
+    position: absolute;
+    top: 0;
+    width: 100%; /* Same width as parent group */
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #d4af37;
+    border-radius: 8px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .floating-extra-info-container.open-right {
+    left: 100%;
+  }
+
+  .floating-extra-info-container.open-left {
+    right: 100%;
+  }
+
+  .floating-extra-info-content {
+    flex: 1;
+    padding: 0.5rem;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .floating-extra-info-content .skill {
+    background: rgba(255, 255, 255, 0.95);
   }
 </style>
 
 <div class="groups">
   {#each groups as group, i}
     <div
-      class="group {group.officer ? 'has-officer' : ''} {collapsed[group.id] ? 'collapsed' : ''}"
+      class="group {group.officer ? 'has-officer' : ''}"
     >
 
       <!-- Group Header with editable name -->
@@ -1014,38 +1153,75 @@
 
       <!-- Group Buttons (below title) -->
       <div class="group-header-buttons">
-        {#if editing[group.id]}
-          <button class="standard-button" on:click={() => removeGroup(i)} >
-            X
-          </button>
-        {/if}
+        {#if i % 2 === 0}
+          <!-- Even patrols: arrow on the right, opens to the right -->
+          {#if editing[group.id]}
+            <button class="header-button" on:click={() => removeGroup(i)} >
+              X
+            </button>
+          {/if}
 
-        <button class="standard-button" on:click={() => toggleEditing(group)}>
-          {editing[group.id] ? 'Save' : 'Edit'}
-        </button>
-        {#if game.user?.isGM}
-          <button class="standard-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
-            Ficha
+          <button class="header-button" on:click={() => toggleEditing(group)}>
+            {editing[group.id] ? 'Save' : 'Edit'}
           </button>
-          <button class="standard-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
-            Ficha→All
+          {#if game.user?.isGM}
+            <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
+              Ficha
+            </button>
+            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
+              Ficha→All
+            </button>
+          {:else}
+            <button class="header-button" on:click={() => showPatrolSheet(group)}>
+              Ficha
+            </button>
+          {/if}
+          <button
+            class="header-button"
+            draggable="true"
+            on:click={() => deployGroup(group)}
+            on:dragstart={(e) => onDragDeploy(e, group)}
+          >
+            Deploy
+          </button>
+          <button class="header-button" on:click={() => toggleSkillsFloating(group)}>
+            {patrolExtraInfo[group.id] ? '◀' : '▶'}
           </button>
         {:else}
-          <button class="standard-button" on:click={() => showPatrolSheet(group)}>
-            Ficha
+          <!-- Odd patrols: arrow on the left, opens to the left -->
+          <button class="header-button" on:click={() => toggleSkillsFloating(group)}>
+            {patrolExtraInfo[group.id] ? '▶' : '◀'}
+          </button>
+          {#if editing[group.id]}
+            <button class="header-button" on:click={() => removeGroup(i)} >
+              X
+            </button>
+          {/if}
+
+          <button class="header-button" on:click={() => toggleEditing(group)}>
+            {editing[group.id] ? 'Save' : 'Edit'}
+          </button>
+          {#if game.user?.isGM}
+            <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
+              Ficha
+            </button>
+            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
+              Ficha→All
+            </button>
+          {:else}
+            <button class="header-button" on:click={() => showPatrolSheet(group)}>
+              Ficha
+            </button>
+          {/if}
+          <button
+            class="header-button"
+            draggable="true"
+            on:click={() => deployGroup(group)}
+            on:dragstart={(e) => onDragDeploy(e, group)}
+          >
+            Deploy
           </button>
         {/if}
-        <button
-          class="standard-button"
-          draggable="true"
-          on:click={() => deployGroup(group)}
-          on:dragstart={(e) => onDragDeploy(e, group)}
-        >
-          Deploy
-        </button>
-        <button class="standard-button" on:click={() => toggleCollapsed(group)}>
-          {collapsed[group.id] ? '▼' : '▲'}
-        </button>
       </div>
 
       <!-- Main Content Area -->
@@ -1053,14 +1229,14 @@
         <!-- Officer Info (moved above soldiers) -->
 
 
-        <!-- Pentagon Formation and Stats Container -->
-        <div class="pentagon-and-stats-container">
-          <!-- Pentagon Formation (Officer + Soldiers) -->
-          <div class="pentagon-formation">
+        <!-- Formation and Stats Container -->
+        <div class="formation-and-stats-container">
+          <!-- Dynamic Formation (Officer + Soldiers) -->
+          <div class="formation-container">
             <!-- Officer Center Position -->
-            <div class="pentagon-center officer-position">
+            <div class="formation-center officer-position">
               <div
-                class="pentagon-slot officer-slot {group.officer ? 'occupied' : 'empty'}"
+                class="formation-slot officer-slot {group.officer ? 'occupied' : 'empty'}"
                 role="button"
                 tabindex="0"
                 aria-label={labels.officerDrop}
@@ -1070,26 +1246,26 @@
                 title={group.officer ? `${group.officer.name} - Double-click to open` : labels.officerDrop}
               >
                 {#if group.officer}
-                  <img src={group.officer.img} alt={group.officer.name} class="pentagon-avatar" />
-                  <div class="pentagon-name">{group.officer.name}</div>
+                  <img src={group.officer.img} alt={group.officer.name} class="formation-avatar" />
+                  <div class="formation-name">{group.officer.name}</div>
                   {#if editing[group.id]}
-                    <button class="pentagon-remove" on:click={() => removeOfficer(group)}>×</button>
+                    <button class="formation-remove" on:click={() => removeOfficer(group)}>×</button>
                   {/if}
                 {:else}
-                  <div class="pentagon-placeholder">
-                    <div class="pentagon-icon">👤</div>
-                    <div class="pentagon-label">Officer</div>
+                  <div class="formation-placeholder">
+                    <div class="formation-icon">👤</div>
+                    <div class="formation-label">Officer</div>
                   </div>
                 {/if}
               </div>
             </div>
 
-            <!-- Soldier Positions (5 points of pentagon) -->
-            {#each Array(5) as _, slotIndex}
+            <!-- Soldier Positions (dynamic pentagon/hexagon) -->
+            {#each Array(group.maxSoldiers || 5) as _, slotIndex}
               {@const soldier = group.soldiers[slotIndex]}
-              <div class="pentagon-point pentagon-point-{slotIndex}">
+              <div class="formation-point formation-point-{slotIndex} formation-{group.maxSoldiers || 5}-sided">
                 <div
-                  class="pentagon-slot soldier-slot {soldier ? 'occupied' : 'empty'}"
+                  class="formation-slot soldier-slot {soldier ? 'occupied' : 'empty'}"
                   role="button"
                   tabindex="0"
                   aria-label="Soldier position {slotIndex + 1}"
@@ -1102,18 +1278,18 @@
                     <img
                       src={soldier.img}
                       alt={soldier.name}
-                      class="pentagon-avatar"
+                      class="formation-avatar"
                       draggable="true"
                       on:dragstart={(e) => onDragMember(e, soldier)}
                     />
-                    <div class="pentagon-name">{soldier.name}</div>
+                    <div class="formation-name">{soldier.name}</div>
                     {#if editing[group.id]}
-                      <button class="pentagon-remove" on:click={() => removeSoldierAtPosition(group, slotIndex)}>×</button>
+                      <button class="formation-remove" on:click={() => removeSoldierAtPosition(group, slotIndex)}>×</button>
                     {/if}
                   {:else}
-                    <div class="pentagon-placeholder">
-                      <div class="pentagon-icon">🛡️</div>
-                      <div class="pentagon-label">Soldier</div>
+                    <div class="formation-placeholder">
+                      <div class="formation-icon">🛡️</div>
+                      <div class="formation-label">Soldier</div>
                     </div>
                   {/if}
                 </div>
@@ -1147,23 +1323,30 @@
           </div>
         </div>
 
-        {#if !collapsed[group.id]}
+        <!-- Content when not collapsed - currently only skills are in floating container -->
+      </div>
 
-        <!-- Skills -->
-        {#if group.skills.length > 0 || editing[group.id]}
-          <div class="skills">
-            <div style="display: flex; justify-content: space-between; align-items: center;  margin-bottom: 0.5rem;">
+      <!-- Floating Extra Info Container (inside group) -->
+      {#if patrolExtraInfo[group.id]}
+        <div class="floating-extra-info-container {i % 2 === 0 ? 'open-right' : 'open-left'}"
+             role="dialog"
+             aria-label="Extra information panel">
+          <div class="floating-extra-info-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <strong style="margin: 0;">Skills</strong>
               {#if editing[group.id]}
-                <button on:click={() => addSkill(group)}>Add Skill</button>
+                <button on:click={() => addSkill(group)}>+</button>
               {/if}
             </div>
             {#each group.skills as sk, j}
               <div class="skill">
                 {#if editing[group.id]}
-                  <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
-                    <img src={sk.img} alt="" />
-                  </button>
+                  <div style="position: relative;">
+                    <button type="button" class="skill-image-button" on:click={() => chooseSkillImage(sk)}>
+                      <img src={sk.img} alt="" />
+                    </button>
+                    <button class="skill-delete-floating" on:click={() => removeSkill(group, j)}>×</button>
+                  </div>
                   <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1;">
                     <input
                       class="input-title"
@@ -1180,7 +1363,6 @@
                       on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); persist(); } }}
                     ></textarea>
                   </div>
-                  <button class="delete-button" on:click={() => removeSkill(group, j)}>X</button>
                 {:else}
                   <div class="skill-display" role="button" tabindex="0"
                        on:click={() => showSkillInChat(sk, group)}
@@ -1196,11 +1378,20 @@
                 {/if}
               </div>
             {/each}
-          </div>
-        {/if}
 
-        {/if}
-      </div>
+            <!-- Soldados Máximos Section -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label for="maxSoldiers-{group.id}" style="color: #d4af37; font-weight: bold;">Soldados Máximos:</label>
+                <select id="maxSoldiers-{group.id}" bind:value={group.maxSoldiers} on:change={() => handleMaxSoldiersChange(group)} style="background: rgba(255, 255, 255, 0.9); border: 1px solid #d4af37; border-radius: 4px; padding: 0.25rem; color: #000;">
+                  <option value={5}>5</option>
+                  <option value={6}>6</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
   {/each}
   <div style="width: 100%; display: flex; justify-content: center; margin-top: 1rem;">

@@ -17,4 +17,5 @@ export interface Group {
   soldiers: GroupMember[];
   mods: Record<string, number>;
   skills: GroupSkill[];
+  maxSoldiers: number;
 }
