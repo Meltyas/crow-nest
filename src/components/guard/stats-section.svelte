@@ -34,7 +34,13 @@
   }
 
   function onImageClick(stat: GuardStat) {
-    dispatch('imageClick', stat);
+    if (editing) {
+      // In edit mode, handle image selection
+      dispatch('imageClick', stat);
+    } else {
+      // In view mode, open roll dialog
+      rollStat(stat);
+    }
   }
 
   function onFileChange(stat: GuardStat, event: Event) {
@@ -43,6 +49,10 @@
 
   function toggleEditing() {
     dispatch('toggleEditing');
+  }
+
+  function rollStat(stat: GuardStat) {
+    dispatch('rollStat', stat);
   }
 </script>
 
@@ -65,8 +75,9 @@
 
   <div class="stat-container">
     {#each stats as stat, i}
-      <div class="stat">
-        <button class="stat-img" on:click={() => onImageClick(stat)}>
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div class="stat {!editing ? 'clickable-stat' : ''}" on:click={!editing ? () => rollStat(stat) : undefined} on:keydown={!editing ? (e) => e.key === 'Enter' && rollStat(stat) : undefined} tabindex={!editing ? "0" : undefined}>
+        <button class="stat-img" on:click={(e) => { e.stopPropagation(); onImageClick(stat); }}>
           <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt="stat" />
         </button>
         <input
@@ -99,6 +110,7 @@
           <div class="stat-view">
             <div class="stat-name">{stat.name}</div>
             <div class="stat-value">{stat.value} ({getTotalStatValue(stat)})</div>
+            <div class="roll-hint">Click to roll</div>
           </div>
         {/if}
       </div>
@@ -192,6 +204,58 @@
 
   .stat-name {
     font-size: 0.8rem;
+  }
+
+  .stat-view.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    padding: 0.25rem;
+    position: relative;
+  }
+
+  .stat-view.clickable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .stat-view.clickable:active {
+    transform: translateY(0);
+  }
+
+  .roll-hint {
+    font-size: 0.7rem;
+    color: #888;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  .stat-view.clickable:hover .roll-hint {
+    opacity: 1;
+  }
+
+  .stat.clickable-stat {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    padding: 0.25rem;
+  }
+
+  .stat.clickable-stat:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .stat.clickable-stat:active {
+    transform: translateY(0);
+  }
+
+  .stat.clickable-stat:hover .roll-hint {
+    opacity: 1;
   }
 
   .standard-image {

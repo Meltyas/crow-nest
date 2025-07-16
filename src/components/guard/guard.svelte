@@ -8,6 +8,7 @@
   import Groups from '@/components/groups/groups.svelte';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
+  import type { Group } from '@/shared/group';
   import {
     getModifiers,
     getReputation,
@@ -23,6 +24,7 @@
   import ReputationSection from './reputation-section.svelte';
   import ResourcesSection from './resources-section.svelte';
   import StatsSection from './stats-section.svelte';
+  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -44,6 +46,12 @@
   let editingReputation = false;
   let expandedReputationDetails: Record<string, boolean> = {};
   let expandedResourceDetails: Record<string, boolean> = {};
+
+  // Roll dialog state
+  let rollDialogOpen = false;
+  let rollDialogStat: GuardStat | null = null;
+  let rollDialogBaseValue = 0;
+  let rollDialogTotalModifier = 0;
 
   // Tab system - Load last active tab from localStorage
   let activeTab: 'guardia' | 'patrullas' | 'admins' = (localStorage.getItem('crow-nest-active-tab') as 'guardia' | 'patrullas' | 'admins') || 'guardia';
@@ -306,7 +314,33 @@
     }
   }
 
-  // ...existing code...
+  // Roll dialog functions
+  function openRollDialog(stat: GuardStat) {
+    rollDialogStat = stat;
+    rollDialogBaseValue = stat.value;
+    rollDialogTotalModifier = getTotalStatValue(stat) - stat.value; // This gives us just the modifier part
+    rollDialogOpen = true;
+  }
+
+  function closeRollDialog() {
+    rollDialogOpen = false;
+    rollDialogStat = null;
+  }
+
+  // Create a mock group for Guard stats (since Guard doesn't have experiences or hope)
+  function createGuardGroup() {
+    return {
+      id: 'guard-mock',
+      name: 'The Guard',
+      hope: 0,
+      fear: 0,
+      experiences: [],
+      mods: {},
+      members: [],
+      officer: null,
+      skills: []
+    };
+  }
 </script>
 
 {#if showPopup}
@@ -384,6 +418,7 @@
                   on:toggleEditing={handleToggleEditing}
                   on:imageClick={handlers.handleImageClick}
                   on:fileChange={handlers.handleFileChange}
+                  on:rollStat={(e) => openRollDialog(e.detail)}
                 />
 
                 <ModifiersSection
@@ -484,3 +519,14 @@
     </div>
   </div>
 {/if}
+
+<!-- Roll Dialog Component - Independent from popup -->
+<RollDialogStandalone
+  bind:isOpen={rollDialogOpen}
+  stat={rollDialogStat}
+  group={createGuardGroup()}
+  baseValue={rollDialogBaseValue}
+  totalModifier={rollDialogTotalModifier}
+  guardModifiers={modifiers}
+  on:close={closeRollDialog}
+/>
