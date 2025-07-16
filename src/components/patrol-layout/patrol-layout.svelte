@@ -80,7 +80,7 @@
     </div>
   </div>
 
-  <!-- Soldier Positions (dynamic pentagon/hexagon) -->
+  <!-- Soldier Positions (dynamic formation 1-12) -->
   {#each Array(group.maxSoldiers || 5) as _, slotIndex}
     {@const soldier = group.soldiers[slotIndex]}
     <div class="formation-point formation-point-{slotIndex} formation-{group.maxSoldiers || 5}-sided">
@@ -136,6 +136,68 @@
 
   .formation-point {
     position: absolute;
+  }
+
+  /* 1 soldier */
+  .formation-1-sided.formation-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* 2 soldiers */
+  .formation-2-sided.formation-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-2-sided.formation-point-1 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* 3 soldiers */
+  .formation-3-sided.formation-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-3-sided.formation-point-1 { /* Bottom Right */
+    bottom: 5%;
+    right: 10%;
+  }
+
+  .formation-3-sided.formation-point-2 { /* Bottom Left */
+    bottom: 5%;
+    left: 10%;
+  }
+
+  /* 4 soldiers */
+  .formation-4-sided.formation-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-4-sided.formation-point-1 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-4-sided.formation-point-2 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-4-sided.formation-point-3 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
   }
 
   /* Pentagon point positions (5 soldiers) */
@@ -200,6 +262,334 @@
     top: 50%;
     left: 10%;
     transform: translate(-50%, -50%);
+  }
+
+  /* 7 soldiers - Hexagon + 1 at top */
+  .formation-7-sided.formation-point-0 { /* Top Center */
+    top: 0%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-7-sided.formation-point-1 { /* Top Right */
+    top: 13%;
+    right: 5%;
+  }
+
+  .formation-7-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-7-sided.formation-point-3 { /* Bottom Right */
+    bottom: 13%;
+    right: 5%;
+  }
+
+  .formation-7-sided.formation-point-4 { /* Bottom Left */
+    bottom: 13%;
+    left: 5%;
+  }
+
+  .formation-7-sided.formation-point-5 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-7-sided.formation-point-6 { /* Top Left */
+    top: 13%;
+    left: 5%;
+  }
+
+  /* 8 soldiers - Octagon */
+  .formation-8-sided.formation-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-8-sided.formation-point-1 { /* Top Right */
+    top: 12%;
+    right: 12%;
+  }
+
+  .formation-8-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-8-sided.formation-point-3 { /* Bottom Right */
+    bottom: 12%;
+    right: 12%;
+  }
+
+  .formation-8-sided.formation-point-4 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-8-sided.formation-point-5 { /* Bottom Left */
+    bottom: 12%;
+    left: 12%;
+  }
+
+  .formation-8-sided.formation-point-6 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-8-sided.formation-point-7 { /* Top Left */
+    top: 12%;
+    left: 12%;
+  }
+
+  /* 9 soldiers - Octagon + center top */
+  .formation-9-sided.formation-point-0 { /* Top Center */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-9-sided.formation-point-1 { /* Top Right */
+    top: 12%;
+    right: 12%;
+  }
+
+  .formation-9-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-9-sided.formation-point-3 { /* Bottom Right */
+    bottom: 12%;
+    right: 12%;
+  }
+
+  .formation-9-sided.formation-point-4 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-9-sided.formation-point-5 { /* Bottom Left */
+    bottom: 12%;
+    left: 12%;
+  }
+
+  .formation-9-sided.formation-point-6 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-9-sided.formation-point-7 { /* Top Left */
+    top: 12%;
+    left: 12%;
+  }
+
+  .formation-9-sided.formation-point-8 { /* Inner Top */
+    top: 27px;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  .formation-9-sided.formation-point-8 { /* Inner Top */
+    top: 27px;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  /* 10 soldiers - Octagon + 2 top centers */
+  .formation-10-sided.formation-point-0 { /* Top Center */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-10-sided.formation-point-1 { /* Top Right */
+    top: 12%;
+    right: 12%;
+  }
+
+  .formation-10-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-10-sided.formation-point-3 { /* Bottom Right */
+    bottom: 12%;
+    right: 12%;
+  }
+
+  .formation-10-sided.formation-point-4 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-10-sided.formation-point-5 { /* Bottom Left */
+    bottom: 12%;
+    left: 12%;
+  }
+
+  .formation-10-sided.formation-point-6 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-10-sided.formation-point-7 { /* Top Left */
+    top: 12%;
+    left: 12%;
+  }
+
+  .formation-10-sided.formation-point-8 { /* Inner Top Left */
+    top: 27px;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  .formation-10-sided.formation-point-9 { /* Inner Top Right */
+    top: 27px;
+    right: -27%;
+    transform: translateX(-50%);
+  }
+
+  /* 11 soldiers - Octagon + 3 top centers */
+  .formation-11-sided.formation-point-0 { /* Top Center */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-11-sided.formation-point-1 { /* Top Right */
+    top: 12%;
+    right: 12%;
+  }
+
+  .formation-11-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-11-sided.formation-point-3 { /* Bottom Right */
+    bottom: 12%;
+    right: 12%;
+  }
+
+  .formation-11-sided.formation-point-4 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-11-sided.formation-point-5 { /* Bottom Left */
+    bottom: 12%;
+    left: 12%;
+  }
+
+  .formation-11-sided.formation-point-6 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-11-sided.formation-point-7 { /* Top Left */
+    top: 12%;
+    left: 12%;
+  }
+
+  .formation-11-sided.formation-point-8 { /* Inner Top Left */
+    top: 27px;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  .formation-11-sided.formation-point-9 { /* Inner Top Center */
+    top: 27px;
+    right: -27%;
+    transform: translateX(-50%);
+  }
+
+  .formation-11-sided.formation-point-10 { /* Inner Top Right */
+    top: 61%;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+  /* 12 soldiers - Dodecagon (12-sided, similar to 11-sided but more evenly distributed) */
+  .formation-12-sided.formation-point-0 { /* Top Center */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-12-sided.formation-point-1 { /* Top Right */
+    top: 12%;
+    right: 12%;
+  }
+
+  .formation-12-sided.formation-point-2 { /* Right */
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-12-sided.formation-point-3 { /* Bottom Right */
+    bottom: 12%;
+    right: 12%;
+  }
+
+  .formation-12-sided.formation-point-4 { /* Bottom */
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .formation-12-sided.formation-point-5 { /* Bottom Left */
+    bottom: 12%;
+    left: 12%;
+  }
+
+  .formation-12-sided.formation-point-6 { /* Left */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+
+  .formation-12-sided.formation-point-7 { /* Top Left */
+    top: 12%;
+    left: 12%;
+  }
+
+  .formation-12-sided.formation-point-8 { /* Inner Top Left */
+    top: 27px;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  .formation-12-sided.formation-point-9 { /* Inner Top Center */
+    top: 27px;
+    right: -27%;
+    transform: translateX(-50%);
+  }
+
+  .formation-12-sided.formation-point-10 { /* Inner Top Right */
+    top: 61%;
+    left: -2%;
+    transform: translateX(-50%);
+  }
+
+  .formation-12-sided.formation-point-11 { /* Top Left */
+    top: 62%;
+    right: -15%;
   }
 
   .formation-slot {

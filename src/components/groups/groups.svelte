@@ -1294,8 +1294,18 @@
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <label for="maxSoldiers-{group.id}" style="color: #d4af37; font-weight: bold;">Soldados Máximos:</label>
                 <select id="maxSoldiers-{group.id}" bind:value={group.maxSoldiers} on:change={() => handleMaxSoldiersChange(group)} style="background: rgba(255, 255, 255, 0.9); border: 1px solid #d4af37; border-radius: 4px; padding: 0.25rem; color: #000;">
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
                   <option value={5}>5</option>
                   <option value={6}>6</option>
+                  <option value={7}>7</option>
+                  <option value={8}>8</option>
+                  <option value={9}>9</option>
+                  <option value={10}>10</option>
+                  <option value={11}>11</option>
+                  <option value={12}>12</option>
                 </select>
               </div>
 
