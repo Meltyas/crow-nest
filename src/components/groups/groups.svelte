@@ -196,12 +196,62 @@
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    group.soldiers = [
-      ...group.soldiers,
-      { id: actor.id || '', name: actor.name || '', img: actor.img || '' },
-    ];
+    // Find the first empty slot in the pentagon formation
+    let targetIndex = -1;
+    for (let i = 0; i < 5; i++) {
+      if (!group.soldiers[i]) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex === -1) {
+      // All slots are occupied, replace the last one
+      targetIndex = 4;
+    }
+
+    // Ensure soldiers array has 5 slots
+    while (group.soldiers.length < 5) {
+      group.soldiers.push(null);
+    }
+
+    group.soldiers[targetIndex] = {
+      id: actor.id || '',
+      name: actor.name || '',
+      img: actor.img || '',
+    };
+
     groups = [...groups];
     persist();
+  }
+
+  async function onDropSoldierAtPosition(event: DragEvent, group: Group, position: number) {
+    event.preventDefault();
+    const actor = await actorFromDrop(event);
+    if (!actor) return;
+
+    // Ensure soldiers array has 5 slots
+    while (group.soldiers.length < 5) {
+      group.soldiers.push(null);
+    }
+
+    // Always allow placing the actor in the target position (allow duplicates)
+    group.soldiers[position] = {
+      id: actor.id || '',
+      name: actor.name || '',
+      img: actor.img || '',
+    };
+
+    groups = [...groups];
+    persist();
+  }
+
+  function removeSoldierAtPosition(group: Group, position: number) {
+    if (position >= 0 && position < group.soldiers.length) {
+      group.soldiers[position] = null;
+      groups = [...groups];
+      persist();
+    }
   }
 
   function addSkill(group: Group) {
@@ -391,21 +441,9 @@
   .group {
     border: 1px solid #666;
     padding: 0.5rem;
-    padding-left: 120px; /* Always reserve space for officer area */
     margin-bottom: 0.5rem;
     position: relative;
-    min-height: 178px; /* Always use the larger height */
-  }
-
-  .officer-image {
-    position: absolute;
-    top: 46px;
-    left: 0;
-    width: 110px;
-    height: 130px;
-    object-fit: cover;
-    border-radius: 4px;
-    z-index: 1;
+    min-height: 120px;
   }
 
   .group-header {
@@ -470,42 +508,7 @@
     padding-top: 2.5rem; /* Space for the header */
   }
 
-  .officer-drop-zone {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 110px;
-    height: 100%;
-    border: 2px dashed transparent;
-    background: rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 1;
-    transition: all 0.3s ease;
-  }
-
-  .officer-drop-zone:hover {
-    border-color: #aaa;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .officer-drop-zone.has-officer {
-    border: none;
-    background: transparent;
-  }
-
-  .officer-info-top {
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.9em;
-    margin-bottom: 0.5rem;
-  }
-
-  .stats-and-edit-container {
+  .pentagon-and-stats-container {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -513,7 +516,7 @@
     gap: 1rem;
   }
 
-  .collapsed .stats-and-edit-container {
+  .collapsed .pentagon-and-stats-container {
     margin-bottom: 0;
   }
 
@@ -811,6 +814,159 @@
   .groups {
     padding: 0.5rem;
   }
+
+  /* Pentagon Formation Styles */
+  .pentagon-and-stats-container {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin: 1rem 0;
+  }
+
+  .pentagon-formation {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    flex-shrink: 0;
+  }
+
+  .pentagon-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+
+  .pentagon-point {
+    position: absolute;
+  }
+
+  /* Pentagon point positions */
+  .pentagon-point-0 { /* Top */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .pentagon-point-1 { /* Top Right */
+    top: 25%;
+    right: 0;
+  }
+
+  .pentagon-point-2 { /* Bottom Right */
+    bottom: 5%;
+    right: 10%;
+  }
+
+  .pentagon-point-3 { /* Bottom Left */
+    bottom: 5%;
+    left: 10%;
+  }
+
+  .pentagon-point-4 { /* Top Left */
+    top: 25%;
+    left: 0;
+  }
+
+  .pentagon-slot {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid #d4af37;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .pentagon-slot.officer-slot {
+    width: 80px;
+    height: 80px;
+    border-width: 3px;
+    border-color: #ff6b35;
+  }
+
+  .pentagon-slot.empty:hover {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.2);
+    transform: scale(1.05);
+  }
+
+  .pentagon-slot.occupied:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .pentagon-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  .pentagon-name {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 20;
+  }
+
+  .pentagon-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #666;
+  }
+
+  .pentagon-icon {
+    font-size: 1.5rem;
+  }
+
+  .pentagon-label {
+    font-size: 0.6rem;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .pentagon-remove {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ff4444;
+    color: white;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+  }
+
+  .pentagon-remove:hover {
+    background: #ff0000;
+  }
 </style>
 
 <div class="groups">
@@ -818,32 +974,6 @@
     <div
       class="group {group.officer ? 'has-officer' : ''} {collapsed[group.id] ? 'collapsed' : ''}"
     >
-      <!-- Officer Image (visible element, not background) -->
-      {#if group.officer}
-        <img
-          src={group.officer.img}
-          alt={group.officer.name}
-          class="officer-image"
-        />
-      {/if}
-      <!-- Officer Drop Zone (left side where image is) -->
-      <div
-        class="officer-drop-zone {group.officer ? 'has-officer' : ''}"
-        role="button"
-        tabindex="0"
-        aria-label={labels.officerDrop}
-        on:dragover|preventDefault
-        on:drop={(e) => onDropOfficer(e, group)}
-        on:dblclick={() => group.officer ? openActorSheet(group.officer.id) : null}
-        style="cursor: {group.officer ? 'pointer' : 'default'};"
-        title={group.officer ? "Double-click to open character sheet" : labels.officerDrop}
-      >
-        {#if !group.officer}
-          <em style="text-align: center; font-size: 0.8em; color: #999;">
-            {labels.officerDrop}
-          </em>
-        {/if}
-      </div>
 
       <!-- Group Header with editable name -->
       <div class="group-header">
@@ -902,8 +1032,75 @@
         <!-- Officer Info (moved above soldiers) -->
 
 
-        <!-- Group Stats and Edit Button -->
-        <div class="stats-and-edit-container">
+        <!-- Pentagon Formation and Stats Container -->
+        <div class="pentagon-and-stats-container">
+          <!-- Pentagon Formation (Officer + Soldiers) -->
+          <div class="pentagon-formation">
+            <!-- Officer Center Position -->
+            <div class="pentagon-center officer-position">
+              <div
+                class="pentagon-slot officer-slot {group.officer ? 'occupied' : 'empty'}"
+                role="button"
+                tabindex="0"
+                aria-label={labels.officerDrop}
+                on:dragover|preventDefault
+                on:drop={(e) => onDropOfficer(e, group)}
+                on:dblclick={() => group.officer ? openActorSheet(group.officer.id) : null}
+                title={group.officer ? `${group.officer.name} - Double-click to open` : labels.officerDrop}
+              >
+                {#if group.officer}
+                  <img src={group.officer.img} alt={group.officer.name} class="pentagon-avatar" />
+                  <div class="pentagon-name">{group.officer.name}</div>
+                  {#if editing[group.id]}
+                    <button class="pentagon-remove" on:click={() => removeOfficer(group)}>×</button>
+                  {/if}
+                {:else}
+                  <div class="pentagon-placeholder">
+                    <div class="pentagon-icon">👤</div>
+                    <div class="pentagon-label">Officer</div>
+                  </div>
+                {/if}
+              </div>
+            </div>
+
+            <!-- Soldier Positions (5 points of pentagon) -->
+            {#each Array(5) as _, slotIndex}
+              {@const soldier = group.soldiers[slotIndex]}
+              <div class="pentagon-point pentagon-point-{slotIndex}">
+                <div
+                  class="pentagon-slot soldier-slot {soldier ? 'occupied' : 'empty'}"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Soldier position {slotIndex + 1}"
+                  on:dragover|preventDefault
+                  on:drop={(e) => onDropSoldierAtPosition(e, group, slotIndex)}
+                  on:dblclick={() => soldier ? openActorSheet(soldier.id) : null}
+                  title={soldier ? `${soldier.name} - Double-click to open` : `Soldier position ${slotIndex + 1}`}
+                >
+                  {#if soldier}
+                    <img
+                      src={soldier.img}
+                      alt={soldier.name}
+                      class="pentagon-avatar"
+                      draggable="true"
+                      on:dragstart={(e) => onDragMember(e, soldier)}
+                    />
+                    <div class="pentagon-name">{soldier.name}</div>
+                    {#if editing[group.id]}
+                      <button class="pentagon-remove" on:click={() => removeSoldierAtPosition(group, slotIndex)}>×</button>
+                    {/if}
+                  {:else}
+                    <div class="pentagon-placeholder">
+                      <div class="pentagon-icon">🛡️</div>
+                      <div class="pentagon-label">Soldier</div>
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <!-- Group Stats -->
           <div class="group-stat-container">
             {#each stats as stat, index}
               <div class="group-stat">
@@ -927,38 +1124,6 @@
               {/if}
             {/each}
           </div>
-
-                <!-- Soldiers Section -->
-        <div
-          class="drop-zone soldiers"
-          role="button"
-          tabindex="0"
-          aria-label={labels.soldierDrop}
-          on:dragover|preventDefault
-          on:drop={(e) => onDropSoldier(e, group)}
-        >
-          {#if group.soldiers && group.soldiers.length > 0}
-            {#each group.soldiers as soldier}
-              <div
-                class="member"
-                role="button"
-                tabindex="0"
-                draggable="true"
-                on:dragstart={(e) => onDragMember(e, soldier)}
-                on:dblclick={() => openActorSheet(soldier.id)}
-                style={`background-image: url('${soldier.img}'); cursor: pointer;`}
-                title="Double-click to open character sheet"
-              >
-                <span>{soldier.name}</span>
-                {#if editing[group.id]}
-                  <button class="delete-button" on:click={() => removeSoldier(group, soldier)}>X</button>
-                {/if}
-              </div>
-            {/each}
-          {:else}
-            <em>{labels.soldierDrop}</em>
-          {/if}
-        </div>
         </div>
 
         {#if !collapsed[group.id]}
