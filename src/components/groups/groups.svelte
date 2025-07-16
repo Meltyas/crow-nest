@@ -5,6 +5,7 @@
 </script>
 
 <script lang="ts">
+  import { getAdmins } from '@/admin/admins';
   import PatrolLayout from '@/components/patrol-layout/patrol-layout.svelte';
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
@@ -12,6 +13,7 @@
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
+  import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
@@ -23,15 +25,17 @@
 
   export const saveGroups: (groups: Group[]) => Promise<void> = async () => {}; // Legacy prop, not used anymore
   export let labels = {
-    groupSingular: 'Patrol',
+    groupSingular: 'Patrulla',
     addGroup: 'Add Patrol',
     removeGroup: 'Remove Patrol',
-    officerDrop: 'Drag an officer here',
+    officerDrop: 'Drag Officer here',
     soldierDrop: 'Drag soldiers here',
   };
+  export let isAdminMode = false; // Flag to detect if we're in admin mode
 
-  // Use store instead of prop
-  $: groups = $groupsStore;
+  // Use appropriate store based on isAdminMode
+  $: currentStore = isAdminMode ? adminsStore : groupsStore;
+  $: groups = $currentStore;
 
   let stats: GuardStat[] = [];
   let modifiers: GuardModifier[] = [];
@@ -51,6 +55,12 @@
   onMount(() => {
     stats = getStats() as GuardStat[];
     modifiers = getModifiers();
+
+    // Initialize appropriate store based on mode
+    if (isAdminMode) {
+      const admins = getAdmins();
+      adminsStore.set(admins);
+    }
 
     // Migrate existing groups to have maxSoldiers, hope and maxHope if they don't have them
     let needsUpdate = false;
@@ -87,7 +97,11 @@
       }
     }
     if (needsUpdate) {
-      groupsStore.set(currentGroups);
+      if (isAdminMode) {
+        adminsStore.set(currentGroups);
+      } else {
+        groupsStore.set(currentGroups);
+      }
       persist();
     }
 
@@ -148,13 +162,21 @@
   }
 
   async function persist() {
-    await persistGroups(groups);
+    if (isAdminMode) {
+      await persistAdmins(groups);
+    } else {
+      await persistGroups(groups);
+    }
   }
 
   // Helper function to update groups and sync
   function updateGroups(newGroups: Group[]) {
     groups = newGroups;
-    groupsStore.set(groups); // Update store immediately for reactive UI
+    if (isAdminMode) {
+      adminsStore.set(groups);
+    } else {
+      groupsStore.set(groups);
+    }
     persist();
   }
 

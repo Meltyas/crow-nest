@@ -504,6 +504,7 @@
           {:else if activeTab === 'admins'}
             <h3>Administración</h3>
             <Groups
+              isAdminMode={true}
               saveGroups={saveAdmins}
               labels={{
                 groupSingular: 'Admin',
