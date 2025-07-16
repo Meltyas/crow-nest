@@ -441,9 +441,11 @@
   .group {
     border: 1px solid #666;
     padding: 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
     position: relative;
     min-height: 120px;
+    width: calc(50% - 0.5rem);
+    flex: 0 0 calc(50% - 0.5rem);
   }
 
   .group-header {
@@ -452,7 +454,7 @@
     left: 0.5rem;
     right: 0.5rem;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     z-index: 2;
     background: rgba(0, 0, 0, 0.7);
@@ -463,12 +465,22 @@
   .group-header-left {
     flex: 1;
     min-width: 0;
+    text-align: center;
   }
 
   .group-header-buttons {
+    position: absolute;
+    top: 2.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
     display: flex;
     gap: 0.25rem;
-    margin-left: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.25rem;
+    border-radius: 4px;
   }
 
   .header-button {
@@ -505,7 +517,7 @@
   }
 
   .group-content {
-    padding-top: 2.5rem; /* Space for the header */
+    padding-top: 4.5rem; /* Space for the header and buttons */
   }
 
   .pentagon-and-stats-container {
@@ -549,7 +561,7 @@
 
   .skills {
     border-radius: 8px;
-    padding-top: .5rem;
+    padding-top: .25rem;
   }
 
   .skills strong {
@@ -706,6 +718,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
+    min-width: 60px;
   }
 
   .stat-values {
@@ -774,16 +787,18 @@
   }
 
   .stat-icon img {
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
   }
 
   .group-stat-container {
-    align-self: flex-start;
+    align-self: center;
     display: flex;
     align-items: center;
     gap: 0.25rem;
     flex: 0 0 auto;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .delete-button {
@@ -813,21 +828,26 @@
 
   .groups {
     padding: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   /* Pentagon Formation Styles */
   .pentagon-and-stats-container {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 1rem;
-    align-items: flex-start;
-    margin: 1rem 0;
+    margin: 1rem 0 0 0;
   }
 
   .pentagon-formation {
     position: relative;
-    width: 200px;
-    height: 200px;
+    width: 100%;
     flex-shrink: 0;
+    aspect-ratio: 1;
+    max-width: 200px;
   }
 
   .pentagon-center {
@@ -870,8 +890,8 @@
   }
 
   .pentagon-slot {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     border: 2px solid #d4af37;
     background: rgba(255, 255, 255, 0.9);
@@ -886,8 +906,8 @@
   }
 
   .pentagon-slot.officer-slot {
-    width: 80px;
-    height: 80px;
+    width: 85px;
+    height: 85px;
     border-width: 3px;
     border-color: #ff6b35;
   }
@@ -990,41 +1010,42 @@
             <strong>{group.name || (group.officer ? `${labels.groupSingular} of ${group.officer.name}` : 'New ' + labels.groupSingular)}</strong>
           {/if}
         </div>
-        <div class="group-header-buttons">
-                    {#if editing[group.id]}
+      </div>
 
+      <!-- Group Buttons (below title) -->
+      <div class="group-header-buttons">
+        {#if editing[group.id]}
           <button class="standard-button" on:click={() => removeGroup(i)} >
             X
           </button>
-                    {/if}
+        {/if}
 
-          <button class="standard-button" on:click={() => toggleEditing(group)}>
-            {editing[group.id] ? 'Save' : 'Edit'}
+        <button class="standard-button" on:click={() => toggleEditing(group)}>
+          {editing[group.id] ? 'Save' : 'Edit'}
+        </button>
+        {#if game.user?.isGM}
+          <button class="standard-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
+            Ficha
           </button>
-          {#if game.user?.isGM}
-            <button class="standard-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
-              Ficha
-            </button>
-            <button class="standard-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
-              Ficha→All
-            </button>
-          {:else}
-            <button class="standard-button" on:click={() => showPatrolSheet(group)}>
-              Ficha
-            </button>
-          {/if}
-          <button
-            class="standard-button"
-            draggable="true"
-            on:click={() => deployGroup(group)}
-            on:dragstart={(e) => onDragDeploy(e, group)}
-          >
-            Deploy
+          <button class="standard-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
+            Ficha→All
           </button>
-          <button class="standard-button" on:click={() => toggleCollapsed(group)}>
-            {collapsed[group.id] ? '▼' : '▲'}
+        {:else}
+          <button class="standard-button" on:click={() => showPatrolSheet(group)}>
+            Ficha
           </button>
-        </div>
+        {/if}
+        <button
+          class="standard-button"
+          draggable="true"
+          on:click={() => deployGroup(group)}
+          on:dragstart={(e) => onDragDeploy(e, group)}
+        >
+          Deploy
+        </button>
+        <button class="standard-button" on:click={() => toggleCollapsed(group)}>
+          {collapsed[group.id] ? '▼' : '▲'}
+        </button>
       </div>
 
       <!-- Main Content Area -->
@@ -1100,7 +1121,7 @@
             {/each}
           </div>
 
-          <!-- Group Stats -->
+          <!-- Group Stats (below pentagon) -->
           <div class="group-stat-container">
             {#each stats as stat, index}
               <div class="group-stat">
@@ -1131,8 +1152,8 @@
         <!-- Skills -->
         {#if group.skills.length > 0 || editing[group.id]}
           <div class="skills">
-            <div style="display: flex; justify-content: space-between; align-items: center; height: 28px; margin-bottom: 0.5rem;">
-              <strong style="margin: 0; line-height: 28px;">Skills</strong>
+            <div style="display: flex; justify-content: space-between; align-items: center;  margin-bottom: 0.5rem;">
+              <strong style="margin: 0;">Skills</strong>
               {#if editing[group.id]}
                 <button on:click={() => addSkill(group)}>Add Skill</button>
               {/if}
@@ -1182,5 +1203,7 @@
       </div>
     </div>
   {/each}
-  <button on:click={addGroup}>{labels.addGroup}</button>
+  <div style="width: 100%; display: flex; justify-content: center; margin-top: 1rem;">
+    <button on:click={addGroup} style="padding: 0.5rem 1rem;">{labels.addGroup}</button>
+  </div>
 </div>
