@@ -194,11 +194,33 @@
     const fearWins = fearResult > hopeResult;
     const tie = hopeResult === fearResult;
 
-    // Build modifiers display
+    // Build modifiers display with detailed breakdown
     const modifiers = [];
-    if (baseTotal !== 0) {
-      modifiers.push(`${stat.name} ${baseTotal >= 0 ? '+' : ''}${baseTotal}`);
+
+    // Base stat value
+    if (baseValue !== 0) {
+      modifiers.push(`Base ${stat.name} ${baseValue >= 0 ? '+' : ''}${baseValue}`);
     }
+
+    // Calculate and show individual modifier components
+    const guardBonus = guardModifiers.reduce((sum, mod) => sum + (mod.mods[stat.key] || 0), 0);
+    const patrolModifier = group.mods[stat.key] || 0;
+    const temporaryModifiers = Object.values(group.temporaryModifiers || {})
+      .filter(mod => mod.statEffects[stat.key] !== undefined && mod.statEffects[stat.key] !== 0);
+
+    if (guardBonus !== 0) {
+      modifiers.push(`Guard Bonuses ${guardBonus >= 0 ? '+' : ''}${guardBonus}`);
+    }
+    if (patrolModifier !== 0) {
+      modifiers.push(`Patrol Modifier ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}`);
+    }
+
+    // Show each temporary modifier individually with special purple styling
+    temporaryModifiers.forEach(mod => {
+      const value = mod.statEffects[stat.key];
+      modifiers.push(`<span class="temporary-modifier">${mod.name} ${value >= 0 ? '+' : ''}${value}</span>`);
+    });
+
     if (hasAdvantage) {
       modifiers.push(`Advantage +${advantageResult}`);
     } else if (hasDisadvantage) {
@@ -210,10 +232,6 @@
     if (experienceModifier !== 0) {
       modifiers.push(`Experiences ${experienceModifier >= 0 ? '+' : ''}${experienceModifier}`);
     }
-
-    // Calculate individual modifiers for display
-    const guardStatModifiers = guardModifiers.filter(mod => mod.mods[stat.key] && mod.mods[stat.key] !== 0);
-    const patrolModifier = group.mods[stat.key] || 0;
 
     const groupName = group.name || (group.officer ? `Patrol of ${group.officer.name}` : 'Patrol');
 
@@ -283,13 +301,14 @@
         <div class="dice-total-label">${hopeWins ? 'Hope' : fearWins ? 'Fear' : 'Critical Success'}</div>
         <div class="dice-total-value">${finalTotal}</div>
       </div>
-      ${baseValue !== 0 || guardStatModifiers.length > 0 || patrolModifier !== 0 || bonus !== 0 || experienceModifier !== 0 || (hasAdvantage || hasDisadvantage) ? `
+      ${baseValue !== 0 || guardModifiers.length > 0 || patrolModifier !== 0 || bonus !== 0 || experienceModifier !== 0 || temporaryModifiers.length > 0 || (hasAdvantage || hasDisadvantage) ? `
       <div class="total-bonuses">
         <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
           ${baseValue !== 0 ? `<span class="bonus-item">Guard ${stat.name} Base: ${baseValue >= 0 ? '+' : ''}${baseValue}</span>` : ''}
-          ${guardStatModifiers.map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
+          ${guardModifiers.filter(mod => mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0).map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
           ${patrolModifier !== 0 ? `<span class="bonus-item">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
+          ${temporaryModifiers.map(mod => `<span class="bonus-item temporary-modifier">${mod.name}: ${mod.statEffects[stat.key] >= 0 ? '+' : ''}${mod.statEffects[stat.key]}</span>`).join('')}
           ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
           ${selectedExpObjects.map(exp => `<span class="bonus-item experience">${exp.name}: ${exp.value >= 0 ? '+' : ''}${exp.value}</span>`).join('')}
           ${hasAdvantage ? `<span class="bonus-item">Advantage: +${advantageResult}</span>` : ''}
@@ -938,5 +957,22 @@
     color: var(--color-text-primary, #fff);
     font-weight: bold;
     text-align: center;
+  }
+
+  /* Temporary Modifier styles - Purple color for distinction */
+  :global(.crow-nest-roll .temporary-modifier) {
+    background: #9b59b6;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    text-shadow: 0 0 2px rgba(155, 89, 182, 0.5);
+  }
+
+
+  /* Temporary Modifier styles - Purple color for distinction */
+  :global(.crow-nest-roll .dice-flavor) {
+    margin: 0.5rem 0;
   }
 </style>

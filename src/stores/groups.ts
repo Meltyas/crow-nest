@@ -37,6 +37,14 @@ export function loadGroups() {
 }
 
 export async function persistGroups(groups: Group[]) {
+  console.log("persistGroups called with:", groups);
+  console.log("persistGroups temporaryModifiers details:", groups.map(g => ({ 
+    id: g.id, 
+    name: g.name, 
+    temporaryModifiers: g.temporaryModifiers,
+    temporaryModifiersKeys: Object.keys(g.temporaryModifiers || {})
+  })));
+  
   // Save to storage
   await savePatrols(groups);
 

@@ -12,7 +12,7 @@
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
-  import type { Group, GroupMember, GroupSkill, GroupTemporaryModifiers, GroupTemporaryModifier } from "@/shared/group";
+  import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
@@ -189,15 +189,22 @@
   }
 
   async function persist() {
+    console.log("Persisting groups:", groups);
+    console.log("Groups with temporaryModifiers:", groups.map(g => ({ id: g.id, name: g.name, temporaryModifiers: g.temporaryModifiers })));
     if (isAdminMode) {
       await persistAdmins(groups);
+      console.log("Persisted to admins store");
     } else {
       await persistGroups(groups);
+      console.log("Persisted to groups store");
     }
   }
 
   // Helper function to update groups and sync
   function updateGroups(newGroups: Group[]) {
+    console.log("updateGroups called with:", newGroups);
+    console.log("updateGroups temporaryModifiers:", newGroups.map(g => ({ id: g.id, temporaryModifiers: g.temporaryModifiers })));
+    
     groups = newGroups;
     if (isAdminMode) {
       adminsStore.set(groups);
@@ -469,7 +476,7 @@
     // Calculate temporary modifiers for this stat
     const temporaryMod = Object.values(group.temporaryModifiers || {})
       .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
-    
+
     return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
   }
 
@@ -477,11 +484,11 @@
     rollDialogStat = stat;
     rollDialogGroup = group;
     rollDialogBaseValue = stat.value;
-    
+
     // Calculate temporary modifiers for this stat
     const temporaryMod = Object.values(group.temporaryModifiers || {})
       .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
-    
+
     rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
     rollDialogOpen = true;
   }
@@ -635,7 +642,6 @@
           <div class="form-group">
             <label>Valor de la experiencia:</label>
             <input type="number" name="experienceValue" placeholder="Introduce el valor (+/-)" value="0" />
-            <small>Valores positivos dan bonificaciones, valores negativos dan penalizaciones</small>
           </div>
         </form>
       `,
@@ -695,7 +701,6 @@
           <div class="form-group">
             <label>Nombre del modificador:</label>
             <input type="text" name="modifierName" placeholder="Ej: Falta de personal, Bendición divina..." autofocus />
-            <small>Un modificador puede afectar múltiples stats a la vez</small>
           </div>
           <div class="form-group">
             <label>Descripción:</label>
@@ -706,7 +711,6 @@
             <div style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; max-height: 200px; overflow-y: auto;">
               ${statCheckboxes}
             </div>
-            <small>Selecciona los stats y asigna valores. Valores positivos dan bonificaciones, negativos dan penalizaciones.</small>
           </div>
         </form>
       `,
@@ -718,11 +722,11 @@
             const form = html[0].querySelector("form");
             const modifierName = form.modifierName.value.trim();
             const modifierDescription = form.modifierDescription.value.trim();
-            
+
             // Collect selected stats and their values
             const statEffects: Record<string, number> = {};
             const checkedBoxes = form.querySelectorAll('input[name="statCheckbox"]:checked');
-            
+
             checkedBoxes.forEach((checkbox: HTMLInputElement) => {
               const statKey = checkbox.value;
               const valueInput = form.querySelector(`#value-${statKey}`) as HTMLInputElement;
@@ -731,24 +735,139 @@
                 statEffects[statKey] = value;
               }
             });
-            
+
             if (modifierName && Object.keys(statEffects).length > 0) {
               // Initialize temporaryModifiers if undefined
               if (!group.temporaryModifiers) {
                 group.temporaryModifiers = {};
               }
-              
+
               // Generate unique ID for this modifier
               const modifierId = crypto.randomUUID();
-              
+
               group.temporaryModifiers[modifierId] = {
                 name: modifierName,
                 description: modifierDescription,
                 statEffects: statEffects
               };
+
+              console.log("Temporary modifier added:", modifierId, group.temporaryModifiers[modifierId]);
+              console.log("Group temporaryModifiers after adding:", group.temporaryModifiers);
               
-              groups = [...groups]; // Trigger reactivity
-              persist();
+              // Create a complete new copy of the groups array with the modified group
+              const updatedGroups = groups.map(g => 
+                g.id === group.id 
+                  ? { ...g, temporaryModifiers: { ...g.temporaryModifiers } }
+                  : g
+              );
+              
+              console.log("Updated groups before persist:", updatedGroups);
+              updateGroups(updatedGroups);
+              
+            } else if (Object.keys(statEffects).length === 0) {
+              ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
+            }
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancelar"
+        }
+      },
+      default: "ok",
+      render: (html: any) => {
+        // Add checkbox functionality after dialog is rendered
+        const checkboxes = html[0].querySelectorAll('input[name="statCheckbox"]');
+        checkboxes.forEach((checkbox: HTMLInputElement) => {
+          const valueInput = html[0].querySelector(`#value-${checkbox.value}`) as HTMLInputElement;
+          checkbox.addEventListener('change', () => {
+            valueInput.disabled = !checkbox.checked;
+            if (!checkbox.checked) valueInput.value = '0';
+          });
+        });
+      }
+    }).render(true);
+  }
+
+  function editTemporaryModifier(group: Group, modifierId: string) {
+    // Use Foundry's Dialog system to edit multi-stat modifier
+    if (!Dialog) {
+      console.error("Dialog not available");
+      return;
+    }
+
+    const existingModifier = group.temporaryModifiers[modifierId];
+    if (!existingModifier) {
+      console.error("Modifier not found");
+      return;
+    }
+
+    // Create checkboxes for each stat, pre-selecting and pre-filling existing values
+    const statCheckboxes = stats.map(stat => {
+      const isChecked = existingModifier.statEffects[stat.key] !== undefined;
+      const currentValue = existingModifier.statEffects[stat.key] || 0;
+      
+      return `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <input type="checkbox" id="stat-${stat.key}" name="statCheckbox" value="${stat.key}" ${isChecked ? 'checked' : ''}>
+          <label for="stat-${stat.key}" style="flex: 1;">${stat.name}</label>
+          <input type="number" id="value-${stat.key}" name="statValue" placeholder="±" value="${currentValue}" style="width: 60px;" ${isChecked ? '' : 'disabled'}>
+        </div>
+      `;
+    }).join('');
+
+    new Dialog({
+      title: "Editar Modificador Temporal Multi-Stat",
+      content: `
+        <form>
+          <div class="form-group">
+            <label>Nombre del modificador:</label>
+            <input type="text" name="modifierName" placeholder="Ej: Falta de personal, Bendición divina..." value="${existingModifier.name}" autofocus />
+          </div>
+          <div class="form-group">
+            <label>Descripción:</label>
+            <textarea name="modifierDescription" placeholder="Descripción del modificador" rows="3" style="width: 100%; resize: vertical;">${existingModifier.description || ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label>Stats afectados y valores:</label>
+            <div style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+              ${statCheckboxes}
+            </div>
+          </div>
+        </form>
+      `,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-check"></i>',
+          label: "Guardar",
+          callback: (html: any) => {
+            const form = html[0].querySelector("form");
+            const modifierName = form.modifierName.value.trim();
+            const modifierDescription = form.modifierDescription.value.trim();
+
+            // Collect selected stats and their values
+            const statEffects: Record<string, number> = {};
+            const checkedBoxes = form.querySelectorAll('input[name="statCheckbox"]:checked');
+
+            checkedBoxes.forEach((checkbox: HTMLInputElement) => {
+              const statKey = checkbox.value;
+              const valueInput = form.querySelector(`#value-${statKey}`) as HTMLInputElement;
+              const value = parseInt(valueInput.value) || 0;
+              if (value !== 0) { // Only include non-zero values
+                statEffects[statKey] = value;
+              }
+            });
+
+            if (modifierName && Object.keys(statEffects).length > 0) {
+              // Update existing modifier
+              group.temporaryModifiers[modifierId] = {
+                name: modifierName,
+                description: modifierDescription,
+                statEffects: statEffects
+              };
+
+              // Use updateGroups helper instead of manual update
+              updateGroups([...groups]);
             } else if (Object.keys(statEffects).length === 0) {
               ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
             }
@@ -777,15 +896,13 @@
   function removeTemporaryModifier(group: Group, modifierId: string) {
     if (group.temporaryModifiers && group.temporaryModifiers[modifierId]) {
       delete group.temporaryModifiers[modifierId];
-      groups = [...groups];
-      persist();
+      updateGroups([...groups]);
     }
   }
 
   function clearAllTemporaryModifiers(group: Group) {
     group.temporaryModifiers = {};
-    groups = [...groups];
-    persist();
+    updateGroups([...groups]);
   }
 </script>
 
@@ -1333,6 +1450,14 @@
   .hope-circle:hover .hope-circle-filled {
     background: #ffd700;
   }
+
+  /* Editable modifier styles */
+  .editable-modifier:hover {
+    background: rgba(155, 89, 182, 0.2) !important;
+    border-color: #8e44ad !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+  }
 </style>
 
 <div class="groups-container">
@@ -1634,18 +1759,26 @@
                   </div>
                 {/if}
               </div>
-              
+
               {#if Object.entries(group.temporaryModifiers || {}).length === 0}
                 <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
                   Edit para añadir modificadores temporales
                 </div>
               {:else}
                 {#each Object.entries(group.temporaryModifiers || {}) as [modifierId, modifier]}
-                  <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.95); border: 2px solid #d4af37; border-radius: 8px;">
+                  <div 
+                    style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(155, 89, 182, 0.1); border: 2px solid #9b59b6; border-radius: 8px; {editing[group.id] ? 'cursor: pointer;' : ''}"
+                    class:editable-modifier={editing[group.id]}
+                    on:dblclick={editing[group.id] ? () => editTemporaryModifier(group, modifierId) : undefined}
+                    on:keydown={editing[group.id] ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editTemporaryModifier(group, modifierId); } } : undefined}
+                    title={editing[group.id] ? 'Doble clic para editar' : ''}
+                    role={editing[group.id] ? 'button' : undefined}
+                    tabindex={editing[group.id] ? '0' : undefined}
+                  >
                     <!-- Modifier Header -->
                     <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                       <div style="flex: 1;">
-                        <strong style="color: #000; font-size: 1.2em; display: block; margin-bottom: 0.5rem;">{modifier.name}</strong>
+                        <strong style="color: #9b59b6; font-size: 1.2em; display: block; margin-bottom: 0.5rem; text-shadow: 0 0 2px rgba(155, 89, 182, 0.3);">{modifier.name}</strong>
                         {#if modifier.description}
                           <div style="color: #666; font-size: 0.9em; line-height: 1.4; margin-bottom: 0.75rem;">
                             {modifier.description}
@@ -1662,15 +1795,15 @@
                         </button>
                       {/if}
                     </div>
-                    
+
                     <!-- Stats Effects -->
                     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                       {#each Object.entries(modifier.statEffects) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat}
-                          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid #d4af37; border-radius: 6px;">
+                          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(155, 89, 182, 0.15); border: 1px solid #9b59b6; border-radius: 6px;">
                             <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} style="width: 24px; height: 24px;" />
-                            <span style="font-weight: bold; color: #000; font-size: 0.9em;">{stat.name}</span>
+                            <span style="font-weight: bold; color: #9b59b6; font-size: 0.9em;">{stat.name}</span>
                             <span style="font-weight: bold; color: {value >= 0 ? '#28a745' : '#dc3545'}; font-size: 1.1em;">
                               {value >= 0 ? '+' : ''}{value}
                             </span>
