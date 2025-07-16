@@ -6,11 +6,11 @@
 
 <script lang="ts">
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
-  import Tooltip from '@/components/tooltip.svelte';
   import RollDialog from '@/components/roll-dialog/roll-dialog.svelte';
+  import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { getModifiers, getStats } from "@/guard/stats";
-  import type { Group, GroupMember, GroupSkill, GroupExperience } from "@/shared/group";
+  import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
@@ -1599,11 +1599,12 @@
 </div>
 
 <!-- Roll Dialog Component -->
-<RollDialog 
+<RollDialog
   bind:isOpen={rollDialogOpen}
   stat={rollDialogStat}
   group={rollDialogGroup}
   baseValue={rollDialogBaseValue}
   totalModifier={rollDialogTotalModifier}
+  guardModifiers={modifiers}
   on:close={closeRollDialog}
 />

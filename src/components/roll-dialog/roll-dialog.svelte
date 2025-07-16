@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GuardStat } from '@/guard/stats';
+  import type { GuardModifier, GuardStat } from '@/guard/stats';
   import type { Group } from '@/shared/group';
   import { createEventDispatcher, onMount } from 'svelte';
 
@@ -8,6 +8,7 @@
   export let group: Group | null = null;
   export let baseValue = 0;
   export let totalModifier = 0;
+  export let guardModifiers: GuardModifier[] = [];
 
   const dispatch = createEventDispatcher();
 
@@ -164,11 +165,18 @@
     // Build experiences display
     const selectedExpArray = Array.from(selectedExperiences);
 
+    // Calculate individual modifiers for display
+    const guardStatModifiers = guardModifiers.filter(mod => mod.mods[stat.key] && mod.mods[stat.key] !== 0);
+    const patrolModifier = group.mods[stat.key] || 0;
+
     const groupName = group.name || (group.officer ? `Patrol of ${group.officer.name}` : 'Patrol');
 
-    // Updated HTML with proper Daggerheart classes
+    // Create unique ID for this roll to identify buttons
+    const rollId = `roll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Updated HTML with proper Daggerheart classes and action buttons
     const content = `
-<div class="crow-nest-roll">
+<div class="crow-nest-roll" data-roll-id="${rollId}" data-group-id="${group.id}" data-hope-wins="${hopeWins}" data-fear-wins="${fearWins}" data-tie="${tie}">
   <div class="message-content">
     <div class="dice-roll daggerheart chat roll expanded" data-action="expandRoll">
       <div class="dice-flavor">Duality Roll: ${groupName}</div>
@@ -228,14 +236,16 @@
         <div class="dice-total-label">${hopeWins ? 'Hope' : fearWins ? 'Fear' : 'Critical Success'}</div>
         <div class="dice-total-value">${finalTotal}</div>
       </div>
-      ${baseTotal !== 0 || bonus !== 0 || (hasAdvantage || hasDisadvantage) ? `
+      ${baseValue !== 0 || guardStatModifiers.length > 0 || patrolModifier !== 0 || bonus !== 0 || (hasAdvantage || hasDisadvantage) ? `
       <div class="total-bonuses">
-        <div class="bonuses-title">Total Bonuses:</div>
+        <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
-          ${baseTotal !== 0 ? `<span class="bonus-item">Guard ${stat.name}: ${baseTotal >= 0 ? '+' : ''}${baseTotal}</span>` : ''}
+          ${baseValue !== 0 ? `<span class="bonus-item">Guard ${stat.name} Base: ${baseValue >= 0 ? '+' : ''}${baseValue}</span>` : ''}
+          ${guardStatModifiers.map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
+          ${patrolModifier !== 0 ? `<span class="bonus-item">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
+          ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
           ${hasAdvantage ? `<span class="bonus-item">Advantage: +${advantageResult}</span>` : ''}
           ${hasDisadvantage ? `<span class="bonus-item">Disadvantage: -${advantageResult}</span>` : ''}
-          ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
         </div>
       </div>` : ''}
     </div>
@@ -246,10 +256,17 @@
         <div class="duality-result">
           <div>${finalTotal} ${hopeWins ? 'With Hope' : fearWins ? 'With Fear' : 'Critical Success - Tie'}</div>
         </div>
+        <div class="roll-action-buttons">
+          ${hopeWins || tie ? `<button class="roll-action-btn hope-btn" data-action="add-hope" data-roll-id="${rollId}">
+            <i class="fas fa-plus"></i> Add Hope to Patrol
+          </button>` : ''}
+          ${fearWins ? `<button class="roll-action-btn fear-btn" data-action="add-fear" data-roll-id="${rollId}">
+            <i class="fas fa-skull"></i> Add Fear to System
+          </button>` : ''}
+        </div>
       </div>
     </div>
   </div>
-</div>
 </div>`;
 
     // Send to chat
@@ -726,5 +743,51 @@
     border-radius: 3px;
     font-size: 0.85em;
     color: var(--color-text-primary, #333);
+  }
+
+  :global(.crow-nest-roll .roll-action-buttons) {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+
+  :global(.crow-nest-roll .roll-action-btn) {
+    padding: 0.375rem 0.75rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :global(.crow-nest-roll .hope-btn) {
+    background: #28a745;
+    color: white;
+  }
+
+  :global(.crow-nest-roll .hope-btn:hover) {
+    background: #218838;
+    transform: translateY(-1px);
+  }
+
+  :global(.crow-nest-roll .fear-btn) {
+    background: #dc3545;
+    color: white;
+  }
+
+  :global(.crow-nest-roll .fear-btn:hover) {
+    background: #c82333;
+    transform: translateY(-1px);
+  }
+
+  :global(.crow-nest-roll .roll-action-btn:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 </style>

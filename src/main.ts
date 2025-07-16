@@ -54,6 +54,14 @@ Hooks.once("init", () => {
     type: Array,
     default: [],
   });
+
+  // Global Fear tracking for non-Daggerheart systems
+  game.settings.register(MODULE_ID, "global-fear", {
+    scope: "world",
+    config: false,
+    type: Number,
+    default: 0,
+  });
   game.settings.register(MODULE_ID, SETTING_REPUTATION, {
     scope: "world",
     config: false,
@@ -447,4 +455,135 @@ if (typeof globalThis !== "undefined") {
       patrol.handleShowPatrolSheet(fakePatrolData);
     },
   };
+}
+
+// Hook to handle chat button clicks for Hope/Fear management
+Hooks.on("renderChatMessage", (message: any, html: JQuery) => {
+  // Handle Hope/Fear buttons in chat
+  html.find(".roll-action-btn").on("click", async (event) => {
+    const button = event.currentTarget;
+    const action = button.dataset.action;
+    const rollId = button.dataset.rollId;
+
+    if (!action || !rollId) return;
+
+    // Find the roll container to get group data
+    const rollContainer = html.find(`[data-roll-id="${rollId}"]`);
+    if (rollContainer.length === 0) return;
+
+    const groupId = rollContainer.attr("data-group-id");
+    if (!groupId) return;
+
+    try {
+      if (action === "add-hope") {
+        await handleAddHope(groupId);
+        button.disabled = true;
+        button.textContent = "Hope Added!";
+        button.style.background = "#6c757d";
+      } else if (action === "add-fear") {
+        await handleAddFear();
+        button.disabled = true;
+        button.textContent = "Fear Added!";
+        button.style.background = "#6c757d";
+      }
+    } catch (error) {
+      console.error("Error handling roll action:", error);
+      ui.notifications?.error("Failed to update counters");
+    }
+  });
+});
+
+async function handleAddHope(groupId: string) {
+  // Get current groups
+  const groups = game.settings.get(MODULE_ID, SETTING_PATROLS) as any[];
+  const groupIndex = groups.findIndex((g) => g.id === groupId);
+
+  if (groupIndex === -1) {
+    ui.notifications?.warn("Patrol not found");
+    return;
+  }
+
+  const group = groups[groupIndex];
+  const newHope = Math.min((group.hope || 0) + 1, group.maxHope || 6);
+
+  // Update the group
+  groups[groupIndex] = { ...group, hope: newHope };
+
+  // Save and broadcast the change
+  await game.settings.set(MODULE_ID, SETTING_PATROLS, groups);
+
+  // Broadcast sync event
+  const syncManager = SyncManager.getInstance();
+  syncManager.broadcast({
+    type: "groups",
+    data: groups,
+    timestamp: Date.now(),
+    user: game.user?.name || "unknown",
+  });
+
+  ui.notifications?.info(
+    `Added Hope to ${group.name || "Patrol"}. Hope: ${newHope}/${group.maxHope || 6}`
+  );
+}
+
+async function handleAddFear() {
+  const game_global = globalThis.game as any;
+
+  if (game_global.system?.id === "daggerheart") {
+    console.log("Detected Daggerheart system, attempting to add Fear...");
+
+    try {
+      // Use the correct setting name: "ResourcesFear" (not "Resources.Fear")
+      const currentFear =
+        game.settings.get("daggerheart", "ResourcesFear") || 0;
+      console.log("Current Fear value:", currentFear);
+
+      // Use default max fear of 12
+      const maxFear = 12;
+      const newFear = Math.min(currentFear + 1, maxFear);
+      console.log(`Updating Fear from ${currentFear} to ${newFear}`);
+
+      // Update the Fear setting
+      await game.settings.set("daggerheart", "ResourcesFear", newFear);
+
+      // Send chat message about the fear increase
+      ChatMessage.create({
+        speaker: { alias: "System" },
+        content: `<div style="text-align: center; padding: 0.5rem; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 4px;">
+          <i class="fas fa-skull" style="color: #dc3545;"></i>
+          <strong style="color: #dc3545;">Fear increased to ${newFear}/${maxFear}</strong>
+        </div>`,
+        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+      });
+
+      console.log("Fear successfully updated!");
+    } catch (error) {
+      console.error("Failed to update Daggerheart Fear:", error);
+      ui.notifications?.warn(
+        "Unable to add Fear to system. Please manually add Fear or check Daggerheart configuration."
+      );
+
+      // Send chat message indicating manual action needed
+      ChatMessage.create({
+        speaker: { alias: "Crow Nest" },
+        content: `<div style="text-align: center; padding: 0.5rem; background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; border-radius: 4px;">
+          <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+          <strong style="color: #ffc107;">Fear roll result - GM please add 1 Fear manually</strong>
+        </div>`,
+        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+      });
+    }
+  } else {
+    // Not Daggerheart system
+    ui.notifications?.info("Fear tracking requires Daggerheart system");
+
+    ChatMessage.create({
+      speaker: { alias: "Crow Nest" },
+      content: `<div style="text-align: center; padding: 0.5rem; background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; border-radius: 4px;">
+        <i class="fas fa-info-circle" style="color: #ffc107;"></i>
+        <strong style="color: #ffc107;">Fear result noted - Requires Daggerheart system</strong>
+      </div>`,
+      type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+    });
+  }
 }
