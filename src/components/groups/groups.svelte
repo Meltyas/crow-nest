@@ -30,7 +30,7 @@
     addGroup: 'Add Patrol',
     removeGroup: 'Remove Patrol',
     officerDrop: 'Drag Officer here',
-    soldierDrop: 'Drag units here',
+    unitDrop: 'Drag units here',
   };
   export let isAdminMode = false; // Flag to detect if we're in admin mode
   export let sectionTitle = ''; // Optional section title
@@ -44,6 +44,10 @@
   let modifiers: GuardModifier[] = [];
   let editing: Record<string, boolean> = {};
   let patrolExtraInfo: Record<string, boolean> = {}; // Track which extra info containers are floating
+
+  // Drag and drop state for group reordering
+  let draggedGroupIndex: number | null = null;
+  let dragOverIndex: number | null = null;
 
   // Roll dialog state
   let rollDialogOpen = false;
@@ -597,6 +601,136 @@
 
     groups = [...groups];
     persist();
+  }
+
+  // Drag and drop functions for group reordering
+  function onGroupDragStart(event: DragEvent, index: number) {
+    if (!event.dataTransfer) return;
+    
+    draggedGroupIndex = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', index.toString());
+    
+    // Add a visual indicator class to the dragged element
+    if (event.target instanceof HTMLElement) {
+      event.target.classList.add('dragging');
+    }
+  }
+
+  function onGroupDragOver(event: DragEvent, index: number) {
+    event.preventDefault();
+    if (draggedGroupIndex === null || draggedGroupIndex === index) {
+      dragOverIndex = null;
+      return;
+    }
+    
+    dragOverIndex = index;
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  function onGroupDragLeave() {
+    dragOverIndex = null;
+  }
+
+  function onGroupDrop(event: DragEvent, dropIndex: number) {
+    event.preventDefault();
+    
+    if (draggedGroupIndex === null || draggedGroupIndex === dropIndex) {
+      resetDragState();
+      return;
+    }
+
+    console.log(`DEBUG: Moving from index ${draggedGroupIndex} to ${dropIndex}`);
+    
+    // Simple array reordering: use splice to move elements directly
+    const newGroups = [...groups];
+    
+    console.log('DEBUG: Original array:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
+    
+    // Extract the dragged element
+    const draggedElement = newGroups[draggedGroupIndex];
+    console.log('DEBUG: Moving element:', draggedElement.name || 'Unknown');
+    
+    // Remove it from the array
+    newGroups.splice(draggedGroupIndex, 1);
+    console.log('DEBUG: After removal:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
+    
+    // Calculate the correct insertion index
+    // The dropIndex refers to the final desired position in the result array
+    // We need to calculate where to insert in the current (post-removal) array
+    let targetIndex;
+    
+    if (draggedGroupIndex < dropIndex) {
+      // Moving forward: the dropIndex needs to be adjusted because we removed 
+      // an element from before the target position
+      // If we want to end up at position dropIndex in final array,
+      // we need to insert at position (dropIndex - 1) in the reduced array
+      targetIndex = dropIndex - 1;
+      
+      // But wait - that's what we had before and it was giving 0 for 0->1
+      // Let me reconsider: if dropIndex = 1 and draggedGroupIndex = 0
+      // targetIndex = 1 - 1 = 0, which puts it back at the beginning
+      // That's wrong. We want it at position 1.
+      
+      // Actually, let me think differently:
+      // For move 0->1: after removing element at 0, we want to insert at position 1
+      // which means we insert at the end of what's left, i.e., at index equal to current length
+      // No wait, that's not right either.
+      
+      // Let me try a different approach:
+      // We want the element to be at dropIndex in the final array
+      // After removing from draggedGroupIndex, if draggedGroupIndex < dropIndex,
+      // then dropIndex effectively becomes dropIndex-1 in the shorter array
+      // So to end up at the original dropIndex, we insert at dropIndex-1
+      // But we want the original dropIndex position, so... 
+      
+      // Actually, I think the issue is that targetIndex should be dropIndex itself
+      // Let me try that:
+      targetIndex = dropIndex;
+    } else {
+      // Moving backward: dropIndex stays the same
+      targetIndex = dropIndex;
+    }
+    
+    // Bounds check to prevent out-of-range insertion
+    if (targetIndex > newGroups.length) {
+      targetIndex = newGroups.length;
+    }
+    
+    console.log('DEBUG: Target index calculated as:', targetIndex);
+    
+    newGroups.splice(targetIndex, 0, draggedElement);
+    
+    console.log('DEBUG: Final array:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
+
+    // Force reactivity update and persistence
+    if (isAdminMode) {
+      adminsStore.set(newGroups);
+      persistAdmins(newGroups);
+    } else {
+      groupsStore.set(newGroups);
+      persistGroups(newGroups);
+    }
+
+    // Force component re-render
+    groups = newGroups;
+
+    resetDragState();
+  }
+
+  function onGroupDragEnd(event: DragEvent) {
+    // Clean up visual indicators
+    if (event.target instanceof HTMLElement) {
+      event.target.classList.remove('dragging');
+    }
+    resetDragState();
+  }
+
+  function resetDragState() {
+    draggedGroupIndex = null;
+    dragOverIndex = null;
   }
 
   function setHopeLevel(group: Group, level: number) {
@@ -1448,6 +1582,55 @@
     transform: scale(1.02);
     transition: all 0.2s ease;
   }
+
+  /* Drag and drop styles */
+  .draggable-handle {
+    cursor: grab;
+    transition: all 0.2s ease;
+  }
+
+  .draggable-handle:hover {
+    background: rgba(212, 175, 55, 0.2) !important;
+    transform: scale(1.02);
+  }
+
+  .draggable-handle:active {
+    cursor: grabbing;
+  }
+
+  .group.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+
+  .group.drag-over {
+    border-color: #d4af37;
+    border-width: 2px;
+    background: rgba(212, 175, 55, 0.1);
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
+  }
+
+  .groups {
+    position: relative;
+  }
+
+  /* Add visual indicator for drag handle */
+  .draggable-handle::before {
+    content: "⋮⋮";
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 0.8rem;
+    line-height: 0.6;
+    opacity: 0.7;
+  }
+
+  .draggable-handle:hover::before {
+    opacity: 1;
+  }
 </style>
 
 <div class="groups-container">
@@ -1460,15 +1643,28 @@
       </button>
     </div>
   {/if}
-  <div class="groups">
+  <div class="groups" role="list">
   {#each groups as group, i}
     <div
-      class="group {group.officer ? 'has-officer' : ''}"
+      class="group {group.officer ? 'has-officer' : ''} {dragOverIndex === i ? 'drag-over' : ''}"
       data-group-id="{group.id}"
+      role="listitem"
+      on:dragover={(e) => onGroupDragOver(e, i)}
+      on:dragleave={onGroupDragLeave}
+      on:drop={(e) => onGroupDrop(e, i)}
     >
 
-      <!-- Group Header with editable name -->
-      <div class="group-header">
+      <!-- Group Header with editable name (DRAGGABLE) -->
+      <div 
+        class="group-header draggable-handle"
+        draggable="true"
+        role="button"
+        tabindex="0"
+        on:dragstart={(e) => onGroupDragStart(e, i)}
+        on:dragend={onGroupDragEnd}
+        title="Arrastra para reordenar"
+        aria-label="Reordenar grupo {group.name || 'sin nombre'}"
+      >
         <div class="group-header-left">
           {#if editing[group.id]}
             <input
