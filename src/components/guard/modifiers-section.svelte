@@ -50,6 +50,8 @@
 
   function updateModifier() {
     dispatch('updateModifier');
+    // También actualizar presets relacionados
+    dispatch('updatePresetFromModifier');
   }
 
   function onModImageClick(mod: GuardModifier) {
@@ -158,8 +160,8 @@
         <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
         {#if editingMods}
           <div class="modifier-edit">
-            <input placeholder="Nombre" bind:value={mod.name} on:change={updateModifier} />
-            <textarea placeholder="Descripción" bind:value={mod.description} on:change={updateModifier} />
+            <input placeholder="Nombre" bind:value={mod.name} on:input={updateModifier} />
+            <textarea placeholder="Descripción" bind:value={mod.description} on:input={updateModifier} />
             <div class="state-selector">
               <label for="edit-modifier-state-{i}">Estado:</label>
               <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
@@ -172,7 +174,7 @@
               {#each stats as stat}
                 <div class="modifier-values modifier-values-edit">
                   <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-                  <input type="number" bind:value={mod.mods[stat.key]} on:change={updateModifier} />
+                  <input type="number" bind:value={mod.mods[stat.key]} on:input={updateModifier} />
                 </div>
               {/each}
             </div>

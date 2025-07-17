@@ -7,6 +7,7 @@ export class PresetManager {
   private activePopup: any = null;
   private container: HTMLElement | null = null;
   private isInitialized = false;
+  private eventListeners: Map<string, ((event: CustomEvent) => void)[]> = new Map();
 
   static getInstance(): PresetManager {
     if (!PresetManager.instance) {
@@ -18,6 +19,32 @@ export class PresetManager {
   constructor() {
     // Inicializar automáticamente cuando se crea la instancia
     this.initialize();
+  }
+
+  // Sistema de eventos personalizado
+  addEventListener(eventType: string, listener: (event: CustomEvent) => void) {
+    if (!this.eventListeners.has(eventType)) {
+      this.eventListeners.set(eventType, []);
+    }
+    this.eventListeners.get(eventType)!.push(listener);
+  }
+
+  removeEventListener(eventType: string, listener: (event: CustomEvent) => void) {
+    const listeners = this.eventListeners.get(eventType);
+    if (listeners) {
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    }
+  }
+
+  private emitEvent(eventType: string, detail: any) {
+    const listeners = this.eventListeners.get(eventType);
+    if (listeners) {
+      const event = new CustomEvent(eventType, { detail });
+      listeners.forEach(listener => listener(event));
+    }
   }
 
   private async initialize() {
@@ -95,6 +122,12 @@ export class PresetManager {
 
     this.activePopup.$on("usePreset", (event: any) => {
       this.handleUsePreset(event.detail);
+    });
+
+    // Escuchar evento de preset actualizado y propagarlo
+    this.activePopup.$on("presetUpdated", (event: any) => {
+      console.log('PresetManager - Recibiendo evento presetUpdated del popup:', event.detail);
+      this.emitEvent('presetUpdated', event.detail);
     });
   }
 
@@ -200,7 +233,29 @@ export class PresetManager {
   ) {
     // Si el popup está abierto, actualizar el preset correspondiente
     if (this.activePopup) {
-      this.activePopup.updatePresetFromItem(item, type);
+      const updated = this.activePopup.updatePresetFromItem(item, type);
+      // Si se actualizó, también emitir el evento desde el manager
+      if (updated) {
+        // Buscar el preset actualizado para emitir el evento
+        const { presetsStore } = await import("@/stores/presets");
+        let currentPresets: any = null;
+        const unsubscribe = presetsStore.subscribe((presets) => {
+          currentPresets = presets;
+        });
+        unsubscribe();
+        
+        if (currentPresets && item.sourceId) {
+          const presetsArray = type === "resource" ? currentPresets.resources :
+                              type === "reputation" ? currentPresets.reputations :
+                              type === "temporaryModifier" ? currentPresets.temporaryModifiers :
+                              currentPresets.situationalModifiers;
+          
+          const existingPreset = presetsArray.find((p: any) => p.data.sourceId === item.sourceId);
+          if (existingPreset) {
+            this.emitEvent('presetUpdated', { preset: existingPreset, originalItem: item });
+          }
+        }
+      }
     } else {
       // Si no hay popup abierto, actualizar los presets directamente
       await this.updatePresetDirectly(item, type);
@@ -225,7 +280,7 @@ export class PresetManager {
     });
     unsubscribe();
 
-    if (!currentPresets || !item.key) return;
+    if (!currentPresets || !item.sourceId) return;
 
     // Determinar el array de presets según el tipo
     const presetsArray =
@@ -239,26 +294,43 @@ export class PresetManager {
 
     // Buscar el preset existente con el mismo sourceId
     const existingPreset = presetsArray.find(
-      (p: any) => p.data.sourceId === item.key
+      (p: any) => p.data.sourceId === item.sourceId
     );
 
     if (existingPreset) {
       // Actualizar el preset existente
-      existingPreset.data = {
-        ...existingPreset.data,
-        name: item.name,
-        value: item.value,
-        description: item.details || item.description || "",
-        img: item.img || existingPreset.data.img,
-      };
+      if (type === 'situationalModifier') {
+        existingPreset.data = {
+          ...existingPreset.data,
+          name: item.name,
+          description: item.description || "",
+          situation: item.situation || existingPreset.data.situation,
+          img: item.img || existingPreset.data.img,
+          statEffects: item.statEffects || existingPreset.data.statEffects,
+          sourceId: item.sourceId
+        };
+      } else {
+        existingPreset.data = {
+          ...existingPreset.data,
+          name: item.name,
+          value: item.value,
+          description: item.details || item.description || "",
+          img: item.img || existingPreset.data.img,
+          sourceId: item.sourceId
+        };
+      }
+      
       existingPreset.name = item.name;
-      existingPreset.description = item.details || item.description || "";
+      existingPreset.description = item.description || item.details || "";
 
       // Actualizar el store
       presetsStore.update((presets) => ({ ...presets }));
 
       // IMPORTANTE: Persistir los cambios para que se sincronicen
       await persistPresets(currentPresets);
+
+      // Emitir evento de actualización
+      this.emitEvent('presetUpdated', { preset: existingPreset, originalItem: item });
 
       console.log("Preset updated directly:", existingPreset);
     }

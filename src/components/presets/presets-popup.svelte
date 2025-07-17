@@ -1,12 +1,22 @@
+<script context="module" lang="ts">
+  // FilePicker and game are provided by Foundry at runtime
+  declare const FilePicker: any;
+  declare const game: any;
+</script>
+
 <script lang="ts">
   // FilePicker and Dialog are provided by Foundry at runtime
   declare const FilePicker: any;
   declare const Dialog: any;
+  
+  // Access to Foundry's game object
+  declare const game: any;
 
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
-  import { addPreset, initializePresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
+  import { addPreset, initializePresets, persistPresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
   import PopupFocusManager from '@/utils/popup-focus';
+  import { generateUUID } from '@/utils/log';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
   const dispatch = createEventDispatcher();
@@ -70,7 +80,6 @@
   let newSituationalModifierForm = {
     name: '',
     description: '',
-    situation: '',
     img: '',
     statEffects: {} as Record<string, number>
   };
@@ -215,6 +224,7 @@
       };
     } else if (type === 'temporaryModifier') {
       if (!newTemporaryModifierForm.name.trim()) return;
+      const sourceId = generateUUID();
       preset = {
         id: generateId(),
         name: newTemporaryModifierForm.name,
@@ -226,12 +236,14 @@
           type: newTemporaryModifierForm.type,
           value: newTemporaryModifierForm.value,
           duration: newTemporaryModifierForm.duration,
-          statEffects: newTemporaryModifierForm.statEffects
+          statEffects: newTemporaryModifierForm.statEffects,
+          sourceId: sourceId
         },
         createdAt: Date.now()
       };
     } else if (type === 'situationalModifier') {
       if (!newSituationalModifierForm.name.trim()) return;
+      const sourceId = generateUUID();
       preset = {
         id: generateId(),
         name: newSituationalModifierForm.name,
@@ -240,9 +252,10 @@
         data: {
           name: newSituationalModifierForm.name,
           description: newSituationalModifierForm.description,
-          situation: newSituationalModifierForm.situation,
+          situation: newSituationalModifierForm.description, // Usar description como situation
           img: newSituationalModifierForm.img,
-          statEffects: newSituationalModifierForm.statEffects
+          statEffects: newSituationalModifierForm.statEffects,
+          sourceId: sourceId
         },
         createdAt: Date.now()
       };
@@ -261,7 +274,7 @@
     } else if (type === 'temporaryModifier') {
       newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
     } else if (type === 'situationalModifier') {
-      newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} as Record<string, number> };
+      newSituationalModifierForm = { name: '', description: '', img: '', statEffects: {} as Record<string, number> };
     }
 
     showCreateForm = false;
@@ -357,8 +370,7 @@
     } else if (preset.type === 'situationalModifier') {
       newSituationalModifierForm = {
         name: preset.data.name,
-        description: preset.data.description || '',
-        situation: preset.data.situation,
+        description: preset.data.description || preset.data.situation || '',
         img: preset.data.img || '',
         statEffects: { ...preset.data.statEffects || {} }
       };
@@ -376,48 +388,95 @@
     newResourceForm = { name: '', value: 0, description: '', img: '' };
     newReputationForm = { name: '', value: 0, description: '', img: '' };
     newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
-    newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} as Record<string, number> };
+    newSituationalModifierForm = { name: '', description: '', img: '', statEffects: {} as Record<string, number> };
   }
 
   function saveEdit() {
     if (!editingPreset) return;
 
-    // Update the preset with new data
-    const updatedPreset = {
-      ...editingPreset,
-      data: editingPreset.type === 'resource' ? {
-        name: newResourceForm.name,
-        value: newResourceForm.value,
-        description: newResourceForm.description,
-        img: newResourceForm.img
-      } : editingPreset.type === 'reputation' ? {
-        name: newReputationForm.name,
-        value: newReputationForm.value,
-        description: newReputationForm.description,
-        img: newReputationForm.img
-      } : editingPreset.type === 'temporaryModifier' ? {
-        name: newTemporaryModifierForm.name,
-        description: newTemporaryModifierForm.description,
-        type: newTemporaryModifierForm.type,
-        value: newTemporaryModifierForm.value,
-        duration: newTemporaryModifierForm.duration,
-        statEffects: newTemporaryModifierForm.statEffects
-      } : editingPreset.type === 'situationalModifier' ? {
-        name: newSituationalModifierForm.name,
-        description: newSituationalModifierForm.description,
-        situation: newSituationalModifierForm.situation,
-        img: newSituationalModifierForm.img,
-        statEffects: newSituationalModifierForm.statEffects
-      } : editingPreset.data
-    };
+    console.log('SaveEdit - Before update, editingPreset.id:', editingPreset.id);
+    console.log('SaveEdit - Before update, editingPreset.data.sourceId:', editingPreset.data.sourceId);
 
-    // Update name at preset level too
-    updatedPreset.name = updatedPreset.data.name;
-    updatedPreset.description = updatedPreset.data.description || '';
+    // Update the preset directly in the store without changing the ID
+    presetsStore.update(currentPresets => {
+      const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
+                          editingPreset.type === 'reputation' ? currentPresets.reputations :
+                          editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                          currentPresets.situationalModifiers;
 
-    // Remove old preset and add updated one
-    removePreset(editingPreset.id, editingPreset.type);
-    addPreset(updatedPreset);
+      const presetIndex = presetsArray.findIndex(p => p.id === editingPreset.id);
+      if (presetIndex !== -1) {
+        // Update the existing preset while preserving its ID and sourceId
+        presetsArray[presetIndex] = {
+          ...editingPreset, // Keep the original ID and other properties
+          name: editingPreset.type === 'resource' ? newResourceForm.name :
+                editingPreset.type === 'reputation' ? newReputationForm.name :
+                editingPreset.type === 'temporaryModifier' ? newTemporaryModifierForm.name :
+                newSituationalModifierForm.name,
+          description: editingPreset.type === 'resource' ? newResourceForm.description :
+                      editingPreset.type === 'reputation' ? newReputationForm.description :
+                      editingPreset.type === 'temporaryModifier' ? newTemporaryModifierForm.description :
+                      newSituationalModifierForm.description,
+          data: editingPreset.type === 'resource' ? {
+            ...editingPreset.data, // Preserve sourceId and other properties
+            name: newResourceForm.name,
+            value: newResourceForm.value,
+            description: newResourceForm.description,
+            img: newResourceForm.img
+          } : editingPreset.type === 'reputation' ? {
+            ...editingPreset.data, // Preserve sourceId and other properties
+            name: newReputationForm.name,
+            value: newReputationForm.value,
+            description: newReputationForm.description,
+            img: newReputationForm.img
+          } : editingPreset.type === 'temporaryModifier' ? {
+            ...editingPreset.data, // Preserve sourceId and other properties
+            name: newTemporaryModifierForm.name,
+            description: newTemporaryModifierForm.description,
+            type: newTemporaryModifierForm.type,
+            value: newTemporaryModifierForm.value,
+            duration: newTemporaryModifierForm.duration,
+            statEffects: newTemporaryModifierForm.statEffects
+          } : editingPreset.type === 'situationalModifier' ? {
+            ...editingPreset.data, // Preserve sourceId and other properties
+            name: newSituationalModifierForm.name,
+            description: newSituationalModifierForm.description,
+            situation: newSituationalModifierForm.description, // Usar description como situation
+            img: newSituationalModifierForm.img,
+            statEffects: newSituationalModifierForm.statEffects
+          } : editingPreset.data
+        };
+
+        console.log('SaveEdit - After update, preset.id:', presetsArray[presetIndex].id);
+        console.log('SaveEdit - After update, preset.data.sourceId:', presetsArray[presetIndex].data.sourceId);
+      }
+
+      return currentPresets;
+    });
+
+    // Persist the changes using the proper function
+    presetsStore.subscribe(async (presets) => {
+      try {
+        await persistPresets(presets);
+      } catch (error) {
+        console.error('Error saving presets:', error);
+      }
+    })(); // Immediately invoke to run once
+
+    // Obtener el preset actualizado del store para emitir el evento
+    let updatedPreset = null;
+    presetsStore.subscribe(currentPresets => {
+      const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
+                          editingPreset.type === 'reputation' ? currentPresets.reputations :
+                          editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                          currentPresets.situationalModifiers;
+
+      updatedPreset = presetsArray.find(p => p.id === editingPreset.id);
+    })();
+
+    // Emit event for preset updated with the updated preset
+    console.log('PresetPopup - Emitiendo evento presetUpdated:', { preset: updatedPreset || editingPreset });
+    dispatch('presetUpdated', { preset: updatedPreset || editingPreset });
 
     // Clear editing state
     cancelEdit();
@@ -478,6 +537,12 @@
     console.log('Item sourceId:', item.sourceId);
     console.log('Item statEffects:', item.statEffects);
 
+    // Asegurar que el item tenga un sourceId válido
+    if (!item.sourceId || item.sourceId === '') {
+      item.sourceId = item.key || generateUUID();
+      console.log('Generated new sourceId for item:', item.sourceId);
+    }
+
     // Check if preset already exists with same sourceId
     if (item.sourceId) {
       const existingPreset = presets[type === 'resource' ? 'resources' :
@@ -537,6 +602,12 @@
   function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
     console.log('Updating preset from item:', item, 'Type:', type);
 
+    // Asegurar que el item tenga un sourceId válido
+    if (!item.sourceId || item.sourceId === '') {
+      item.sourceId = item.key || generateUUID();
+      console.log('Generated new sourceId for item during update:', item.sourceId);
+    }
+
     // Only update if preset exists with same sourceId
     if (item.key || item.sourceId) {
       const sourceId = item.sourceId || item.key;
@@ -548,14 +619,14 @@
 
       if (existingPreset) {
         console.log('Found existing preset, updating:', existingPreset);
-        
+
         // Update existing preset with new data based on type
         if (type === 'situationalModifier') {
           existingPreset.data = {
             ...existingPreset.data,
             name: item.name,
             description: item.description || '',
-            situation: item.situation || existingPreset.data.situation,
+            situation: item.description || item.situation || existingPreset.data.situation,
             img: item.img || existingPreset.data.img,
             statEffects: item.statEffects || existingPreset.data.statEffects,
             sourceId: sourceId
@@ -571,7 +642,7 @@
             sourceId: sourceId
           };
         }
-        
+
         existingPreset.name = item.name;
         existingPreset.description = item.description || item.details || '';
 
@@ -579,6 +650,15 @@
         presetsStore.update(currentPresets => {
           return { ...currentPresets };
         });
+
+        // Persist changes
+        presetsStore.subscribe(async (presets) => {
+          try {
+            await persistPresets(presets);
+          } catch (error) {
+            console.error('Error saving presets:', error);
+          }
+        })(); // Immediately invoke to run once
 
         dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
         return true;
@@ -795,12 +875,8 @@
                 <input bind:value={newSituationalModifierForm.name} placeholder="Nombre del modificador" />
               </div>
               <div class="form-group">
-                <label>Situación:</label>
-                <input bind:value={newSituationalModifierForm.situation} placeholder="ej: En combate, Durante la noche" />
-              </div>
-              <div class="form-group">
                 <label>Descripción:</label>
-                <textarea bind:value={newSituationalModifierForm.description} placeholder="Descripción opcional"></textarea>
+                <textarea bind:value={newSituationalModifierForm.description} placeholder="ej: En combate, Durante la noche, etc."></textarea>
               </div>
               <div class="form-group">
                 <label>Efectos en Stats:</label>
@@ -919,6 +995,9 @@
                     {#if preset.description}
                       <p class="description">{preset.description}</p>
                     {/if}
+                    {#if game?.user?.isGM && preset.data.sourceId}
+                      <span class="source-id-debug">sourceId: {preset.data.sourceId}</span>
+                    {/if}
                     <div class="stat-effects-preview">
                       {#each Object.entries(preset.data.statEffects) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
@@ -947,9 +1026,9 @@
                 <div class="preset-item-info">
                   <div class="preset-item-name">{preset.name}</div>
                   <div class="preset-item-details">
-                    <p><strong>Situación:</strong> {preset.data.situation}</p>
-                    {#if preset.description}
-                      <p class="description">{preset.description}</p>
+                    <p><strong>Descripción:</strong> {preset.data.description || preset.data.situation || ''}</p>
+                    {#if game?.user?.isGM && preset.data.sourceId}
+                      <span class="source-id-debug">sourceId: {preset.data.sourceId}</span>
                     {/if}
                     <div class="stat-effects-preview">
                       {#each Object.entries(preset.data.statEffects || {}) as [statKey, value]}
@@ -1541,5 +1620,17 @@
 
   .clear-image-btn:hover {
     background: #c82333;
+  }
+
+  .source-id-debug {
+    display: inline-block;
+    background: #dc3545;
+    color: white;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-family: monospace;
+    margin-top: 0.25rem;
+    opacity: 0.8;
   }
 </style>

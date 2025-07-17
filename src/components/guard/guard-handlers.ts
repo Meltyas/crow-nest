@@ -11,6 +11,7 @@ import {
   saveStats,
 } from "@/guard/stats";
 import type { SyncEvent } from "@/utils/sync";
+import { generateUUID } from "@/utils/log";
 
 // FilePicker is provided by Foundry at runtime
 declare const FilePicker: any;
@@ -180,9 +181,21 @@ export class GuardHandlers {
   // Modifier handlers
   handleAddModifier = (event: CustomEvent) => {
     const newModifier = event.detail;
+    
+    // Asegurar que el modificador tenga un key único si no lo tiene
+    if (!newModifier.key) {
+      newModifier.key = generateUUID();
+    }
+    
+    // Asegurar que el modificador tenga un sourceId si no lo tiene
+    if (!newModifier.sourceId) {
+      newModifier.sourceId = newModifier.key;
+    }
+    
     newModifier.mods = Object.fromEntries(
       Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
     );
+    
     this.modifiers = [...this.modifiers, { ...newModifier }];
     this.sortModifiersByState();
     this.persistModifiers();
