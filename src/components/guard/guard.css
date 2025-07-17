@@ -127,6 +127,28 @@
   border-left: 4px solid #d4af37;
 }
 
+.crow-nest-guard .preset-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(40, 60, 40, 0.8);
+  border: none;
+  border-bottom: 1px solid #8b6914;
+  color: #f4f1e8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 45px;
+  margin-top: auto;
+}
+
+.crow-nest-guard .preset-button:hover {
+  background: rgba(50, 70, 50, 0.9);
+  color: #90EE90;
+  transform: scale(1.05);
+}
+
 .crow-nest-guard .content-area {
   border-top: 2px solid #d4af37;
   border-right: 2px solid #d4af37;

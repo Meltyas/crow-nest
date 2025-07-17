@@ -67,6 +67,10 @@
   let rollDialogBaseValue = 0;
   let rollDialogTotalModifier = 0;
 
+  // Temporary modifier application state
+  let pendingTemporaryModifier: any = null;
+  let applyingTemporaryModifier = false;
+
   // Sync manager
   let syncManager: SyncManager;
 
@@ -183,9 +187,18 @@
 
     document.addEventListener('click', handleGlobalClick);
 
+    // Listen for temporary modifier application events
+    const handleTemporaryModifierApplication = (event: CustomEvent) => {
+      pendingTemporaryModifier = event.detail;
+      applyingTemporaryModifier = true;
+    };
+
+    window.addEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
+
     // Cleanup function
     return () => {
       document.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
     };
 
     // Groups sync is handled globally, no need to subscribe here
@@ -1084,6 +1097,47 @@
     group.temporaryModifiers = {};
     updateGroups([...groups]);
   }
+
+  function applyTemporaryModifierToGroup(group: Group) {
+    if (!pendingTemporaryModifier) return;
+
+    // Initialize temporaryModifiers if undefined
+    if (!group.temporaryModifiers) {
+      group.temporaryModifiers = {};
+    }
+
+    // Generate unique ID for this modifier
+    const modifierId = generateUUID();
+
+    // Apply the modifier
+    group.temporaryModifiers[modifierId] = {
+      name: pendingTemporaryModifier.name,
+      description: pendingTemporaryModifier.description,
+      statEffects: pendingTemporaryModifier.statEffects
+    };
+
+    // Update the groups
+    const updatedGroups = groups.map(g =>
+      g.id === group.id
+        ? { ...g, temporaryModifiers: { ...g.temporaryModifiers } }
+        : g
+    );
+
+    updateGroups(updatedGroups);
+
+    // Clear the pending modifier
+    pendingTemporaryModifier = null;
+    applyingTemporaryModifier = false;
+
+    // Show success notification
+    ui.notifications?.info(`Modificador temporal "${group.temporaryModifiers[modifierId].name}" aplicado a ${group.name}.`);
+  }
+
+  function handleGroupClick(group: Group) {
+    if (applyingTemporaryModifier && pendingTemporaryModifier) {
+      applyTemporaryModifierToGroup(group);
+    }
+  }
 </script>
 
 <style>
@@ -1096,6 +1150,18 @@
     width: calc(50% - 0.5rem);
     flex: 0 0 calc(50% - 0.5rem);
     overflow: visible; /* Allow floating container to extend outside */
+    transition: all 0.2s ease;
+  }
+
+  .group.clickable-for-modifier {
+    border-color: #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  }
+
+  .group.clickable-for-modifier:hover {
+    background: rgba(212, 175, 55, 0.2);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
   }
 
   .group-header {
@@ -1701,13 +1767,18 @@
   {/if}
   <div class="groups" role="list">
   {#each groups as group, i}
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="group {group.officer ? 'has-officer' : ''} {dragOverIndex === i ? 'drag-over' : ''}"
+      class="group {group.officer ? 'has-officer' : ''} {dragOverIndex === i ? 'drag-over' : ''} {applyingTemporaryModifier ? 'clickable-for-modifier' : ''}"
       data-group-id="{group.id}"
       role="listitem"
       on:dragover={(e) => onGroupDragOver(e, i)}
       on:dragleave={onGroupDragLeave}
       on:drop={(e) => onGroupDrop(e, i)}
+      on:click={() => handleGroupClick(group)}
+      on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleGroupClick(group); }}
+      style="cursor: {applyingTemporaryModifier ? 'pointer' : 'default'}"
+      tabindex={applyingTemporaryModifier ? "0" : undefined}
     >
 
       <!-- Group Header with editable name (DRAGGABLE) -->

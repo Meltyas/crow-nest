@@ -87,6 +87,19 @@ Hooks.once("init", () => {
     default: [],
   });
 
+  // Presets configuration
+  game.settings.register(MODULE_ID, "presets", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {
+      resources: [],
+      reputations: [],
+      temporaryModifiers: [],
+      situationalModifiers: []
+    },
+  });
+
   // Sync event setting for real-time synchronization
   game.settings.register(MODULE_ID, "syncEvent", {
     scope: "world",
@@ -183,6 +196,11 @@ Hooks.once("ready", () => {
 
   // Initialize global groups sync (always active)
   initializeGroupsSync();
+
+  // Initialize presets
+  import("@/stores/presets").then(({ initializePresets }) => {
+    initializePresets();
+  });
 
   // Set up settings-based sync listener for real-time updates
   const groupsSyncManager = SyncManager.getInstance();

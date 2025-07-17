@@ -7,6 +7,7 @@
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
+  import { presetManager } from '@/components/presets/preset-manager';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
@@ -95,6 +96,87 @@
 
   function closePopup() {
     dispatch('close');
+  }
+
+  function openPresets() {
+    presetManager.showPresetPopup();
+  }
+
+  function handleUsePreset(event: CustomEvent) {
+    const preset = event.detail;
+    
+    switch (preset.type) {
+      case 'resource':
+        applyResourcePreset(preset);
+        break;
+      case 'reputation':
+        applyReputationPreset(preset);
+        break;
+      case 'temporaryModifier':
+        applyTemporaryModifierPreset(preset);
+        break;
+      case 'situationalModifier':
+        applySituationalModifierPreset(preset);
+        break;
+      default:
+        console.warn('Unknown preset type:', preset.type);
+    }
+  }
+
+  function applyResourcePreset(preset: any) {
+    const newResource = {
+      key: `resource_${Date.now()}`,
+      name: preset.data.name,
+      value: preset.data.value,
+      img: preset.data.img || 'icons/svg/chest.svg',
+      details: preset.data.description || ''
+    };
+    
+    resources = [...resources, newResource];
+    handlers.handleAddResource({ detail: newResource });
+  }
+
+  function applyReputationPreset(preset: any) {
+    const newReputation = {
+      key: `reputation_${Date.now()}`,
+      name: preset.data.name,
+      value: preset.data.value,
+      img: preset.data.img || 'icons/svg/tower.svg',
+      details: preset.data.description || ''
+    };
+    
+    reputation = [...reputation, newReputation];
+    handlers.handleAddReputation({ detail: newReputation });
+  }
+
+  function applyTemporaryModifierPreset(preset: any) {
+    // Activar modo de aplicación de modificador temporal
+    const event = new CustomEvent('crow-nest-apply-temporary-modifier', {
+      detail: {
+        name: preset.data.name,
+        description: preset.data.description || '',
+        statEffects: preset.data.statEffects
+      }
+    });
+    
+    window.dispatchEvent(event);
+    
+    // Mostrar notificación para indicar que haga clic en un grupo
+    ui.notifications?.info(`Modificador temporal "${preset.data.name}" listo. Haz clic en un grupo para aplicarlo.`);
+  }
+
+  function applySituationalModifierPreset(preset: any) {
+    const newModifier = {
+      key: `modifier_${Date.now()}`,
+      name: preset.data.name,
+      description: `${preset.data.situation}: ${preset.data.description || ''}`.trim(),
+      img: preset.data.img || 'icons/svg/aura.svg',
+      mods: { 'general': preset.data.modifier },
+      state: preset.data.modifier >= 0 ? 'positive' : 'negative'
+    };
+    
+    modifiers = [...modifiers, newModifier];
+    handlers.handleAddModifier({ detail: newModifier });
   }
 
   function onDragStart(event: MouseEvent) {
@@ -211,6 +293,9 @@
         updateHandlersData();
       }
     });
+
+    // Listen for preset usage events
+    window.addEventListener('crow-nest-use-preset', handleUsePreset);
   });
 
   onDestroy(() => {
@@ -222,6 +307,9 @@
       syncManager.unsubscribe('patrols', handlers.handlePatrolsSync);
       syncManager.unsubscribe('admins', handlers.handleAdminsSync);
     }
+    
+    // Remove preset listener
+    window.removeEventListener('crow-nest-use-preset', handleUsePreset);
   });
 
   function getTotalStatValue(stat: Stat): number {
@@ -379,6 +467,13 @@
             on:click={() => switchTab('admins')}
           >
             A
+          </button>
+          <button
+            class="preset-button"
+            on:click={openPresets}
+            title="Abrir Presets"
+          >
+            📋
           </button>
         </div>
 
