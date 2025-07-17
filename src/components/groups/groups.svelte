@@ -204,7 +204,7 @@
   function updateGroups(newGroups: Group[]) {
     console.log("updateGroups called with:", newGroups);
     console.log("updateGroups temporaryModifiers:", newGroups.map(g => ({ id: g.id, temporaryModifiers: g.temporaryModifiers })));
-    
+
     groups = newGroups;
     if (isAdminMode) {
       adminsStore.set(groups);
@@ -753,17 +753,17 @@
 
               console.log("Temporary modifier added:", modifierId, group.temporaryModifiers[modifierId]);
               console.log("Group temporaryModifiers after adding:", group.temporaryModifiers);
-              
+
               // Create a complete new copy of the groups array with the modified group
-              const updatedGroups = groups.map(g => 
-                g.id === group.id 
+              const updatedGroups = groups.map(g =>
+                g.id === group.id
                   ? { ...g, temporaryModifiers: { ...g.temporaryModifiers } }
                   : g
               );
-              
+
               console.log("Updated groups before persist:", updatedGroups);
               updateGroups(updatedGroups);
-              
+
             } else if (Object.keys(statEffects).length === 0) {
               ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
             }
@@ -806,7 +806,7 @@
     const statCheckboxes = stats.map(stat => {
       const isChecked = existingModifier.statEffects[stat.key] !== undefined;
       const currentValue = existingModifier.statEffects[stat.key] || 0;
-      
+
       return `
         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
           <input type="checkbox" id="stat-${stat.key}" name="statCheckbox" value="${stat.key}" ${isChecked ? 'checked' : ''}>
@@ -1453,8 +1453,8 @@
 
   /* Editable modifier styles */
   .editable-modifier:hover {
-    background: rgba(155, 89, 182, 0.2) !important;
-    border-color: #8e44ad !important;
+    background: rgba(255, 255, 255, 1) !important;
+    border-color: #ffd700 !important;
     transform: scale(1.02);
     transition: all 0.2s ease;
   }
@@ -1766,7 +1766,7 @@
                 </div>
               {:else}
                 {#each Object.entries(group.temporaryModifiers || {}) as [modifierId, modifier]}
-                  <div 
+                  <div
                     style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(155, 89, 182, 0.1); border: 2px solid #9b59b6; border-radius: 8px; {editing[group.id] ? 'cursor: pointer;' : ''}"
                     class:editable-modifier={editing[group.id]}
                     on:dblclick={editing[group.id] ? () => editTemporaryModifier(group, modifierId) : undefined}

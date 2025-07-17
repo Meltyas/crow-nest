@@ -14,6 +14,7 @@ let isInitialized = false;
 export function initializeGroupsSync() {
   if (isInitialized) return;
 
+  console.log("[GroupsStore] Initializing groups sync...");
   syncManager = SyncManager.getInstance();
 
   // Load initial data
@@ -21,13 +22,20 @@ export function initializeGroupsSync() {
 
   // Set up persistent sync listener
   syncManager.subscribe("groups", handleGlobalGroupsSync);
+  console.log("[GroupsStore] Groups sync initialized successfully");
 
   isInitialized = true;
 }
 
 function handleGlobalGroupsSync(event: SyncEvent) {
+  console.log("[GroupsStore] handleGlobalGroupsSync received event:", event);
   if (event.type === "groups") {
+    console.log(
+      "[GroupsStore] Updating store with new groups data:",
+      event.data
+    );
     groupsStore.set(event.data);
+    console.log("[GroupsStore] Store updated successfully");
   }
 }
 
@@ -38,13 +46,16 @@ export function loadGroups() {
 
 export async function persistGroups(groups: Group[]) {
   console.log("persistGroups called with:", groups);
-  console.log("persistGroups temporaryModifiers details:", groups.map(g => ({ 
-    id: g.id, 
-    name: g.name, 
-    temporaryModifiers: g.temporaryModifiers,
-    temporaryModifiersKeys: Object.keys(g.temporaryModifiers || {})
-  })));
-  
+  console.log(
+    "persistGroups temporaryModifiers details:",
+    groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      temporaryModifiers: g.temporaryModifiers,
+      temporaryModifiersKeys: Object.keys(g.temporaryModifiers || {}),
+    }))
+  );
+
   // Save to storage
   await savePatrols(groups);
 

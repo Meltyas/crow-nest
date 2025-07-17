@@ -2,7 +2,8 @@
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import type { GuardModifier, GuardStat } from "@/guard/stats";
   import type { Group } from "@/shared/group";
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { groupsStore } from '@/stores/groups';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { PatrolHandlers } from './patrol-handlers';
   import './patrol-sheet.css';
 
@@ -71,9 +72,43 @@
     }
   }
 
+  let unsubscribeFromStore: (() => void) | null = null;
+
   onMount(() => {
     handlers = new PatrolHandlers(group, labels, updateComponentData, openRollDialog);
     updateComponentData();
+
+    // Subscribe to store changes to keep the group data in sync
+    unsubscribeFromStore = groupsStore.subscribe(groups => {
+      console.log('[PatrolSheet] Store updated, checking for group changes...', groups ? groups.length : 'undefined');
+
+      // Validate that groups is an array
+      if (!Array.isArray(groups)) {
+        console.warn('[PatrolSheet] Received invalid groups data:', groups);
+        return;
+      }
+
+      const updatedGroup = groups.find(g => g.id === group.id);
+      if (updatedGroup) {
+        // Update the group data if it has changed
+        if (JSON.stringify(updatedGroup) !== JSON.stringify(group)) {
+          console.log('[PatrolSheet] Group data changed, updating...', updatedGroup);
+          group = { ...updatedGroup };
+          // Update handlers with the new group data
+          if (handlers) {
+            handlers.updateGroup(group);
+            updateComponentData();
+          }
+        }
+      }
+    });
+  });
+
+  onDestroy(() => {
+    // Cleanup store subscription
+    if (unsubscribeFromStore) {
+      unsubscribeFromStore();
+    }
   });
 
   // Update handlers when props change
@@ -90,6 +125,17 @@
 
   function deployPatrol() {
     dispatch('deploy', handlers.handleDeployPatrol());
+  }
+
+  function setHopeLevel(level: number) {
+    console.log('[PatrolSheet] Setting hope level to:', level);
+    const maxHope = group.maxHope || 3;
+    group.hope = Math.min(level, maxHope); // Ensure hope doesn't exceed maxHope
+    console.log('[PatrolSheet] Updated group.hope to:', group.hope);
+
+    // Dispatch update to parent component
+    dispatch('updateGroup', group);
+    console.log('[PatrolSheet] Dispatched updateGroup event');
   }
 
   // Drag functions
@@ -160,13 +206,30 @@
         <div class="patrol-sheet-header">
           <!-- Left Column: Officer image -->
           <div class="left-column" role="button" tabindex="0" on:mousedown={handleMouseDown}>
-            {#if group.officer}
-              <img src={group.officer.img} alt={group.officer.name} class="officer-image" />
-            {:else}
-              <div class="no-officer-placeholder">
-                <span>No Officer</span>
+            <div class="officer-container">
+              {#if group.officer}
+                <img src={group.officer.img} alt={group.officer.name} class="officer-image" />
+              {:else}
+                <div class="no-officer-placeholder">
+                  <span>No Officer</span>
+                </div>
+              {/if}
+
+              <!-- Hope Meter - Compact version -->
+              <div class="hope-meter-compact">
+                <div class="hope-circles-compact">
+                  {#each Array(group.maxHope || 3) as _, index}
+                    <button
+                      class="hope-circle-compact"
+                      on:click={() => setHopeLevel(index + 1)}
+                      title="Hope level {index + 1}"
+                    >
+                      <div class="hope-circle-shape-compact {(group.hope || 0) > index ? 'hope-circle-filled-compact' : 'hope-circle-empty-compact'}"></div>
+                    </button>
+                  {/each}
+                </div>
               </div>
-            {/if}
+            </div>
           </div>
 
           <!-- Middle Column: Patrol name and stats -->

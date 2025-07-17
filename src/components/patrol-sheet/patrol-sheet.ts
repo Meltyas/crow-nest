@@ -72,6 +72,11 @@ export class PatrolSheetManager {
       this.deployPatrolFromSheet(event.detail);
     });
 
+    // Manejar actualizaciones del grupo (como cambios de Hope)
+    component.$on("updateGroup", (event) => {
+      this.updateGroup(event.detail);
+    });
+
     // Guardar referencia
     this.activeSheets.set(group.id, {
       component: component,
@@ -90,6 +95,46 @@ export class PatrolSheetManager {
       this.saveOpenSheetsToStorage();
       // También guardar posición histórica
       this.savePositionToHistory(groupId, position);
+    }
+  }
+
+  // Update group data and persist changes
+  async updateGroup(updatedGroup: Group) {
+    try {
+      console.log(
+        "[PatrolSheetManager] updateGroup called with:",
+        updatedGroup
+      );
+
+      // Import the required functions
+      const { groupsStore, persistGroups } = await import("@/stores/groups");
+
+      // Update the store
+      groupsStore.update((groups) => {
+        const groupIndex = groups.findIndex((g) => g.id === updatedGroup.id);
+        if (groupIndex !== -1) {
+          console.log("[PatrolSheetManager] Found group at index:", groupIndex);
+          groups[groupIndex] = { ...groups[groupIndex], ...updatedGroup };
+        }
+        return groups;
+      });
+
+      // Persist the changes
+      let currentGroups: Group[] = [];
+      const unsubscribe = groupsStore.subscribe((groups) => {
+        currentGroups = groups;
+      });
+      unsubscribe(); // Immediately unsubscribe after getting the current value
+
+      console.log("[PatrolSheetManager] About to persist groups");
+      await persistGroups(currentGroups);
+
+      console.log(
+        "[PatrolSheetManager] Group updated and persisted:",
+        updatedGroup
+      );
+    } catch (error) {
+      console.error("[PatrolSheetManager] Error updating group:", error);
     }
   }
 

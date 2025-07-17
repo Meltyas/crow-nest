@@ -271,3 +271,89 @@
   border-color: #d4af37;
   transform: scale(1.1);
 }
+
+/* Compact Hope Meter Styles */
+.crow-nest-patrol .officer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.crow-nest-patrol .hope-meter-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 0 0 0 8px;
+  border-top: 1px solid #d4af37;
+  border-right: 1px solid #d4af37;
+  position: absolute;
+  bottom: 0;
+  padding: 0 0.25rem;
+  height: 18px;
+  width: 100%;
+}
+
+.crow-nest-patrol .hope-label-compact {
+  font-weight: bold;
+  color: #d4af37;
+  font-size: 0.7rem;
+  margin-right: 0.25rem;
+}
+
+.crow-nest-patrol .hope-circles-compact {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.crow-nest-patrol .hope-circle-compact {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  position: relative;
+}
+
+.crow-nest-patrol .hope-circle-compact:hover {
+  transform: scale(1.2);
+}
+
+.crow-nest-patrol .hope-circle-shape-compact {
+  width: 10px;
+  height: 10px;
+  transition: all 0.2s ease;
+}
+
+/* Empty circle - compact */
+.crow-nest-patrol .hope-circle-empty-compact {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #d4af37;
+  background: transparent;
+}
+
+/* Filled diamond - compact */
+.crow-nest-patrol .hope-circle-filled-compact {
+  background: #d4af37;
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+
+.crow-nest-patrol .hope-circle-compact:hover .hope-circle-empty-compact {
+  border-color: #ffd700;
+}
+
+.crow-nest-patrol .hope-circle-compact:hover .hope-circle-filled-compact {
+  background: #ffd700;
+}

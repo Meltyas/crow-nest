@@ -14,12 +14,7 @@ import {
 } from "@/constants";
 import { getPatrols } from "@/patrol/patrols";
 import { initializeGroupsSync } from "@/stores/groups";
-import {
-  cleanupSync,
-  initializeSync,
-  SyncManager,
-  testPatrolSheetSync,
-} from "@/utils/sync";
+import { cleanupSync, initializeSync, SyncManager } from "@/utils/sync";
 import "./styles/font.css";
 import "./styles/global.pcss";
 
@@ -90,6 +85,14 @@ Hooks.once("init", () => {
     config: false,
     type: Array,
     default: [],
+  });
+
+  // Sync event setting for real-time synchronization
+  game.settings.register(MODULE_ID, "syncEvent", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: null,
   });
 });
 
@@ -181,6 +184,125 @@ Hooks.once("ready", () => {
   // Initialize global groups sync (always active)
   initializeGroupsSync();
 
+  // Set up settings-based sync listener for real-time updates
+  const groupsSyncManager = SyncManager.getInstance();
+
+  Hooks.on(
+    "updateSetting",
+    (setting: any, value: any, options: any, userId: string) => {
+      console.log("[Main] Setting updated:", setting.key, "by user:", userId);
+
+      // Handle main patrols data changes - this is where the real data lives
+      if (setting.key === `${MODULE_ID}.patrols`) {
+        console.log("[Main] Patrols data updated, triggering groups sync");
+        const currentUserId = game.user?.id;
+        if (userId !== currentUserId) {
+          // Update the groups store with the new data
+          console.log("[Main] Updating groups store with new patrol data");
+          console.log("[Main] Patrol data value:", value);
+          console.log(
+            "[Main] Value type:",
+            typeof value,
+            "isArray:",
+            Array.isArray(value)
+          );
+
+          // Parse the actual data from Foundry's setting structure
+          let actualData = value;
+
+          // If it's a Foundry setting object with 'value' property that's a JSON string
+          if (
+            value &&
+            typeof value === "object" &&
+            value.value &&
+            typeof value.value === "string"
+          ) {
+            try {
+              console.log("[Main] Parsing JSON from value.value");
+              actualData = JSON.parse(value.value);
+            } catch (error) {
+              console.error(
+                "[Main] Error parsing JSON from value.value:",
+                error
+              );
+              return;
+            }
+          }
+          // If it's already a string, try to parse it
+          else if (typeof value === "string") {
+            try {
+              console.log("[Main] Parsing JSON from string value");
+              actualData = JSON.parse(value);
+            } catch (error) {
+              console.error("[Main] Error parsing JSON from string:", error);
+              return;
+            }
+          }
+
+          console.log("[Main] Parsed actual data:", actualData);
+          console.log(
+            "[Main] Actual data type:",
+            typeof actualData,
+            "isArray:",
+            Array.isArray(actualData)
+          );
+
+          // Validate that the parsed data is an array before setting it
+          if (Array.isArray(actualData)) {
+            console.log("[Main] Parsed data is valid array, updating store");
+            import("@/stores/groups").then(({ groupsStore }) => {
+              groupsStore.set(actualData);
+            });
+          } else {
+            console.error("[Main] Parsed data is not an array:", actualData);
+          }
+        }
+      }
+
+      // Handle sync events for other types
+      else if (setting.key === `${MODULE_ID}.syncEvent`) {
+        console.log("[Main] Received sync event via settings:", value);
+
+        // Don't process events from the same user (avoid loops)
+        const currentUserId = game.user?.id;
+        if (userId !== currentUserId && value) {
+          console.log("[Main] Processing remote sync event");
+
+          // Parse the actual event from the value
+          let actualEvent;
+          try {
+            // The value might be wrapped in an object with a 'value' property that's a JSON string
+            if (
+              typeof value === "object" &&
+              value.value &&
+              typeof value.value === "string"
+            ) {
+              actualEvent = JSON.parse(value.value);
+            } else if (typeof value === "string") {
+              actualEvent = JSON.parse(value);
+            } else {
+              actualEvent = value;
+            }
+
+            console.log("[Main] Parsed event:", actualEvent);
+            groupsSyncManager.handleRemoteEvent(actualEvent);
+          } catch (error) {
+            console.error(
+              "[Main] Error parsing sync event:",
+              error,
+              "Raw value:",
+              value
+            );
+          }
+        } else {
+          console.log(
+            "[Main] Ignoring sync event from same user or empty value"
+          );
+        }
+      }
+    }
+  );
+
   // Clean up any existing sync system first
   cleanupSync();
 
@@ -214,7 +336,6 @@ Hooks.once("ready", () => {
     // Explicitly expose the forceShowPatrolSheetToAll method
     forceShowPatrolSheetToAll: (group: any, labels: any) =>
       patrolSheetManager.forceShowPatrolSheetToAll(group, labels),
-    testPatrolSheetSync: testPatrolSheetSync,
     debugPatrolSheets: () => patrolSheetManager.debugState(),
     debugSyncHandlers: () => patrolSheetManager.debugSyncHandlers(),
     testSyncCommunication: () => patrolSheetManager.testSyncCommunication(),
@@ -592,40 +713,42 @@ async function cleanupOldButtonRecords() {
 }
 
 async function handleAddHope(groupId: string) {
-  // Get current groups
-  const groups = (game as any).settings.get(
-    MODULE_ID,
-    SETTING_PATROLS
-  ) as any[];
-  const groupIndex = groups.findIndex((g) => g.id === groupId);
+  console.log("[Main] handleAddHope called for group:", groupId);
+
+  // Import the store functions
+  const { groupsStore, persistGroups } = await import("@/stores/groups");
+
+  // Get current groups from store
+  let currentGroups: any[] = [];
+  const unsubscribe = groupsStore.subscribe((groups) => {
+    currentGroups = groups;
+  });
+  unsubscribe();
+
+  const groupIndex = currentGroups.findIndex((g) => g.id === groupId);
 
   if (groupIndex === -1) {
     ui.notifications?.warn("Patrol not found");
     return;
   }
 
-  const group = groups[groupIndex];
+  const group = currentGroups[groupIndex];
   const newHope = Math.min((group.hope || 0) + 1, group.maxHope || 6);
 
+  console.log("[Main] Updating hope from", group.hope, "to", newHope);
+
   // Update the group
-  groups[groupIndex] = { ...group, hope: newHope };
+  currentGroups[groupIndex] = { ...group, hope: newHope };
 
-  // Save and broadcast the change
-  await (game as any).settings.set(MODULE_ID, SETTING_PATROLS, groups);
-
-  // Broadcast sync event
-  const syncManager = SyncManager.getInstance();
-  syncManager.broadcast({
-    type: "groups",
-    action: "update",
-    data: groups,
-    timestamp: Date.now(),
-    user: game.user?.name || "unknown",
-  });
+  // Update store and persist (this will also broadcast)
+  groupsStore.set(currentGroups);
+  await persistGroups(currentGroups);
 
   ui.notifications?.info(
     `Added Hope to ${group.name || "Patrol"}. Hope: ${newHope}/${group.maxHope || 6}`
   );
+
+  console.log("[Main] Hope update completed");
 }
 
 async function handleAddFear() {
