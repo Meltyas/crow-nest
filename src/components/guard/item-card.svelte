@@ -72,6 +72,15 @@
 
   function handleUpdate() {
     dispatch('update');
+    // También actualizar el preset correspondiente si existe
+    updateCorrespondingPreset();
+  }
+
+  function updateCorrespondingPreset() {
+    // Importar el preset manager para actualizar presets
+    import('@/components/presets/preset-manager').then(({ presetManager }) => {
+      presetManager.updatePresetFromItem(item, type);
+    });
   }
 
   function handleRemove() {
@@ -86,6 +95,10 @@
     } else if (type === 'resource') {
       showResourceInChat();
     }
+  }
+
+  function handleCreatePreset() {
+    dispatch('createPreset', item);
   }
 
   function showReputationInChat() {
@@ -353,6 +366,7 @@
           {:else}
             <input class="item-input number" type="number" min="0" bind:value={item[config.valueProperty]} on:change={handleUpdate} />
           {/if}
+          <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
           <button class="remove-button" on:click={handleRemove}>✕</button>
         </div>
       </div>
@@ -808,6 +822,22 @@
     padding: 0.25rem 0.5rem;
     font-family: 'Overpass', Arial, sans-serif;
     font-weight: bold;
+  }
+
+  .preset-button {
+    background: #d4af37;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: 'Overpass', Arial, sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .preset-button:hover {
+    background: #b8941f;
   }
 
   .resource-item .remove-button:hover {

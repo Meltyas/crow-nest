@@ -18,6 +18,7 @@
   } from '@/guard/stats';
   import { getPatrols, savePatrols } from '@/patrol/patrols';
   import { SyncManager } from '@/utils/sync';
+  import PopupFocusManager from '@/utils/popup-focus';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { GuardHandlers } from './guard-handlers';
   import './guard.css';
@@ -78,6 +79,9 @@
 
   // Sync manager
   let syncManager: SyncManager;
+  
+  // Focus manager
+  let focusManager: PopupFocusManager;
 
   // Handlers instance
   let handlers: GuardHandlers;
@@ -124,12 +128,22 @@
   }
 
   function applyResourcePreset(preset: any) {
+    const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
+    
+    // Verificar si ya existe un recurso con este preset ID
+    const existingResource = resources.find(r => r.key === presetKey);
+    if (existingResource) {
+      ui.notifications?.warn(`El recurso "${preset.data.name}" ya existe.`);
+      return;
+    }
+
     const newResource = {
-      key: `resource_${Date.now()}`,
+      key: presetKey, // Usar el sourceId del preset para mantener consistencia
       name: preset.data.name,
       value: preset.data.value,
       img: preset.data.img || 'icons/svg/chest.svg',
-      details: preset.data.description || ''
+      details: preset.data.description || '',
+      sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
     
     resources = [...resources, newResource];
@@ -137,12 +151,22 @@
   }
 
   function applyReputationPreset(preset: any) {
+    const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
+    
+    // Verificar si ya existe una reputación con este preset ID
+    const existingReputation = reputation.find(r => r.key === presetKey);
+    if (existingReputation) {
+      ui.notifications?.warn(`La reputación "${preset.data.name}" ya existe.`);
+      return;
+    }
+
     const newReputation = {
-      key: `reputation_${Date.now()}`,
+      key: presetKey, // Usar el sourceId del preset para mantener consistencia
       name: preset.data.name,
       value: preset.data.value,
       img: preset.data.img || 'icons/svg/tower.svg',
-      details: preset.data.description || ''
+      details: preset.data.description || '',
+      sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
     
     reputation = [...reputation, newReputation];
@@ -153,6 +177,7 @@
     // Activar modo de aplicación de modificador temporal
     const event = new CustomEvent('crow-nest-apply-temporary-modifier', {
       detail: {
+        presetId: preset.id, // Incluir el ID del preset
         name: preset.data.name,
         description: preset.data.description || '',
         statEffects: preset.data.statEffects
@@ -166,17 +191,81 @@
   }
 
   function applySituationalModifierPreset(preset: any) {
+    const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
+    
+    // Verificar si ya existe un modificador con este preset ID
+    const existingModifier = modifiers.find(m => m.key === presetKey);
+    if (existingModifier) {
+      ui.notifications?.warn(`El modificador "${preset.data.name}" ya existe.`);
+      return;
+    }
+
     const newModifier = {
-      key: `modifier_${Date.now()}`,
+      key: presetKey, // Usar el sourceId del preset para mantener consistencia
       name: preset.data.name,
       description: `${preset.data.situation}: ${preset.data.description || ''}`.trim(),
       img: preset.data.img || 'icons/svg/aura.svg',
       mods: { 'general': preset.data.modifier },
-      state: preset.data.modifier >= 0 ? 'positive' : 'negative'
+      state: preset.data.modifier >= 0 ? 'positive' : 'negative',
+      sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
     
     modifiers = [...modifiers, newModifier];
     handlers.handleAddModifier({ detail: newModifier });
+  }
+
+  // Functions to create presets from existing items
+  function createResourcePreset(event: CustomEvent) {
+    const resource = event.detail;
+    const item = {
+      sourceId: resource.key, // Usar la key del resource como identificador único
+      name: resource.name,
+      value: resource.value,
+      description: resource.details || '',
+      img: resource.img || ''
+    };
+
+    presetManager.createPresetFromExistingItem(item, 'resource');
+  }
+
+  function createReputationPreset(event: CustomEvent) {
+    const reputation = event.detail;
+    const item = {
+      sourceId: reputation.key, // Usar la key de la reputación como identificador único
+      name: reputation.name,
+      value: reputation.value,
+      description: reputation.details || '',
+      img: reputation.img || ''
+    };
+
+    presetManager.createPresetFromExistingItem(item, 'reputation');
+  }
+
+  function createTemporaryModifierPreset(modifier: any) {
+    const item = {
+      sourceId: `temp-${modifier.name}-${Date.now()}`, // Generar un sourceId único para temporal
+      name: modifier.name,
+      description: modifier.description || '',
+      type: 'neutral',
+      duration: modifier.duration || '',
+      statEffects: modifier.statEffects || {}
+    };
+
+    presetManager.createPresetFromExistingItem(item, 'temporaryModifier');
+  }
+
+  function createSituationalModifierPreset(event: CustomEvent) {
+    const modifier = event.detail;
+    const item = {
+      sourceId: modifier.key, // Usar la key del modificador como identificador único
+      name: modifier.name,
+      description: modifier.description || '',
+      modifier: modifier.mods?.general || 0,
+      situation: 'General',
+      img: modifier.img || ''
+    };
+
+    presetManager.createPresetFromExistingItem(item, 'situationalModifier');
   }
 
   function onDragStart(event: MouseEvent) {
@@ -248,6 +337,9 @@
 
     // Setup real-time synchronization
     syncManager = SyncManager.getInstance();
+    
+    // Initialize focus manager
+    focusManager = PopupFocusManager.getInstance();
 
     // Listen for different types of updates
     syncManager.subscribe('stats', handlers.handleStatsSync);
@@ -435,6 +527,10 @@
     <div
       class="custom-popup"
       style="transform: translate({popupPosition.x}px, {popupPosition.y}px); width: {popupSize.width}px; height: {popupSize.height}px;"
+      on:focus={(e) => focusManager?.setFocus(e.currentTarget)}
+      on:blur={(e) => {}}
+      on:mousedown={(e) => focusManager?.setFocus(e.currentTarget)}
+      tabindex="-1"
     >
     <!-- Drag Handle -->
     <div class="drag-handle" role="button" tabindex="0" on:mousedown={onDragStart}></div>
@@ -526,6 +622,7 @@
                   on:modImageClick={handlers.handleModImageClick}
                   on:newModImageClick={handlers.handleNewModImageClick}
                   on:modFileChange={handlers.handleModFileChange}
+                  on:createPresetFromModifier={createSituationalModifierPreset}
                 />
               </div>
 
@@ -561,6 +658,7 @@
                   on:showReputationInChat={handlers.handleShowReputationInChat}
                   on:toggleReputationDetails={handlers.handleToggleReputationDetails}
                   on:reorderReputation={(e) => { handlers.reorderReputation(e); }}
+                  on:createPreset={createReputationPreset}
                 />
 
               <!-- Resources Tab -->
@@ -578,6 +676,7 @@
                   on:resFileChange={handlers.handleResFileChange}
                   on:showResourceInChat={handlers.showResourceInChat}
                   on:reorderResources={(e) => { handlers.reorderResources(e); }}
+                  on:createPreset={createResourcePreset}
                 />
               {/if}
             </div>

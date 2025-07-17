@@ -1,8 +1,5 @@
 import Hud from "@/components/hud/hud.svelte";
-import {
-  patrolSheetManager,
-  PatrolSheetManager,
-} from "@/components/patrol-sheet/patrol-sheet";
+import { patrolSheetManager } from "@/components/patrol-sheet/patrol-sheet";
 import {
   MODULE_ID,
   SETTING_ADMINS,
@@ -96,7 +93,7 @@ Hooks.once("init", () => {
       resources: [],
       reputations: [],
       temporaryModifiers: [],
-      situationalModifiers: []
+      situationalModifiers: [],
     },
   });
 

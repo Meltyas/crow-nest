@@ -8,6 +8,7 @@
   import { getAdmins } from '@/admin/admins';
   import PatrolLayout from '@/components/patrol-layout/patrol-layout.svelte';
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
+  import { presetManager } from '@/components/presets/preset-manager';
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
@@ -15,8 +16,8 @@
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
-  import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { generateUUID } from '@/utils/log';
+  import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
 
   // Access game through global window object to avoid declaration issues
@@ -38,7 +39,7 @@
 
   // Use appropriate store based on isAdminMode
   $: currentStore = isAdminMode ? adminsStore : groupsStore;
-  
+
   // Migration function to ensure all groups have required properties
   function migrateGroups(groups: Group[]): Group[] {
     return groups.map(group => ({
@@ -47,7 +48,7 @@
       maxSoldiers: group.maxSoldiers || 5, // Ensure maxSoldiers exists
     }));
   }
-  
+
   // Get groups with migration applied
   $: groups = migrateGroups($currentStore);
 
@@ -282,7 +283,7 @@
   async function removeGroup(index: number) {
     const group = groups[index];
     const groupName = group?.name || labels.groupSingular;
-    
+
     // Create confirmation dialog using Foundry's Dialog API
     const confirmed = await new Promise((resolve) => {
       const dialog = new Dialog({
@@ -322,7 +323,7 @@
       groups.splice(index, 1);
       groups = [...groups];
       persist();
-      
+
       // Show success notification
       ui.notifications?.info(`Patrulla "${groupName}" eliminada exitosamente.`);
     }
@@ -330,7 +331,7 @@
 
   function toggleEditing(group: Group) {
     const wasEditing = editing[group.id];
-    
+
     // If starting to edit this group, close any other group that's being edited
     if (!wasEditing) {
       for (const groupId in editing) {
@@ -341,16 +342,16 @@
         }
       }
     }
-    
+
     editing[group.id] = !editing[group.id];
     editing = { ...editing }; // Trigger reactivity
-    
+
     // When starting to edit, show the floating-extra automatically
     if (!wasEditing && editing[group.id]) {
       patrolExtraInfo[group.id] = true;
       patrolExtraInfo = { ...patrolExtraInfo };
     }
-    
+
     // When stopping editing (saving), close the floating-extra
     if (wasEditing && !editing[group.id]) {
       patrolExtraInfo[group.id] = false;
@@ -709,11 +710,11 @@
   // Drag and drop functions for group reordering
   function onGroupDragStart(event: DragEvent, index: number) {
     if (!event.dataTransfer) return;
-    
+
     draggedGroupIndex = index;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', index.toString());
-    
+
     // Add a visual indicator class to the dragged element
     if (event.target instanceof HTMLElement) {
       event.target.classList.add('dragging');
@@ -726,7 +727,7 @@
       dragOverIndex = null;
       return;
     }
-    
+
     dragOverIndex = index;
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move';
@@ -739,7 +740,7 @@
 
   function onGroupDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
-    
+
     if (draggedGroupIndex === null || draggedGroupIndex === dropIndex) {
       resetDragState();
       return;
@@ -747,18 +748,18 @@
 
     // Simple array reordering: use splice to move elements directly
     const newGroups = [...groups];
-    
+
     // Extract the dragged element
     const draggedElement = newGroups[draggedGroupIndex];
-    
+
     // Remove it from the array
     newGroups.splice(draggedGroupIndex, 1);
-    
+
     // Calculate the correct insertion index
     // The dropIndex refers to the final desired position in the result array
     // We need to calculate where to insert in the current (post-removal) array
     let targetIndex;
-    
+
     if (draggedGroupIndex < dropIndex) {
       // Moving forward: we want to end up at dropIndex in the final array
       targetIndex = dropIndex;
@@ -766,12 +767,12 @@
       // Moving backward: dropIndex stays the same
       targetIndex = dropIndex;
     }
-    
+
     // Bounds check to prevent out-of-range insertion
     if (targetIndex > newGroups.length) {
       targetIndex = newGroups.length;
     }
-    
+
     newGroups.splice(targetIndex, 0, draggedElement);
 
     // Force reactivity update and persistence
@@ -1098,6 +1099,19 @@
     updateGroups([...groups]);
   }
 
+  function createTemporaryModifierPreset(modifier: any) {
+    const item = {
+      sourceId: `temp-${modifier.name}-${Date.now()}`, // Generar un sourceId único para temporal
+      name: modifier.name,
+      description: modifier.description || '',
+      type: 'neutral',
+      duration: modifier.duration || '',
+      statEffects: modifier.statEffects || {}
+    };
+
+    presetManager.createPresetFromExistingItem(item, 'temporaryModifier');
+  }
+
   function applyTemporaryModifierToGroup(group: Group) {
     if (!pendingTemporaryModifier) return;
 
@@ -1106,14 +1120,24 @@
       group.temporaryModifiers = {};
     }
 
-    // Generate unique ID for this modifier
-    const modifierId = generateUUID();
+    // Use preset ID if available, otherwise generate UUID
+    const modifierId = pendingTemporaryModifier.presetId ? `preset_${pendingTemporaryModifier.presetId}` : generateUUID();
+
+    // Check if this modifier already exists in the group
+    if (group.temporaryModifiers[modifierId]) {
+      ui.notifications?.warn(`El modificador temporal "${pendingTemporaryModifier.name}" ya está aplicado a ${group.name}.`);
+      // Clear the pending modifier
+      pendingTemporaryModifier = null;
+      applyingTemporaryModifier = false;
+      return;
+    }
 
     // Apply the modifier
     group.temporaryModifiers[modifierId] = {
       name: pendingTemporaryModifier.name,
       description: pendingTemporaryModifier.description,
-      statEffects: pendingTemporaryModifier.statEffects
+      statEffects: pendingTemporaryModifier.statEffects,
+      sourceId: pendingTemporaryModifier.presetId // Store reference to preset if available
     };
 
     // Update the groups
@@ -1782,7 +1806,7 @@
     >
 
       <!-- Group Header with editable name (DRAGGABLE) -->
-      <div 
+      <div
         class="group-header draggable-handle"
         draggable="true"
         role="button"
@@ -2099,13 +2123,22 @@
                         {/if}
                       </div>
                       {#if editing[group.id]}
-                        <button
-                          on:click={() => removeTemporaryModifier(group, modifierId)}
-                          style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                          title="Eliminar modificador"
-                        >
-                          ×
-                        </button>
+                        <div style="display: flex; gap: 0.5rem;">
+                          <button
+                            on:click={() => createTemporaryModifierPreset(modifier)}
+                            style="padding: 0.25rem 0.5rem; background: #d4af37; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
+                            title="Crear preset con este modificador"
+                          >
+                            Preset
+                          </button>
+                          <button
+                            on:click={() => removeTemporaryModifier(group, modifierId)}
+                            style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
+                            title="Eliminar modificador"
+                          >
+                            ×
+                          </button>
+                        </div>
                       {/if}
                     </div>
 

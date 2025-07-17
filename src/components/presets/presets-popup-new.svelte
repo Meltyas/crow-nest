@@ -7,7 +7,6 @@
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import { addPreset, initializePresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import PopupFocusManager from '@/utils/popup-focus';
 
   const dispatch = createEventDispatcher();
 
@@ -17,11 +16,6 @@
   // Expose function to create preset from existing item
   export function createPresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
     createPresetFromItem(item, type);
-  }
-
-  // Expose function to update preset from existing item
-  export function updatePresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
-    updatePresetFromExistingItem(item, type);
   }
 
   let presets: PresetCollection = {
@@ -41,7 +35,6 @@
   let isResizing = false;
   let resizeOffset = { x: 0, y: 0 };
   let size = { width: 800, height: 600 };
-  let focusManager: PopupFocusManager;
 
   // Formularios para crear nuevos presets
   let newResourceForm = {
@@ -81,7 +74,6 @@
 
   onMount(async () => {
     await initializePresets();
-    focusManager = PopupFocusManager.getInstance();
 
     presetsStore.subscribe(value => {
       presets = value;
@@ -104,12 +96,6 @@
   }
 
   function handleMouseDown(event: MouseEvent) {
-    // Dar focus al popup cuando se hace click
-    if (popupElement) {
-      focusManager.setFocus(popupElement);
-    }
-
-    // Solo manejar drag del header
     if (event.target === popupElement.querySelector('.popup-header') ||
         popupElement.querySelector('.popup-header')?.contains(event.target as Node)) {
       isDragging = true;
@@ -119,18 +105,6 @@
         y: event.clientY - rect.top
       };
     }
-  }
-
-  function handlePopupFocus() {
-    // Usar el focus manager para manejar el focus
-    if (popupElement && focusManager) {
-      focusManager.setFocus(popupElement);
-    }
-  }
-
-  function handlePopupBlur() {
-    // No removemos el focus automáticamente en blur
-    // El focus manager se encarga de esto cuando otro popup toma el focus
   }
 
   function handleResizeMouseDown(event: MouseEvent) {
@@ -461,39 +435,6 @@
 
   // Function to create preset from existing item
   function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
-    console.log('Creating preset from item:', item, 'Type:', type);
-
-    // Check if preset already exists with same sourceId
-    if (item.sourceId) {
-      const existingPreset = presets[type === 'resource' ? 'resources' :
-                                    type === 'reputation' ? 'reputations' :
-                                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                                    'situationalModifiers']
-        .find(p => p.data.sourceId === item.sourceId);
-
-      if (existingPreset) {
-        console.log('Preset already exists, updating instead of creating new:', existingPreset);
-        // Update existing preset
-        existingPreset.data = { ...item };
-        existingPreset.name = item.name;
-        existingPreset.description = item.description || '';
-
-        // Update the store
-        presetsStore.update(currentPresets => {
-          return { ...currentPresets };
-        });
-
-        // Switch to the correct tab and show the updated preset
-        activeTab = type === 'resource' ? 'resources' :
-                    type === 'reputation' ? 'reputations' :
-                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                    'situationalModifiers';
-
-        dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
-        return;
-      }
-    }
-
     const preset: PresetItem = {
       id: generateId(),
       name: item.name,
@@ -503,74 +444,24 @@
       createdAt: Date.now()
     };
 
-    console.log('Created preset:', preset);
     addPreset(preset);
-
-    // Switch to the correct tab and show the new preset
-    activeTab = type === 'resource' ? 'resources' :
-                type === 'reputation' ? 'reputations' :
-                type === 'temporaryModifier' ? 'temporaryModifiers' :
-                'situationalModifiers';
 
     // Dispatch event to parent component
     dispatch('presetCreated', { preset, originalItem: item });
   }
-
-  // Function to update preset from existing item (only if it exists)
-  function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
-    console.log('Updating preset from item:', item, 'Type:', type);
-
-    // Only update if preset exists with same sourceId
-    if (item.key) {
-      const existingPreset = presets[type === 'resource' ? 'resources' :
-                                    type === 'reputation' ? 'reputations' :
-                                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                                    'situationalModifiers']
-        .find(p => p.data.sourceId === item.key);
-
-      if (existingPreset) {
-        console.log('Found existing preset, updating:', existingPreset);
-        // Update existing preset with new data
-        existingPreset.data = {
-          ...existingPreset.data,
-          name: item.name,
-          value: item.value,
-          description: item.details || item.description || '',
-          img: item.img || existingPreset.data.img
-        };
-        existingPreset.name = item.name;
-        existingPreset.description = item.details || item.description || '';
-
-        // Update the store
-        presetsStore.update(currentPresets => {
-          return { ...currentPresets };
-        });
-
-        dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // Export the function so it can be called from outside
-  export { createPresetFromItem };
 </script>
 
 <svelte:window on:mousemove={handleMouseMove} on:mouseup={handleMouseUp} />
 
 {#if visible}
-  <div
-    class="presets-popup"
-    bind:this={popupElement}
-    on:mousedown={handleMouseDown}
-    on:focus={handlePopupFocus}
-    on:blur={handlePopupBlur}
-    on:click|stopPropagation
-    tabindex="-1"
-    style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
-  >
+  <div class="presets-popup-overlay" on:click={handleClose}>
+    <div
+      class="presets-popup"
+      bind:this={popupElement}
+      on:mousedown={handleMouseDown}
+      on:click|stopPropagation
+      style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
+    >
       <!-- Header -->
       <div class="popup-header">
         <h2>Presets Manager</h2>
@@ -915,11 +806,24 @@
       <!-- Resize handle -->
       <div class="resize-handle" on:mousedown={handleResizeMouseDown}></div>
     </div>
+  </div>
 {/if}
 
 <style>
-  .presets-popup {
+  .presets-popup-overlay {
     position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .presets-popup {
+    position: absolute;
     background: #2a2a2a;
     border: 2px solid #d4af37;
     border-radius: 8px;
@@ -932,11 +836,6 @@
     display: flex;
     flex-direction: column;
     resize: none;
-    z-index: 80;
-  }
-
-  .presets-popup.focus {
-    z-index: 100 !important;
   }
 
   .popup-header {

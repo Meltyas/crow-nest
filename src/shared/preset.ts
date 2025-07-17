@@ -1,7 +1,7 @@
 export interface PresetItem {
   id: string;
   name: string;
-  type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier';
+  type: "resource" | "reputation" | "temporaryModifier" | "situationalModifier";
   description?: string;
   data: any; // Estructura específica según el tipo
   createdAt: number;

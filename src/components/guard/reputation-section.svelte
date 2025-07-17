@@ -195,6 +195,7 @@
         on:dragLeave={(e) => handleDragLeave(e.detail.event, e.detail.index)}
         on:drop={(e) => handleDrop(e.detail.event, e.detail.index)}
         on:dragEnd={handleDragEnd}
+        on:createPreset={(e) => dispatch('createPreset', e.detail)}
       />
     {/each}
   </div>

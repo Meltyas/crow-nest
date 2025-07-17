@@ -1,12 +1,12 @@
-import { writable } from 'svelte/store';
-import type { PresetCollection, PresetItem } from '@/shared/preset';
+import type { PresetCollection, PresetItem } from "@/shared/preset";
+import { writable } from "svelte/store";
 
 // Store para los presets
 export const presetsStore = writable<PresetCollection>({
   resources: [],
   reputations: [],
   temporaryModifiers: [],
-  situationalModifiers: []
+  situationalModifiers: [],
 });
 
 // Funciones para persistir presets
@@ -15,9 +15,9 @@ export async function persistPresets(presets: PresetCollection) {
     const game = (globalThis as any).game;
     if (!game) return;
 
-    await game.settings.set('crow-nest', 'presets', presets);
+    await game.settings.set("crow-nest", "presets", presets);
   } catch (error) {
-    console.error('[Presets] Error persisting presets:', error);
+    console.error("[Presets] Error persisting presets:", error);
   }
 }
 
@@ -29,63 +29,77 @@ export async function loadPresets(): Promise<PresetCollection> {
         resources: [],
         reputations: [],
         temporaryModifiers: [],
-        situationalModifiers: []
+        situationalModifiers: [],
       };
     }
 
-    const stored = game.settings.get('crow-nest', 'presets');
-    return stored || {
-      resources: [],
-      reputations: [],
-      temporaryModifiers: [],
-      situationalModifiers: []
-    };
+    const stored = game.settings.get("crow-nest", "presets");
+    return (
+      stored || {
+        resources: [],
+        reputations: [],
+        temporaryModifiers: [],
+        situationalModifiers: [],
+      }
+    );
   } catch (error) {
-    console.error('[Presets] Error loading presets:', error);
+    console.error("[Presets] Error loading presets:", error);
     return {
       resources: [],
       reputations: [],
       temporaryModifiers: [],
-      situationalModifiers: []
+      situationalModifiers: [],
     };
   }
 }
 
 // Funciones de utilidad para manejar presets
 export function addPreset(preset: PresetItem) {
-  presetsStore.update(presets => {
-    const category = preset.type === 'resource' ? 'resources' :
-                    preset.type === 'reputation' ? 'reputations' :
-                    preset.type === 'temporaryModifier' ? 'temporaryModifiers' :
-                    'situationalModifiers';
-    
+  presetsStore.update((presets) => {
+    const category =
+      preset.type === "resource"
+        ? "resources"
+        : preset.type === "reputation"
+          ? "reputations"
+          : preset.type === "temporaryModifier"
+            ? "temporaryModifiers"
+            : "situationalModifiers";
+
     presets[category].push(preset);
     persistPresets(presets);
     return presets;
   });
 }
 
-export function removePreset(id: string, type: PresetItem['type']) {
-  presetsStore.update(presets => {
-    const category = type === 'resource' ? 'resources' :
-                    type === 'reputation' ? 'reputations' :
-                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                    'situationalModifiers';
-    
-    presets[category] = presets[category].filter(p => p.id !== id);
+export function removePreset(id: string, type: PresetItem["type"]) {
+  presetsStore.update((presets) => {
+    const category =
+      type === "resource"
+        ? "resources"
+        : type === "reputation"
+          ? "reputations"
+          : type === "temporaryModifier"
+            ? "temporaryModifiers"
+            : "situationalModifiers";
+
+    presets[category] = presets[category].filter((p) => p.id !== id);
     persistPresets(presets);
     return presets;
   });
 }
 
-export function updatePresetUsage(id: string, type: PresetItem['type']) {
-  presetsStore.update(presets => {
-    const category = type === 'resource' ? 'resources' :
-                    type === 'reputation' ? 'reputations' :
-                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                    'situationalModifiers';
-    
-    const preset = presets[category].find(p => p.id === id);
+export function updatePresetUsage(id: string, type: PresetItem["type"]) {
+  presetsStore.update((presets) => {
+    const category =
+      type === "resource"
+        ? "resources"
+        : type === "reputation"
+          ? "reputations"
+          : type === "temporaryModifier"
+            ? "temporaryModifiers"
+            : "situationalModifiers";
+
+    const preset = presets[category].find((p) => p.id === id);
     if (preset) {
       preset.lastUsed = Date.now();
       persistPresets(presets);

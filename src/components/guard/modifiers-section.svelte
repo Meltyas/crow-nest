@@ -81,6 +81,10 @@
       .join('');
     return header + mods;
   }
+
+  function createPresetFromModifier(mod: GuardModifier) {
+    dispatch('createPresetFromModifier', mod);
+  }
 </script>
 
 <div class="modifiers-section">
@@ -154,7 +158,10 @@
                 </div>
               {/each}
             </div>
-            <button on:click={() => removeModifier(i)}>X</button>
+            <div class="modifier-buttons">
+              <button class="preset-button" on:click={() => createPresetFromModifier(mod)} title="Crear preset con este modificador">Preset</button>
+              <button class="remove-button" on:click={() => removeModifier(i)}>X</button>
+            </div>
           </div>
         {:else}
           <!-- content moved into tooltip -->
@@ -312,6 +319,44 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
+  }
+
+  .modifier-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .preset-button {
+    background: #d4af37;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: 'Overpass', Arial, sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .preset-button:hover {
+    background: #b8941f;
+  }
+
+  .remove-button {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: 'Overpass', Arial, sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .remove-button:hover {
+    background: #b91c1c;
   }
 
   .standard-image {
