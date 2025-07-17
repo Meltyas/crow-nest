@@ -167,10 +167,10 @@
     const handleGlobalClick = (event: MouseEvent) => {
       const target = event.target as Element;
       if (target && !target.closest('.floating-extra-info-container') && !target.closest('.header-button') && !target.closest('.skill-delete-floating')) {
-        // Close any open floating containers
+        // Close any open floating containers, but keep them open if the patrol is being edited
         let hasOpenContainers = false;
         for (const groupId in patrolExtraInfo) {
-          if (patrolExtraInfo[groupId]) {
+          if (patrolExtraInfo[groupId] && !editing[groupId]) {
             patrolExtraInfo[groupId] = false;
             hasOpenContainers = true;
           }
@@ -316,8 +316,33 @@
   }
 
   function toggleEditing(group: Group) {
+    const wasEditing = editing[group.id];
+    
+    // If starting to edit this group, close any other group that's being edited
+    if (!wasEditing) {
+      for (const groupId in editing) {
+        if (editing[groupId] && groupId !== group.id) {
+          editing[groupId] = false;
+          // Also close the floating-extra for the previously edited group
+          patrolExtraInfo[groupId] = false;
+        }
+      }
+    }
+    
     editing[group.id] = !editing[group.id];
     editing = { ...editing }; // Trigger reactivity
+    
+    // When starting to edit, show the floating-extra automatically
+    if (!wasEditing && editing[group.id]) {
+      patrolExtraInfo[group.id] = true;
+      patrolExtraInfo = { ...patrolExtraInfo };
+    }
+    
+    // When stopping editing (saving), close the floating-extra
+    if (wasEditing && !editing[group.id]) {
+      patrolExtraInfo[group.id] = false;
+      patrolExtraInfo = { ...patrolExtraInfo };
+    }
   }
 
   function removeOfficer(group: Group) {
@@ -644,6 +669,7 @@
   }
 
   function toggleSkillsFloating(group: Group) {
+    // Always allow manual toggle with the button, even when editing
     patrolExtraInfo[group.id] = !patrolExtraInfo[group.id];
     patrolExtraInfo = { ...patrolExtraInfo }; // Trigger reactivity
   }
