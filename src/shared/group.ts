@@ -30,11 +30,13 @@ export interface Group {
   name: string;
   officer: GroupMember | null;
   units: GroupMember[];
+  soldiers: GroupMember[]; // Array for formation layout positions
   mods: Record<string, number>;
   skills: GroupSkill[];
   experiences: GroupExperience[];
   temporaryModifiers: GroupTemporaryModifiers;
   maxUnits: number;
+  maxSoldiers: number; // Maximum number of soldiers for formation layout
   hope: number; // 0-6 hope level
   maxHope: number; // 1-6 maximum hope level
 }

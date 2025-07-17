@@ -81,9 +81,9 @@
   </div>
 
   <!-- Soldier Positions (dynamic formation 1-12) -->
-  {#each Array(group.maxSoldiers || 5) as _, slotIndex}
-    {@const soldier = group.soldiers[slotIndex]}
-    <div class="formation-point formation-point-{slotIndex} formation-{group.maxSoldiers || 5}-sided">
+  {#each Array(group?.maxSoldiers || 5) as _, slotIndex}
+    {@const soldier = group?.soldiers?.[slotIndex]}
+    <div class="formation-point formation-point-{slotIndex} formation-{group?.maxSoldiers || 5}-sided">
       <div
         class="formation-slot soldier-slot {soldier ? 'occupied' : 'empty'}"
         role="button"

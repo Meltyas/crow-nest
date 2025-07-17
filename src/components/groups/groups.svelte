@@ -38,7 +38,18 @@
 
   // Use appropriate store based on isAdminMode
   $: currentStore = isAdminMode ? adminsStore : groupsStore;
-  $: groups = $currentStore;
+  
+  // Migration function to ensure all groups have required properties
+  function migrateGroups(groups: Group[]): Group[] {
+    return groups.map(group => ({
+      ...group,
+      soldiers: group.soldiers || [], // Ensure soldiers array exists
+      maxSoldiers: group.maxSoldiers || 5, // Ensure maxSoldiers exists
+    }));
+  }
+  
+  // Get groups with migration applied
+  $: groups = migrateGroups($currentStore);
 
   let stats: GuardStat[] = [];
   let modifiers: GuardModifier[] = [];
@@ -83,6 +94,14 @@
       }
       if (group.maxHope === undefined) {
         group.maxHope = 3;
+        needsUpdate = true;
+      }
+      if (group.soldiers === undefined) {
+        group.soldiers = [];
+        needsUpdate = true;
+      }
+      if (group.maxSoldiers === undefined) {
+        group.maxSoldiers = 5;
         needsUpdate = true;
       }
       if (group.experiences === undefined) {
@@ -221,11 +240,13 @@
         name: '',
         officer: null,
         units: [],
+        soldiers: [], // Add soldiers array for formation layout
         mods: {},
         skills: [],
         experiences: [],
         temporaryModifiers: {},
         maxUnits: 5,
+        maxSoldiers: 5, // Add maxSoldiers for formation layout
         hope: 0,
         maxHope: 3,
       },
@@ -245,10 +266,53 @@
     }, 100);
   }
 
-  function removeGroup(index: number) {
-    groups.splice(index, 1);
-    groups = [...groups];
-    persist();
+  async function removeGroup(index: number) {
+    const group = groups[index];
+    const groupName = group?.name || labels.groupSingular;
+    
+    // Create confirmation dialog using Foundry's Dialog API
+    const confirmed = await new Promise((resolve) => {
+      const dialog = new Dialog({
+        title: `Confirmar eliminación de ${labels.groupSingular}`,
+        content: `
+          <div style="text-align: center; padding: 20px;">
+            <i class="fas fa-exclamation-triangle" style="color: #ff6b35; font-size: 2rem; margin-bottom: 10px;"></i>
+            <h3 style="margin: 10px 0;">¿Estás seguro?</h3>
+            <p style="margin: 15px 0;">
+              ¿Realmente quieres eliminar la patrulla "<strong>${groupName}</strong>"?
+            </p>
+            <p style="color: #888; font-size: 0.9rem; margin-top: 15px;">
+              Esta acción no se puede deshacer.
+            </p>
+          </div>
+        `,
+        buttons: {
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: "Cancelar",
+            callback: () => resolve(false)
+          },
+          confirm: {
+            icon: '<i class="fas fa-trash"></i>',
+            label: "Eliminar",
+            callback: () => resolve(true)
+          }
+        },
+        default: "cancel",
+        close: () => resolve(false)
+      });
+      dialog.render(true);
+    });
+
+    // Only proceed if user confirmed
+    if (confirmed) {
+      groups.splice(index, 1);
+      groups = [...groups];
+      persist();
+      
+      // Show success notification
+      ui.notifications?.info(`Patrulla "${groupName}" eliminada exitosamente.`);
+    }
   }
 
   function toggleEditing(group: Group) {
@@ -642,20 +706,14 @@
       return;
     }
 
-    console.log(`DEBUG: Moving from index ${draggedGroupIndex} to ${dropIndex}`);
-    
     // Simple array reordering: use splice to move elements directly
     const newGroups = [...groups];
     
-    console.log('DEBUG: Original array:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
-    
     // Extract the dragged element
     const draggedElement = newGroups[draggedGroupIndex];
-    console.log('DEBUG: Moving element:', draggedElement.name || 'Unknown');
     
     // Remove it from the array
     newGroups.splice(draggedGroupIndex, 1);
-    console.log('DEBUG: After removal:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
     
     // Calculate the correct insertion index
     // The dropIndex refers to the final desired position in the result array
@@ -663,31 +721,7 @@
     let targetIndex;
     
     if (draggedGroupIndex < dropIndex) {
-      // Moving forward: the dropIndex needs to be adjusted because we removed 
-      // an element from before the target position
-      // If we want to end up at position dropIndex in final array,
-      // we need to insert at position (dropIndex - 1) in the reduced array
-      targetIndex = dropIndex - 1;
-      
-      // But wait - that's what we had before and it was giving 0 for 0->1
-      // Let me reconsider: if dropIndex = 1 and draggedGroupIndex = 0
-      // targetIndex = 1 - 1 = 0, which puts it back at the beginning
-      // That's wrong. We want it at position 1.
-      
-      // Actually, let me think differently:
-      // For move 0->1: after removing element at 0, we want to insert at position 1
-      // which means we insert at the end of what's left, i.e., at index equal to current length
-      // No wait, that's not right either.
-      
-      // Let me try a different approach:
-      // We want the element to be at dropIndex in the final array
-      // After removing from draggedGroupIndex, if draggedGroupIndex < dropIndex,
-      // then dropIndex effectively becomes dropIndex-1 in the shorter array
-      // So to end up at the original dropIndex, we insert at dropIndex-1
-      // But we want the original dropIndex position, so... 
-      
-      // Actually, I think the issue is that targetIndex should be dropIndex itself
-      // Let me try that:
+      // Moving forward: we want to end up at dropIndex in the final array
       targetIndex = dropIndex;
     } else {
       // Moving backward: dropIndex stays the same
@@ -699,11 +733,7 @@
       targetIndex = newGroups.length;
     }
     
-    console.log('DEBUG: Target index calculated as:', targetIndex);
-    
     newGroups.splice(targetIndex, 0, draggedElement);
-    
-    console.log('DEBUG: Final array:', newGroups.map((g, i) => `${i}: ${g.name || 'Unknown'}`));
 
     // Force reactivity update and persistence
     if (isAdminMode) {
