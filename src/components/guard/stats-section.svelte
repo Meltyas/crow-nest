@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GuardStat } from '@/guard/stats';
+  import { generateUUID } from '@/utils/log';
   import { createEventDispatcher } from 'svelte';
 
   export let stats: GuardStat[] = [];
@@ -12,7 +13,7 @@
   let newStat: GuardStat = { key: '', name: '', value: 0 };
 
   function openAddStat() {
-    newStat = { key: crypto.randomUUID(), name: '', value: 0 };
+    newStat = { key: generateUUID(), name: '', value: 0 };
     addingStat = true;
   }
 

@@ -16,6 +16,7 @@
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
+  import { generateUUID } from '@/utils/log';
   import { onDestroy, onMount } from 'svelte';
 
   // Access game through global window object to avoid declaration issues
@@ -215,7 +216,7 @@
   }
 
   function addGroup() {
-    const newGroupId = crypto.randomUUID();
+    const newGroupId = generateUUID();
     groups = [
       ...groups,
       {
@@ -743,7 +744,7 @@
               }
 
               // Generate unique ID for this modifier
-              const modifierId = crypto.randomUUID();
+              const modifierId = generateUUID();
 
               group.temporaryModifiers[modifierId] = {
                 name: modifierName,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
+  import { generateUUID } from '@/utils/log';
   import { createEventDispatcher } from 'svelte';
 
   export let modifiers: GuardModifier[] = [];
@@ -21,7 +22,7 @@
 
   function openAddModifier() {
     newModifier = {
-      key: crypto.randomUUID(),
+      key: generateUUID(),
       name: '',
       description: '',
       mods: {},

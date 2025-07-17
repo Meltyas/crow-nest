@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GuardReputation } from '@/guard/stats';
+  import { generateUUID } from '@/utils/log';
   import { createEventDispatcher } from 'svelte';
   import AddItemForm from './add-item-form.svelte';
   import ItemCard from './item-card.svelte';
@@ -25,7 +26,7 @@
 
   function openAddReputation() {
     newReputation = {
-      key: crypto.randomUUID(),
+      key: generateUUID(),
       name: '',
       value: 0,
       img: 'icons/svg/aura.svg',
