@@ -27,6 +27,12 @@
       };
     }
 
+    // Restore popup state from localStorage
+    const savedPopupState = localStorage.getItem("crowHudPopupOpen");
+    if (savedPopupState) {
+      showPopup = JSON.parse(savedPopupState);
+    }
+
     // Load game tokens
     gameTokens = getTokens();
 
@@ -94,6 +100,8 @@
 
   function togglePopup() {
     showPopup = !showPopup;
+    // Save popup state to localStorage
+    localStorage.setItem("crowHudPopupOpen", JSON.stringify(showPopup));
   }
 
   // Game tokens functions
