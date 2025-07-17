@@ -1,5 +1,6 @@
 import type { PresetCollection, PresetItem } from "@/shared/preset";
 import { writable } from "svelte/store";
+import { SyncManager, createSyncEvent } from "@/utils/sync";
 
 // Store para los presets
 export const presetsStore = writable<PresetCollection>({
@@ -16,6 +17,10 @@ export async function persistPresets(presets: PresetCollection) {
     if (!game) return;
 
     await game.settings.set("crow-nest", "presets", presets);
+    
+    // Broadcast changes to all players
+    const syncManager = SyncManager.getInstance();
+    await syncManager.broadcast(createSyncEvent("presets", "update", presets));
   } catch (error) {
     console.error("[Presets] Error persisting presets:", error);
   }
@@ -112,4 +117,12 @@ export function updatePresetUsage(id: string, type: PresetItem["type"]) {
 export async function initializePresets() {
   const loadedPresets = await loadPresets();
   presetsStore.set(loadedPresets);
+  
+  // Set up sync handler for presets
+  const syncManager = SyncManager.getInstance();
+  syncManager.subscribe("presets", (event) => {
+    if (event.action === "update") {
+      presetsStore.set(event.data);
+    }
+  });
 }

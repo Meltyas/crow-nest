@@ -14,10 +14,6 @@ export function getPatrols(): Patrol[] {
 }
 
 export async function savePatrols(patrols: Patrol[]): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_PATROLS, patrols);
 
   // Broadcast changes to all players

@@ -252,6 +252,35 @@ Hooks.once("ready", () => {
         }
       }
 
+      // Handle presets changes
+      else if (setting.key === `${MODULE_ID}.presets`) {
+        const currentUserId = game.user?.id;
+        if (userId !== currentUserId) {
+          // Update the presets store with the new data
+          let actualData = value;
+          
+          // If it's a Foundry setting object with 'value' property that's a JSON string
+          if (
+            value &&
+            typeof value === "object" &&
+            value.value &&
+            typeof value.value === "string"
+          ) {
+            try {
+              actualData = JSON.parse(value.value);
+            } catch (error) {
+              console.error("[Main] Error parsing presets JSON:", error);
+            }
+          }
+
+          if (actualData) {
+            import("@/stores/presets").then(({ presetsStore }) => {
+              presetsStore.set(actualData);
+            });
+          }
+        }
+      }
+
       // Handle sync events for other types
       else if (setting.key === `${MODULE_ID}.syncEvent`) {
         // Don't process events from the same user (avoid loops)

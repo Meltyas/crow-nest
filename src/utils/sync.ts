@@ -13,7 +13,8 @@ export interface SyncEvent {
     | "admins"
     | "reputation"
     | "groups"
-    | "patrol-sheet";
+    | "patrol-sheet"
+    | "presets";
   action: "update" | "create" | "delete" | "command" | "show";
   data: any;
   timestamp: number;

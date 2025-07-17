@@ -484,11 +484,6 @@ export class PatrolSheetManager {
 
   // Method to remove a patrol sheet from active list (when closed)
   async removePatrolSheetFromActive(groupId: string) {
-    if (!game.user?.isGM) {
-      // Only GM can modify the active sheets list
-      return;
-    }
-
     const currentSheets = (game as any).settings.get(
       MODULE_ID,
       "activePatrolSheets"

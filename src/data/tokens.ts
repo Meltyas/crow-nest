@@ -17,7 +17,7 @@ export function getTokens(): GameTokens {
 }
 
 export async function saveTokens(tokens: GameTokens): Promise<void> {
-  if (game.settings && game.user?.isGM) {
+  if (game.settings) {
     await game.settings.set(MODULE_ID, "gameTokens", tokens);
 
     // Broadcast change to all players
@@ -27,20 +27,12 @@ export async function saveTokens(tokens: GameTokens): Promise<void> {
 }
 
 export async function adjustDespair(delta: number): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   const tokens = getTokens();
   tokens.despair = Math.max(0, tokens.despair + delta);
   await saveTokens(tokens);
 }
 
 export async function adjustCheers(delta: number): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   const tokens = getTokens();
   tokens.cheers = Math.max(0, tokens.cheers + delta);
   await saveTokens(tokens);

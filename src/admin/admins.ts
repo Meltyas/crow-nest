@@ -13,10 +13,6 @@ export function getAdmins(): Admin[] {
 }
 
 export async function saveAdmins(admins: Admin[]): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_ADMINS, admins);
 
   // Broadcast changes to all players
