@@ -306,8 +306,8 @@
         <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
           ${baseValue !== 0 ? `<span class="bonus-item">Guard ${stat.name} Base: ${baseValue >= 0 ? '+' : ''}${baseValue}</span>` : ''}
-          ${guardModifiers.filter(mod => mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0).map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
-          ${patrolModifier !== 0 ? `<span class="bonus-item">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
+          ${guardModifiers.filter(mod => mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0).map(mod => `<span class="bonus-item guard-situational ${mod.mods[stat.key] >= 0 ? 'positive' : 'negative'}">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
+          ${patrolModifier !== 0 ? `<span class="bonus-item patrol-modifier">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
           ${temporaryModifiers.map(mod => `<span class="bonus-item temporary-modifier">${mod.name}: ${mod.statEffects[stat.key] >= 0 ? '+' : ''}${mod.statEffects[stat.key]}</span>`).join('')}
           ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
           ${selectedExpObjects.map(exp => `<span class="bonus-item experience">${exp.name}: ${exp.value >= 0 ? '+' : ''}${exp.value}</span>`).join('')}
@@ -868,6 +868,7 @@
     border-radius: 3px;
     font-size: 0.85em;
     color: var(--color-text-primary, #333);
+    font-family: sans-serif;
   }
 
   :global(.crow-nest-roll .bonus-item.experience) {
@@ -876,6 +877,25 @@
     border: 1px solid #daa520;
     font-weight: bold;
     box-shadow: 0 1px 3px rgba(218, 165, 32, 0.3);
+  }
+
+  :global(.crow-nest-roll .bonus-item.guard-situational.positive) {
+    background: #51cf66;
+    color: #000000;
+    font-weight: bold;
+  }
+
+  :global(.crow-nest-roll .bonus-item.guard-situational.negative) {
+    background: #ff6b6b;
+    color: #000000;
+    font-weight: bold;
+  }
+
+  :global(.crow-nest-roll .bonus-item.patrol-modifier) {
+    background: #000000;
+    color: #ffffff;
+    font-weight: bold;
+    border: 1px solid #333333;
   }
 
   :global(.crow-nest-roll .roll-action-buttons) {

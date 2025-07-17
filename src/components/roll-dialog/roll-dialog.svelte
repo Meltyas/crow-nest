@@ -212,7 +212,7 @@
     }
 
     // Calculate individual modifiers for display
-    const guardStatModifiers = guardModifiers.filter(mod => mod.mods[stat.key] && mod.mods[stat.key] !== 0);
+    const guardStatModifiers = guardModifiers.filter(mod => mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0);
     const patrolModifier = group.mods[stat.key] || 0;
 
     const groupName = group.name || (group.officer ? `Patrol of ${group.officer.name}` : 'Patrol');
@@ -288,7 +288,7 @@
         <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
           ${baseValue !== 0 ? `<span class="bonus-item">Guard ${stat.name} Base: ${baseValue >= 0 ? '+' : ''}${baseValue}</span>` : ''}
-          ${guardStatModifiers.map(mod => `<span class="bonus-item">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
+          ${guardStatModifiers.map(mod => `<span class="bonus-item guard-situational ${mod.mods[stat.key] >= 0 ? 'positive' : 'negative'}">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
           ${patrolModifier !== 0 ? `<span class="bonus-item">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
           ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}
           ${selectedExpObjects.map(exp => `<span class="bonus-item experience">${exp.name}: ${exp.value >= 0 ? '+' : ''}${exp.value}</span>`).join('')}
@@ -857,6 +857,16 @@
     border: 1px solid #daa520;
     font-weight: bold;
     box-shadow: 0 1px 3px rgba(218, 165, 32, 0.3);
+  }
+
+  :global(.crow-nest-roll .bonus-item.guard-situational.positive) {
+    color: #51cf66;
+    font-weight: bold;
+  }
+
+  :global(.crow-nest-roll .bonus-item.guard-situational.negative) {
+    color: #ff6b6b;
+    font-weight: bold;
   }
 
   :global(.crow-nest-roll .roll-action-buttons) {
