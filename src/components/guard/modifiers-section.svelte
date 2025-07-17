@@ -17,17 +17,20 @@
     description: '',
     mods: {},
     state: 'neutral',
-    img: 'icons/svg/upgrade.svg'
+    img: 'icons/svg/upgrade.svg',
+    sourceId: ''
   };
 
   function openAddModifier() {
+    const uniqueId = generateUUID();
     newModifier = {
-      key: generateUUID(),
+      key: uniqueId,
       name: '',
       description: '',
       mods: {},
       state: 'neutral',
-      img: 'icons/svg/upgrade.svg'
+      img: 'icons/svg/upgrade.svg',
+      sourceId: uniqueId // Ensure every modifier has a unique sourceId
     };
     addingModifier = true;
   }
@@ -84,6 +87,21 @@
 
   function createPresetFromModifier(mod: GuardModifier) {
     dispatch('createPresetFromModifier', mod);
+  }
+
+  function createPresetFromSituationalModifier(mod: GuardModifier) {
+    const item = {
+      sourceId: mod.sourceId || mod.key, // Use sourceId first, fallback to key
+      name: mod.name,
+      description: mod.description || '',
+      situation: mod.description || 'Situación específica',
+      img: mod.img || 'icons/svg/upgrade.svg',
+      statEffects: { ...mod.mods } // Deep copy the mods object
+    };
+    console.log('ModifierSection - Enviando objeto al crear preset:', item);
+    console.log('ModifierSection - Modificador original:', mod);
+    console.log('ModifierSection - statEffects específicamente:', mod.mods);
+    dispatch('createPresetFromSituationalModifier', item);
   }
 </script>
 
@@ -159,7 +177,7 @@
               {/each}
             </div>
             <div class="modifier-buttons">
-              <button class="preset-button" on:click={() => createPresetFromModifier(mod)} title="Crear preset con este modificador">Preset</button>
+              <button class="preset-button" on:click={() => createPresetFromSituationalModifier(mod)} title="Crear preset con este modificador">Preset</button>
               <button class="remove-button" on:click={() => removeModifier(i)}>X</button>
             </div>
           </div>

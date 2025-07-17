@@ -21,6 +21,7 @@ export interface GuardModifier {
   img?: string;
   mods: Record<string, number>;
   state?: "positive" | "neutral" | "negative";
+  sourceId?: string; // Optional field for linking to presets
 }
 
 export interface GuardResource {

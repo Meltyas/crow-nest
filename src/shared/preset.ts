@@ -37,6 +37,7 @@ export interface SituationalModifierPreset {
   situation: string;
   img?: string;
   statEffects: { [key: string]: number };
+  sourceId?: string;
 }
 
 export interface PresetCollection {

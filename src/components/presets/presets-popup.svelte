@@ -475,6 +475,8 @@
   // Function to create preset from existing item
   function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
     console.log('Creating preset from item:', item, 'Type:', type);
+    console.log('Item sourceId:', item.sourceId);
+    console.log('Item statEffects:', item.statEffects);
 
     // Check if preset already exists with same sourceId
     if (item.sourceId) {
@@ -517,6 +519,8 @@
     };
 
     console.log('Created preset:', preset);
+    console.log('Created preset data:', preset.data);
+    console.log('Created preset data.statEffects:', preset.data.statEffects);
     addPreset(preset);
 
     // Switch to the correct tab and show the new preset
@@ -534,25 +538,42 @@
     console.log('Updating preset from item:', item, 'Type:', type);
 
     // Only update if preset exists with same sourceId
-    if (item.key) {
+    if (item.key || item.sourceId) {
+      const sourceId = item.sourceId || item.key;
       const existingPreset = presets[type === 'resource' ? 'resources' :
                                     type === 'reputation' ? 'reputations' :
                                     type === 'temporaryModifier' ? 'temporaryModifiers' :
                                     'situationalModifiers']
-        .find(p => p.data.sourceId === item.key);
+        .find(p => p.data.sourceId === sourceId);
 
       if (existingPreset) {
         console.log('Found existing preset, updating:', existingPreset);
-        // Update existing preset with new data
-        existingPreset.data = {
-          ...existingPreset.data,
-          name: item.name,
-          value: item.value,
-          description: item.details || item.description || '',
-          img: item.img || existingPreset.data.img
-        };
+        
+        // Update existing preset with new data based on type
+        if (type === 'situationalModifier') {
+          existingPreset.data = {
+            ...existingPreset.data,
+            name: item.name,
+            description: item.description || '',
+            situation: item.situation || existingPreset.data.situation,
+            img: item.img || existingPreset.data.img,
+            statEffects: item.statEffects || existingPreset.data.statEffects,
+            sourceId: sourceId
+          };
+        } else {
+          // For other types (resource, reputation, temporaryModifier)
+          existingPreset.data = {
+            ...existingPreset.data,
+            name: item.name,
+            value: item.value,
+            description: item.details || item.description || '',
+            img: item.img || existingPreset.data.img,
+            sourceId: sourceId
+          };
+        }
+        
         existingPreset.name = item.name;
-        existingPreset.description = item.details || item.description || '';
+        existingPreset.description = item.description || item.details || '';
 
         // Update the store
         presetsStore.update(currentPresets => {
@@ -926,11 +947,21 @@
                 <div class="preset-item-info">
                   <div class="preset-item-name">{preset.name}</div>
                   <div class="preset-item-details">
-                    <p><strong>Modificador:</strong> {preset.data.modifier > 0 ? '+' : ''}{preset.data.modifier}</p>
                     <p><strong>Situación:</strong> {preset.data.situation}</p>
                     {#if preset.description}
                       <p class="description">{preset.description}</p>
                     {/if}
+                    <div class="stat-effects-preview">
+                      {#each Object.entries(preset.data.statEffects || {}) as [statKey, value]}
+                        {@const stat = stats.find(s => s.key === statKey)}
+                        {#if stat && value !== 0}
+                          <span class="stat-effect-preview">
+                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                            {stat.name}: {value > 0 ? '+' : ''}{value}
+                          </span>
+                        {/if}
+                      {/each}
+                    </div>
                   </div>
                 </div>
                 <div class="preset-actions">

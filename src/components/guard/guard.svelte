@@ -191,23 +191,37 @@
   }
 
   function applySituationalModifierPreset(preset: any) {
-    const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
+    const presetKey = preset.data.sourceId; // Use the sourceId from the preset
 
-    // Verificar si ya existe un modificador con este preset ID
+    // Check if a modifier with this preset ID already exists
     const existingModifier = modifiers.find(m => m.key === presetKey);
     if (existingModifier) {
-      ui.notifications?.warn(`El modificador "${preset.data.name}" ya existe.`);
+      // Update existing modifier instead of creating duplicate
+      existingModifier.name = preset.data.name;
+      existingModifier.description = preset.data.description || '';
+      existingModifier.img = preset.data.img || 'icons/svg/upgrade.svg';
+      existingModifier.mods = preset.data.statEffects || {};
+      
+      // Determine state based on stat effects
+      const totalEffect = Object.values(existingModifier.mods).reduce((sum: number, value: number) => sum + value, 0);
+      existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
+      
+      modifiers = [...modifiers]; // Trigger reactivity
+      handlers.handleUpdateModifier();
       return;
     }
 
+    // Create new modifier
     const newModifier = {
-      key: presetKey, // Usar el sourceId del preset para mantener consistencia
+      key: presetKey, // Use the sourceId from the preset for consistency
       name: preset.data.name,
-      description: `${preset.data.situation}: ${preset.data.description || ''}`.trim(),
-      img: preset.data.img || 'icons/svg/aura.svg',
-      mods: { 'general': preset.data.modifier },
-      state: preset.data.modifier >= 0 ? 'positive' : 'negative',
-      sourceId: preset.data.sourceId // Mantener referencia al sourceId original
+      description: preset.data.description || '',
+      img: preset.data.img || 'icons/svg/upgrade.svg',
+      mods: preset.data.statEffects || {},
+      state: (() => {
+        const totalEffect = Object.values(preset.data.statEffects || {}).reduce((sum: number, value: number) => sum + value, 0);
+        return totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
+      })()
     };
 
     modifiers = [...modifiers, newModifier];
@@ -256,14 +270,16 @@
 
   function createSituationalModifierPreset(event: CustomEvent) {
     const modifier = event.detail;
+    console.log('Guard.svelte - Recibiendo evento para crear preset:', event.detail);
     const item = {
-      sourceId: modifier.key, // Usar la key del modificador como identificador único
+      sourceId: modifier.sourceId || modifier.key, // Use sourceId first, fallback to key
       name: modifier.name,
       description: modifier.description || '',
-      modifier: modifier.mods?.general || 0,
-      situation: 'General',
-      img: modifier.img || ''
+      situation: modifier.situation || modifier.description || 'Situación específica',
+      img: modifier.img || 'icons/svg/upgrade.svg',
+      statEffects: modifier.statEffects || modifier.mods || {}
     };
+    console.log('Guard.svelte - Enviando item al presetManager:', item);
 
     presetManager.createPresetFromExistingItem(item, 'situationalModifier');
   }
@@ -624,7 +640,7 @@
                   on:modImageClick={handlers.handleModImageClick}
                   on:newModImageClick={handlers.handleNewModImageClick}
                   on:modFileChange={handlers.handleModFileChange}
-                  on:createPresetFromModifier={createSituationalModifierPreset}
+                  on:createPresetFromSituationalModifier={createSituationalModifierPreset}
                 />
               </div>
 
