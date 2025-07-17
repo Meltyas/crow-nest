@@ -268,7 +268,7 @@
                       <!-- Show stat effects -->
                       {#if modifier.statEffects && Object.keys(modifier.statEffects).length > 0}
                         <div class="modifier-effects">
-                          {#each Object.entries(modifier.statEffects) as [statKey, value]}
+                          {#each Object.entries(modifier.statEffects || {}) as [statKey, value]}
                             {@const stat = stats.find(s => s.key === statKey)}
                             {#if stat && value !== 0}
                               <div class="effect-item">

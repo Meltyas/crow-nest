@@ -759,7 +759,7 @@
                       <p class="description">{preset.description}</p>
                     {/if}
                     <div class="stat-effects-preview">
-                      {#each Object.entries(preset.data.statEffects) as [statKey, value]}
+                      {#each Object.entries(preset.data.statEffects || {}) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">

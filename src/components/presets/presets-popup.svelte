@@ -19,6 +19,109 @@
   import { generateUUID } from '@/utils/log';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
+  // Helper function to safely get stat effects and prevent undefined iteration
+  function safeGetStatEffects(data: any): Record<string, number> {
+    try {
+      if (!data || typeof data !== 'object') return {};
+      if (!data.statEffects || typeof data.statEffects !== 'object') return {};
+      return data.statEffects;
+    } catch (error) {
+      console.warn('Error accessing statEffects:', error);
+      return {};
+    }
+  }
+
+  // Helper function to safely get entries from stat effects
+  function safeGetStatEffectEntries(data: any): [string, number][] {
+    try {
+      const statEffects = safeGetStatEffects(data);
+      return Object.entries(statEffects);
+    } catch (error) {
+      console.warn('Error getting stat effect entries:', error);
+      return [];
+    }
+  }
+
+  // Helper function to sanitize preset data
+  function sanitizePreset(preset: PresetItem): PresetItem {
+    try {
+      if (!preset || typeof preset !== 'object') {
+        console.warn('Invalid preset object:', preset);
+        return null;
+      }
+
+      // Ensure preset has required properties
+      if (!preset.id || !preset.type || !preset.name) {
+        console.warn('Preset missing required properties:', preset);
+        return null;
+      }
+
+      // Ensure data exists
+      if (!preset.data) {
+        preset.data = {};
+      }
+
+      // Sanitize statEffects for modifier types
+      if (preset.type === 'temporaryModifier' || preset.type === 'situationalModifier') {
+        preset.data.statEffects = safeGetStatEffects(preset.data);
+      }
+
+      return preset;
+    } catch (error) {
+      console.warn('Error sanitizing preset:', error, preset);
+      return null;
+    }
+  }
+
+  // Helper function to sanitize preset collection
+  function sanitizePresets(presets: PresetCollection): PresetCollection {
+    try {
+      const sanitized: PresetCollection = {
+        resources: [],
+        reputations: [],
+        temporaryModifiers: [],
+        situationalModifiers: []
+      };
+
+      if (presets && typeof presets === 'object') {
+        if (Array.isArray(presets.resources)) {
+          sanitized.resources = presets.resources.map(sanitizePreset).filter(p => p !== null);
+        }
+        if (Array.isArray(presets.reputations)) {
+          sanitized.reputations = presets.reputations.map(sanitizePreset).filter(p => p !== null);
+        }
+        if (Array.isArray(presets.temporaryModifiers)) {
+          sanitized.temporaryModifiers = presets.temporaryModifiers.map(sanitizePreset).filter(p => p !== null);
+        }
+        if (Array.isArray(presets.situationalModifiers)) {
+          sanitized.situationalModifiers = presets.situationalModifiers.map(sanitizePreset).filter(p => p !== null);
+        }
+      }
+
+      return sanitized;
+    } catch (error) {
+      console.warn('Error sanitizing presets collection:', error);
+      return {
+        resources: [],
+        reputations: [],
+        temporaryModifiers: [],
+        situationalModifiers: []
+      };
+    }
+  }
+
+  // Helper function to safely get preset property
+  function safeGetPresetProperty(preset: any, property: string, defaultValue: any = '') {
+    try {
+      if (!preset || typeof preset !== 'object') return defaultValue;
+      if (!preset.data || typeof preset.data !== 'object') return defaultValue;
+      return preset.data[property] || defaultValue;
+    } catch (error) {
+      console.warn('Error getting preset property:', error);
+      return defaultValue;
+    }
+  }
+
   const dispatch = createEventDispatcher();
 
   export let visible = false;
@@ -93,7 +196,7 @@
     focusManager = PopupFocusManager.getInstance();
 
     presetsStore.subscribe(value => {
-      presets = value;
+      presets = sanitizePresets(value);
     });
 
     // Posicionar popup
@@ -236,7 +339,7 @@
           type: newTemporaryModifierForm.type,
           value: newTemporaryModifierForm.value,
           duration: newTemporaryModifierForm.duration,
-          statEffects: newTemporaryModifierForm.statEffects,
+          statEffects: newTemporaryModifierForm.statEffects || {},
           sourceId: sourceId
         },
         createdAt: Date.now()
@@ -254,7 +357,7 @@
           description: newSituationalModifierForm.description,
           situation: newSituationalModifierForm.description, // Usar description como situation
           img: newSituationalModifierForm.img,
-          statEffects: newSituationalModifierForm.statEffects,
+          statEffects: newSituationalModifierForm.statEffects || {},
           sourceId: sourceId
         },
         createdAt: Date.now()
@@ -365,14 +468,14 @@
         type: preset.data.type,
         value: preset.data.value,
         duration: preset.data.duration,
-        statEffects: { ...preset.data.statEffects }
+        statEffects: { ...safeGetStatEffects(preset.data) }
       };
     } else if (preset.type === 'situationalModifier') {
       newSituationalModifierForm = {
         name: preset.data.name,
         description: preset.data.description || preset.data.situation || '',
         img: preset.data.img || '',
-        statEffects: { ...preset.data.statEffects || {} }
+        statEffects: { ...safeGetStatEffects(preset.data) }
       };
     }
 
@@ -436,14 +539,14 @@
             type: newTemporaryModifierForm.type,
             value: newTemporaryModifierForm.value,
             duration: newTemporaryModifierForm.duration,
-            statEffects: newTemporaryModifierForm.statEffects
+            statEffects: newTemporaryModifierForm.statEffects || {}
           } : editingPreset.type === 'situationalModifier' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newSituationalModifierForm.name,
             description: newSituationalModifierForm.description,
             situation: newSituationalModifierForm.description, // Usar description como situation
             img: newSituationalModifierForm.img,
-            statEffects: newSituationalModifierForm.statEffects
+            statEffects: newSituationalModifierForm.statEffects || {}
           } : editingPreset.data
         };
 
@@ -465,14 +568,13 @@
 
     // Obtener el preset actualizado del store para emitir el evento
     let updatedPreset = null;
-    presetsStore.subscribe(currentPresets => {
-      const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
-                          editingPreset.type === 'reputation' ? currentPresets.reputations :
-                          editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
-                          currentPresets.situationalModifiers;
+    const currentPresets = presets; // Use the current presets from our local state
+    const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
+                        editingPreset.type === 'reputation' ? currentPresets.reputations :
+                        editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                        currentPresets.situationalModifiers;
 
-      updatedPreset = presetsArray.find(p => p.id === editingPreset.id);
-    })();
+    updatedPreset = presetsArray.find(p => p.id === editingPreset.id);
 
     // Emit event for preset updated with the updated preset
     console.log('PresetPopup - Emitiendo evento presetUpdated:', { preset: updatedPreset || editingPreset });
@@ -537,24 +639,46 @@
     console.log('Item sourceId:', item.sourceId);
     console.log('Item statEffects:', item.statEffects);
 
+    // Validar que el item tenga la estructura correcta
+    if (!item || typeof item !== 'object') {
+      console.warn('Invalid item for preset creation:', item);
+      return;
+    }
+
     // Asegurar que el item tenga un sourceId válido
     if (!item.sourceId || item.sourceId === '') {
       item.sourceId = item.key || generateUUID();
       console.log('Generated new sourceId for item:', item.sourceId);
     }
 
+    // Validar que presets tenga la estructura correcta
+    if (!presets || typeof presets !== 'object') {
+      console.warn('Invalid presets structure:', presets);
+      return;
+    }
+
     // Check if preset already exists with same sourceId
     if (item.sourceId) {
-      const existingPreset = presets[type === 'resource' ? 'resources' :
-                                    type === 'reputation' ? 'reputations' :
-                                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                                    'situationalModifiers']
-        .find(p => p.data.sourceId === item.sourceId);
+      const presetsArray = type === 'resource' ? presets.resources :
+                          type === 'reputation' ? presets.reputations :
+                          type === 'temporaryModifier' ? presets.temporaryModifiers :
+                          presets.situationalModifiers;
+
+      // Validar que el array de presets exista
+      if (!Array.isArray(presetsArray)) {
+        console.warn('Invalid presets array for type:', type, presetsArray);
+        return;
+      }
+
+      const existingPreset = presetsArray.find(p => p.data && p.data.sourceId === item.sourceId);
 
       if (existingPreset) {
         console.log('Preset already exists, updating instead of creating new:', existingPreset);
-        // Update existing preset
-        existingPreset.data = { ...item };
+        // Update existing preset with safe data handling
+        existingPreset.data = { 
+          ...item,
+          statEffects: safeGetStatEffects(item)
+        };
         existingPreset.name = item.name;
         existingPreset.description = item.description || '';
 
@@ -579,7 +703,10 @@
       name: item.name,
       type: type,
       description: item.description || '',
-      data: { ...item },
+      data: { 
+        ...item,
+        statEffects: safeGetStatEffects(item)
+      },
       createdAt: Date.now()
     };
 
@@ -602,6 +729,12 @@
   function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
     console.log('Updating preset from item:', item, 'Type:', type);
 
+    // Validar que el item tenga la estructura correcta
+    if (!item || typeof item !== 'object') {
+      console.warn('Invalid item for preset update:', item);
+      return false;
+    }
+
     // Asegurar que el item tenga un sourceId válido
     if (!item.sourceId || item.sourceId === '') {
       item.sourceId = item.key || generateUUID();
@@ -611,11 +744,25 @@
     // Only update if preset exists with same sourceId
     if (item.key || item.sourceId) {
       const sourceId = item.sourceId || item.key;
-      const existingPreset = presets[type === 'resource' ? 'resources' :
-                                    type === 'reputation' ? 'reputations' :
-                                    type === 'temporaryModifier' ? 'temporaryModifiers' :
-                                    'situationalModifiers']
-        .find(p => p.data.sourceId === sourceId);
+      
+      // Validar que presets tenga la estructura correcta
+      if (!presets || typeof presets !== 'object') {
+        console.warn('Invalid presets structure:', presets);
+        return false;
+      }
+
+      const presetsArray = type === 'resource' ? presets.resources :
+                          type === 'reputation' ? presets.reputations :
+                          type === 'temporaryModifier' ? presets.temporaryModifiers :
+                          presets.situationalModifiers;
+
+      // Validar que el array de presets exista
+      if (!Array.isArray(presetsArray)) {
+        console.warn('Invalid presets array for type:', type, presetsArray);
+        return false;
+      }
+
+      const existingPreset = presetsArray.find(p => p.data && p.data.sourceId === sourceId);
 
       if (existingPreset) {
         console.log('Found existing preset, updating:', existingPreset);
@@ -628,7 +775,7 @@
             description: item.description || '',
             situation: item.description || item.situation || existingPreset.data.situation,
             img: item.img || existingPreset.data.img,
-            statEffects: item.statEffects || existingPreset.data.statEffects,
+            statEffects: safeGetStatEffects(item) || safeGetStatEffects(existingPreset.data),
             sourceId: sourceId
           };
         } else {
@@ -639,6 +786,7 @@
             value: item.value,
             description: item.details || item.description || '',
             img: item.img || existingPreset.data.img,
+            statEffects: safeGetStatEffects(item) || safeGetStatEffects(existingPreset.data),
             sourceId: sourceId
           };
         }
@@ -935,18 +1083,18 @@
         <!-- Presets list -->
         <div class="presets-list grid-layout">
           {#if activeTab === 'resources'}
-            {#each presets.resources as preset}
+            {#each presets.resources.filter(p => p && p.data) as preset}
               <div class="preset-item-card resource-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={preset.data.img || 'icons/svg/item-bag.svg'} alt="resource" />
+                <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img', 'icons/svg/item-bag.svg')} alt="resource" />
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.data.name}</div>
-                  {#if preset.data.description && preset.data.description.trim()}
+                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', preset.name || 'Sin nombre')}</div>
+                  {#if safeGetPresetProperty(preset, 'description') && safeGetPresetProperty(preset, 'description').trim()}
                     <div class="preset-item-details">
-                      <p>{preset.data.description}</p>
+                      <p>{safeGetPresetProperty(preset, 'description')}</p>
                     </div>
                   {/if}
                   <div class="preset-item-quantity-container">
-                    <span class="preset-item-quantity">{preset.data.value}</span>
+                    <span class="preset-item-quantity">{safeGetPresetProperty(preset, 'value', 0)}</span>
                   </div>
                 </div>
                 <div class="preset-actions">
@@ -956,22 +1104,22 @@
               </div>
             {/each}
           {:else if activeTab === 'reputations'}
-            {#each presets.reputations as preset}
+            {#each presets.reputations.filter(p => p && p.data) as preset}
               <div class="preset-item-card reputation-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={preset.data.img || 'icons/svg/aura.svg'} alt="reputation" />
+                <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img', 'icons/svg/aura.svg')} alt="reputation" />
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.data.name}</div>
-                  {#if preset.data.description && preset.data.description.trim()}
+                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', preset.name || 'Sin nombre')}</div>
+                  {#if safeGetPresetProperty(preset, 'description') && safeGetPresetProperty(preset, 'description').trim()}
                     <div class="preset-item-details">
-                      <p>{preset.data.description}</p>
+                      <p>{safeGetPresetProperty(preset, 'description')}</p>
                     </div>
                   {/if}
                   <div class="preset-item-bar-container">
                     <div class="preset-item-bar">
-                      <div class="preset-item-fill" style="width: {preset.data.value * 10}%; background: linear-gradient(90deg,
-                        hsl({(preset.data.value / 10) * 120}, 70%, 40%) 0%,
-                        hsl({(preset.data.value / 10) * 120}, 80%, 50%) 50%,
-                        hsl({(preset.data.value / 10) * 120}, 70%, 60%) 100%);">
+                      <div class="preset-item-fill" style="width: {(safeGetPresetProperty(preset, 'value', 0) * 10)}%; background: linear-gradient(90deg,
+                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 70%, 40%) 0%,
+                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 80%, 50%) 50%,
+                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 70%, 60%) 100%);">
                       </div>
                       {#each Array(11) as _, j}
                         <div class="preset-item-tick" style="left: {j * 10}%;"></div>
@@ -986,20 +1134,20 @@
               </div>
             {/each}
           {:else if activeTab === 'temporaryModifiers'}
-            {#each presets.temporaryModifiers as preset}
+            {#each presets.temporaryModifiers.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>
                   <div class="preset-item-details">
-                    <p><strong>Tipo:</strong> {preset.data.type} | <strong>Duración:</strong> {preset.data.duration}</p>
+                    <p><strong>Tipo:</strong> {safeGetPresetProperty(preset, 'type', 'buff')} | <strong>Duración:</strong> {safeGetPresetProperty(preset, 'duration', '1 turno')}</p>
                     {#if preset.description}
                       <p class="description">{preset.description}</p>
                     {/if}
-                    {#if game?.user?.isGM && preset.data.sourceId}
-                      <span class="source-id-debug">sourceId: {preset.data.sourceId}</span>
+                    {#if game?.user?.isGM && safeGetPresetProperty(preset, 'sourceId')}
+                      <span class="source-id-debug">sourceId: {safeGetPresetProperty(preset, 'sourceId')}</span>
                     {/if}
                     <div class="stat-effects-preview">
-                      {#each Object.entries(preset.data.statEffects) as [statKey, value]}
+                      {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">
@@ -1018,20 +1166,20 @@
               </div>
             {/each}
           {:else if activeTab === 'situationalModifiers'}
-            {#each presets.situationalModifiers as preset}
+            {#each presets.situationalModifiers.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
-                {#if preset.data.img}
-                  <img class="preset-item-image-modifier" src={preset.data.img} alt="situational modifier" />
+                {#if safeGetPresetProperty(preset, 'img')}
+                  <img class="preset-item-image-modifier" src={safeGetPresetProperty(preset, 'img')} alt="situational modifier" />
                 {/if}
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>
                   <div class="preset-item-details">
-                    <p><strong>Descripción:</strong> {preset.data.description || preset.data.situation || ''}</p>
-                    {#if game?.user?.isGM && preset.data.sourceId}
-                      <span class="source-id-debug">sourceId: {preset.data.sourceId}</span>
+                    <p><strong>Descripción:</strong> {safeGetPresetProperty(preset, 'description') || safeGetPresetProperty(preset, 'situation') || ''}</p>
+                    {#if game?.user?.isGM && safeGetPresetProperty(preset, 'sourceId')}
+                      <span class="source-id-debug">sourceId: {safeGetPresetProperty(preset, 'sourceId')}</span>
                     {/if}
                     <div class="stat-effects-preview">
-                      {#each Object.entries(preset.data.statEffects || {}) as [statKey, value]}
+                      {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">

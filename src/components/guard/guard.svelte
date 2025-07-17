@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
-  // FilePicker is provided by Foundry at runtime
+  // FilePicker and game are provided by Foundry at runtime
   declare const FilePicker: any;
+  declare const game: any;
 </script>
 
 <script lang="ts">
@@ -274,6 +275,12 @@
     console.log('Guard.svelte - Recibiendo evento handlePresetUpdated:', event.detail);
     const { preset } = event.detail;
     
+    // Validar que el preset tenga la estructura correcta
+    if (!preset || !preset.type || !preset.data) {
+      console.warn('Guard.svelte - Preset inválido:', preset);
+      return;
+    }
+    
     // Solo procesar presets situacionales
     if (preset.type === 'situationalModifier' && preset.data.sourceId) {
       console.log('Guard.svelte - Procesando preset situacional:', preset);
@@ -290,7 +297,11 @@
         existingModifier.sourceId = preset.data.sourceId; // Asegurar que el sourceId se mantenga
         
         // Determinar el estado basado en los efectos
-        const totalEffect = Object.values(existingModifier.mods).reduce((sum: number, value: number) => sum + value, 0);
+        const modsValues = Object.values(existingModifier.mods || {});
+        const totalEffect = modsValues.reduce((sum: number, value: number) => {
+          const numValue = Number(value) || 0;
+          return sum + numValue;
+        }, 0);
         existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
         
         // Actualizar la lista de modificadores para disparar reactividad

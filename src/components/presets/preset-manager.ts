@@ -40,10 +40,22 @@ export class PresetManager {
   }
 
   private emitEvent(eventType: string, detail: any) {
+    // Validar que el detail tenga la estructura correcta
+    if (!detail || typeof detail !== 'object') {
+      console.warn('PresetManager - Invalid event detail:', detail);
+      return;
+    }
+
     const listeners = this.eventListeners.get(eventType);
-    if (listeners) {
+    if (listeners && Array.isArray(listeners)) {
       const event = new CustomEvent(eventType, { detail });
-      listeners.forEach(listener => listener(event));
+      listeners.forEach(listener => {
+        try {
+          listener(event);
+        } catch (error) {
+          console.error('PresetManager - Error executing event listener:', error);
+        }
+      });
     }
   }
 
@@ -127,6 +139,13 @@ export class PresetManager {
     // Escuchar evento de preset actualizado y propagarlo
     this.activePopup.$on("presetUpdated", (event: any) => {
       console.log('PresetManager - Recibiendo evento presetUpdated del popup:', event.detail);
+      
+      // Validar que el evento tenga la estructura correcta
+      if (!event || !event.detail || !event.detail.preset) {
+        console.warn('PresetManager - Invalid presetUpdated event:', event);
+        return;
+      }
+
       this.emitEvent('presetUpdated', event.detail);
     });
   }

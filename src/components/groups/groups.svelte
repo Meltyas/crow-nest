@@ -2130,7 +2130,7 @@
 
                     <!-- Stats Effects -->
                     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                      {#each Object.entries(modifier.statEffects) as [statKey, value]}
+                      {#each Object.entries(modifier.statEffects || {}) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat}
                           <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(155, 89, 182, 0.15); border: 1px solid #9b59b6; border-radius: 6px;">
