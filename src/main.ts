@@ -171,7 +171,10 @@ function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
   }
 
   // Check if sheet is meant for current user (optional targeting)
-  if (sheetData.targetUsers && !sheetData.targetUsers.includes((game as any).user?.id)) {
+  if (
+    sheetData.targetUsers &&
+    !sheetData.targetUsers.includes((game as any).user?.id)
+  ) {
     return false;
   }
 
@@ -355,7 +358,7 @@ Hooks.once("ready", () => {
   };
 
   // Initialize preset manager to ensure it's available for all users
-  import('@/components/presets/preset-manager').then(({ presetManager }) => {
+  import("@/components/presets/preset-manager").then(({ presetManager }) => {
     // No need to do anything with it, just importing it will initialize it
   });
 

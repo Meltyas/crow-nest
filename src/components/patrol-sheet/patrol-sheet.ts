@@ -121,6 +121,20 @@ export class PatrolSheetManager {
       unsubscribe(); // Immediately unsubscribe after getting the current value
 
       await persistGroups(currentGroups);
+
+      // Auto-sync with presets when group is updated
+      try {
+        const { PresetManager } = await import(
+          "@/components/presets/preset-manager"
+        );
+        const presetManager = PresetManager.getInstance();
+        await presetManager.updatePresetDirectly(updatedGroup.id, updatedGroup);
+      } catch (presetError) {
+        console.warn(
+          "[PatrolSheetManager] Could not sync with presets:",
+          presetError
+        );
+      }
     } catch (error) {
       console.error("[PatrolSheetManager] Error updating group:", error);
     }

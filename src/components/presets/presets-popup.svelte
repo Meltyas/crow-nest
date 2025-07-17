@@ -64,15 +64,15 @@
     type: 'buff',
     value: 0,
     duration: '1 turno',
-    statEffects: {}
+    statEffects: {} as Record<string, number>
   };
 
   let newSituationalModifierForm = {
     name: '',
     description: '',
-    modifier: 0,
     situation: '',
-    img: ''
+    img: '',
+    statEffects: {} as Record<string, number>
   };
 
   let showCreateForm = false;
@@ -240,12 +240,15 @@
         data: {
           name: newSituationalModifierForm.name,
           description: newSituationalModifierForm.description,
-          modifier: newSituationalModifierForm.modifier,
           situation: newSituationalModifierForm.situation,
-          img: newSituationalModifierForm.img
+          img: newSituationalModifierForm.img,
+          statEffects: newSituationalModifierForm.statEffects
         },
         createdAt: Date.now()
       };
+    } else {
+      console.error('Unknown preset type:', type);
+      return;
     }
 
     addPreset(preset);
@@ -256,9 +259,9 @@
     } else if (type === 'reputation') {
       newReputationForm = { name: '', value: 0, description: '', img: '' };
     } else if (type === 'temporaryModifier') {
-      newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} };
+      newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
     } else if (type === 'situationalModifier') {
-      newSituationalModifierForm = { name: '', description: '', modifier: 0, situation: '', img: '' };
+      newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} as Record<string, number> };
     }
 
     showCreateForm = false;
@@ -355,9 +358,9 @@
       newSituationalModifierForm = {
         name: preset.data.name,
         description: preset.data.description || '',
-        modifier: preset.data.modifier,
         situation: preset.data.situation,
-        img: preset.data.img || ''
+        img: preset.data.img || '',
+        statEffects: { ...preset.data.statEffects || {} }
       };
     }
 
@@ -372,8 +375,8 @@
     // Reset forms
     newResourceForm = { name: '', value: 0, description: '', img: '' };
     newReputationForm = { name: '', value: 0, description: '', img: '' };
-    newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} };
-    newSituationalModifierForm = { name: '', description: '', modifier: 0, situation: '', img: '' };
+    newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
+    newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} as Record<string, number> };
   }
 
   function saveEdit() {
@@ -402,9 +405,9 @@
       } : editingPreset.type === 'situationalModifier' ? {
         name: newSituationalModifierForm.name,
         description: newSituationalModifierForm.description,
-        modifier: newSituationalModifierForm.modifier,
         situation: newSituationalModifierForm.situation,
-        img: newSituationalModifierForm.img
+        img: newSituationalModifierForm.img,
+        statEffects: newSituationalModifierForm.statEffects
       } : editingPreset.data
     };
 
@@ -428,6 +431,16 @@
   function removeStatEffect(statKey: string) {
     delete newTemporaryModifierForm.statEffects[statKey];
     newTemporaryModifierForm = { ...newTemporaryModifierForm };
+  }
+
+  function addSituationalStatEffect(statKey: string, value: number) {
+    newSituationalModifierForm.statEffects[statKey] = value;
+    newSituationalModifierForm = { ...newSituationalModifierForm };
+  }
+
+  function removeSituationalStatEffect(statKey: string) {
+    delete newSituationalModifierForm.statEffects[statKey];
+    newSituationalModifierForm = { ...newSituationalModifierForm };
   }
 
   // Functions to open Foundry image picker
@@ -739,7 +752,10 @@
                       <input
                         type="number"
                         value={newTemporaryModifierForm.statEffects[stat.key] || 0}
-                        on:change={(e) => addStatEffect(stat.key, parseInt(e.target.value) || 0)}
+                        on:input={(e) => {
+                          const value = parseInt(e.currentTarget.value) || 0;
+                          addStatEffect(stat.key, value);
+                        }}
                       />
                     </div>
                   {/each}
@@ -758,16 +774,31 @@
                 <input bind:value={newSituationalModifierForm.name} placeholder="Nombre del modificador" />
               </div>
               <div class="form-group">
-                <label>Modificador:</label>
-                <input type="number" bind:value={newSituationalModifierForm.modifier} />
-              </div>
-              <div class="form-group">
                 <label>Situación:</label>
                 <input bind:value={newSituationalModifierForm.situation} placeholder="ej: En combate, Durante la noche" />
               </div>
               <div class="form-group">
                 <label>Descripción:</label>
                 <textarea bind:value={newSituationalModifierForm.description} placeholder="Descripción opcional"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Efectos en Stats:</label>
+                <div class="stat-effects">
+                  {#each stats as stat}
+                    <div class="stat-effect-item">
+                      <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                      <span>{stat.name}</span>
+                      <input
+                        type="number"
+                        value={newSituationalModifierForm.statEffects[stat.key] || 0}
+                        on:input={(e) => {
+                          const value = parseInt(e.currentTarget.value) || 0;
+                          addSituationalStatEffect(stat.key, value);
+                        }}
+                      />
+                    </div>
+                  {/each}
+                </div>
               </div>
               <div class="form-group">
                 <label>Imagen:</label>

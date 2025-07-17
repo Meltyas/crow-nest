@@ -62,6 +62,7 @@
   // Data
   let stats: GuardStat[] = [];
   let groupName: string = '';
+  let showTemporaryModifiers = false;
 
   // Initialize handlers and data
   function updateComponentData() {
@@ -232,15 +233,65 @@
               <h2 class="patrol-name">{groupName}</h2>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-              {#each stats as stat}
-                <button class="stat-button" on:click={() => handlers.handleRollStat(stat)} title="Hacer tirada de {stat.name}">
-                  <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} class="stat-icon" />
-                  <div class="stat-total">{handlers.totalStat(stat, group)}</div>
-                </button>
-              {/each}
+            <!-- Stats Grid with Toggle -->
+            <div class="stats-row">
+              <div class="stats-grid">
+                {#each stats as stat}
+                  <button class="stat-button" on:click={() => handlers.handleRollStat(stat)} title="Hacer tirada de {stat.name}">
+                    <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} class="stat-icon" />
+                    <div class="stat-total">{handlers.totalStat(stat, group)}</div>
+                  </button>
+                {/each}
+              </div>
+
+              <!-- Temporary Modifiers Toggle Button -->
+              {#if group.temporaryModifiers && Object.keys(group.temporaryModifiers).length > 0}
+                <div class="temp-modifiers-toggle">
+                  <button class="toggle-button" on:click={() => showTemporaryModifiers = !showTemporaryModifiers}>
+                    <span class="toggle-icon {showTemporaryModifiers ? 'expanded' : 'collapsed'}">▼</span>
+                  </button>
+                </div>
+              {/if}
             </div>
+
+            <!-- Temporary Modifiers Section -->
+            {#if group.temporaryModifiers && Object.keys(group.temporaryModifiers).length > 0 && showTemporaryModifiers}
+              <div class="temp-modifiers-section">
+                <h4 class="temp-modifiers-title">Modificadores Temporales</h4>
+                <div class="temp-modifiers-list">
+                  {#each Object.entries(group.temporaryModifiers) as [modifierId, modifier]}
+                    <div class="temp-modifier-item">
+                      <div class="modifier-header">
+                        <span class="modifier-name">{modifier.name}</span>
+                      </div>
+
+                      <!-- Show stat effects -->
+                      {#if modifier.statEffects && Object.keys(modifier.statEffects).length > 0}
+                        <div class="modifier-effects">
+                          {#each Object.entries(modifier.statEffects) as [statKey, value]}
+                            {@const stat = stats.find(s => s.key === statKey)}
+                            {#if stat && value !== 0}
+                              <div class="effect-item">
+                                <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} class="effect-stat-icon" />
+                                <span class="effect-stat-name">{stat.name}:</span>
+                                <span class="effect-value {value > 0 ? 'positive' : 'negative'}">
+                                  {value > 0 ? '+' : ''}{value}
+                                </span>
+                              </div>
+                            {/if}
+                          {/each}
+                        </div>
+                      {/if}
+
+                      <!-- Description if exists -->
+                      {#if modifier.description}
+                        <div class="modifier-description">{modifier.description}</div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
 
           <!-- Right Column: Close and Deploy buttons -->

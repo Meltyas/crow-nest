@@ -34,9 +34,9 @@ export interface TemporaryModifierPreset {
 export interface SituationalModifierPreset {
   name: string;
   description?: string;
-  modifier: number;
   situation: string;
   img?: string;
+  statEffects: { [key: string]: number };
 }
 
 export interface PresetCollection {

@@ -25,12 +25,12 @@ export class PresetManager {
     this.isInitialized = true;
 
     // Esperar a que el juego esté listo
-    if (typeof game !== 'undefined' && game.ready) {
+    if (typeof game !== "undefined" && game.ready) {
       this.setupSync();
     } else {
       // Esperar hasta que el juego esté listo
       const waitForGame = () => {
-        if (typeof game !== 'undefined' && game.ready) {
+        if (typeof game !== "undefined" && game.ready) {
           this.setupSync();
         } else {
           setTimeout(waitForGame, 100);
@@ -43,13 +43,13 @@ export class PresetManager {
   private async setupSync() {
     // Importar y configurar la sincronización de presets
     try {
-      const { presetsStore } = await import('@/stores/presets');
+      const { presetsStore } = await import("@/stores/presets");
       // Suscribirse a los cambios en el store para mantener sincronización
       presetsStore.subscribe(() => {
         // Esta suscripción mantiene el store activo y sincronizado
       });
     } catch (error) {
-      console.warn('Error setting up preset sync:', error);
+      console.warn("Error setting up preset sync:", error);
     }
   }
 
@@ -216,11 +216,11 @@ export class PresetManager {
       | "situationalModifier"
   ) {
     // Importar el store de presets dinámicamente
-    const { presetsStore, persistPresets } = await import('@/stores/presets');
-    
+    const { presetsStore, persistPresets } = await import("@/stores/presets");
+
     // Obtener los presets actuales
     let currentPresets: any = null;
-    const unsubscribe = presetsStore.subscribe(presets => {
+    const unsubscribe = presetsStore.subscribe((presets) => {
       currentPresets = presets;
     });
     unsubscribe();
@@ -228,13 +228,19 @@ export class PresetManager {
     if (!currentPresets || !item.key) return;
 
     // Determinar el array de presets según el tipo
-    const presetsArray = type === 'resource' ? currentPresets.resources :
-                        type === 'reputation' ? currentPresets.reputations :
-                        type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
-                        currentPresets.situationalModifiers;
+    const presetsArray =
+      type === "resource"
+        ? currentPresets.resources
+        : type === "reputation"
+          ? currentPresets.reputations
+          : type === "temporaryModifier"
+            ? currentPresets.temporaryModifiers
+            : currentPresets.situationalModifiers;
 
     // Buscar el preset existente con el mismo sourceId
-    const existingPreset = presetsArray.find((p: any) => p.data.sourceId === item.key);
+    const existingPreset = presetsArray.find(
+      (p: any) => p.data.sourceId === item.key
+    );
 
     if (existingPreset) {
       // Actualizar el preset existente
@@ -242,19 +248,19 @@ export class PresetManager {
         ...existingPreset.data,
         name: item.name,
         value: item.value,
-        description: item.details || item.description || '',
-        img: item.img || existingPreset.data.img
+        description: item.details || item.description || "",
+        img: item.img || existingPreset.data.img,
       };
       existingPreset.name = item.name;
-      existingPreset.description = item.details || item.description || '';
+      existingPreset.description = item.details || item.description || "";
 
       // Actualizar el store
-      presetsStore.update(presets => ({ ...presets }));
-      
+      presetsStore.update((presets) => ({ ...presets }));
+
       // IMPORTANTE: Persistir los cambios para que se sincronicen
       await persistPresets(currentPresets);
 
-      console.log('Preset updated directly:', existingPreset);
+      console.log("Preset updated directly:", existingPreset);
     }
   }
 }

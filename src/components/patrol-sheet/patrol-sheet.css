@@ -357,3 +357,145 @@
 .crow-nest-patrol .hope-circle-compact:hover .hope-circle-filled-compact {
   background: #ffd700;
 }
+
+/* Stats Row Container */
+.crow-nest-patrol .stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Temporary Modifiers Toggle */
+.crow-nest-patrol .temp-modifiers-toggle {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.crow-nest-patrol .toggle-button {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: #d4af37;
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 0.25rem;
+}
+
+.crow-nest-patrol .toggle-button:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.crow-nest-patrol .toggle-icon {
+  font-size: 0.6em;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.crow-nest-patrol .toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.crow-nest-patrol .toggle-icon.collapsed {
+  transform: rotate(90deg);
+}
+
+.crow-nest-patrol .toggle-text {
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+/* Temporary Modifiers Section */
+.crow-nest-patrol .temp-modifiers-section {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.crow-nest-patrol .temp-modifiers-title {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #d4af37;
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+
+.crow-nest-patrol .temp-modifiers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crow-nest-patrol .temp-modifier-item {
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  border-left: 2px solid #d4af37;
+}
+
+.crow-nest-patrol .modifier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.crow-nest-patrol .modifier-name {
+  font-weight: 600;
+  color: #d4af37;
+  font-size: 0.8em;
+}
+
+.crow-nest-patrol .modifier-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.crow-nest-patrol .effect-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  font-size: 0.75em;
+}
+
+.crow-nest-patrol .effect-stat-icon {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.crow-nest-patrol .effect-stat-name {
+  color: #ccc;
+  font-weight: 500;
+}
+
+.crow-nest-patrol .effect-value.positive {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.crow-nest-patrol .effect-value.negative {
+  color: #f44336;
+  font-weight: 600;
+}
+
+.crow-nest-patrol .modifier-description {
+  font-size: 0.7em;
+  color: #aaa;
+  font-style: italic;
+  margin-top: 2px;
+  line-height: 1.2;
+}

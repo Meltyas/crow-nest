@@ -63,9 +63,9 @@
   let newSituationalModifierForm = {
     name: '',
     description: '',
-    modifier: 0,
     situation: '',
-    img: ''
+    img: '',
+    statEffects: {}
   };
 
   let showCreateForm = false;
@@ -214,9 +214,9 @@
         data: {
           name: newSituationalModifierForm.name,
           description: newSituationalModifierForm.description,
-          modifier: newSituationalModifierForm.modifier,
           situation: newSituationalModifierForm.situation,
-          img: newSituationalModifierForm.img
+          img: newSituationalModifierForm.img,
+          statEffects: newSituationalModifierForm.statEffects
         },
         createdAt: Date.now()
       };
@@ -232,7 +232,7 @@
     } else if (type === 'temporaryModifier') {
       newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} };
     } else if (type === 'situationalModifier') {
-      newSituationalModifierForm = { name: '', description: '', modifier: 0, situation: '', img: '' };
+      newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} };
     }
 
     showCreateForm = false;
@@ -347,7 +347,7 @@
     newResourceForm = { name: '', value: 0, description: '', img: '' };
     newReputationForm = { name: '', value: 0, description: '', img: '' };
     newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} };
-    newSituationalModifierForm = { name: '', description: '', modifier: 0, situation: '', img: '' };
+    newSituationalModifierForm = { name: '', description: '', situation: '', img: '', statEffects: {} };
   }
 
   function saveEdit() {
@@ -376,9 +376,9 @@
       } : editingPreset.type === 'situationalModifier' ? {
         name: newSituationalModifierForm.name,
         description: newSituationalModifierForm.description,
-        modifier: newSituationalModifierForm.modifier,
         situation: newSituationalModifierForm.situation,
-        img: newSituationalModifierForm.img
+        img: newSituationalModifierForm.img,
+        statEffects: newSituationalModifierForm.statEffects
       } : editingPreset.data
     };
 
