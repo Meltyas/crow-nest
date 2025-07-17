@@ -80,8 +80,6 @@
 
     // Subscribe to store changes to keep the group data in sync
     unsubscribeFromStore = groupsStore.subscribe(groups => {
-      console.log('[PatrolSheet] Store updated, checking for group changes...', groups ? groups.length : 'undefined');
-
       // Validate that groups is an array
       if (!Array.isArray(groups)) {
         console.warn('[PatrolSheet] Received invalid groups data:', groups);
@@ -92,7 +90,6 @@
       if (updatedGroup) {
         // Update the group data if it has changed
         if (JSON.stringify(updatedGroup) !== JSON.stringify(group)) {
-          console.log('[PatrolSheet] Group data changed, updating...', updatedGroup);
           group = { ...updatedGroup };
           // Update handlers with the new group data
           if (handlers) {
@@ -128,14 +125,11 @@
   }
 
   function setHopeLevel(level: number) {
-    console.log('[PatrolSheet] Setting hope level to:', level);
     const maxHope = group.maxHope || 3;
     group.hope = Math.min(level, maxHope); // Ensure hope doesn't exceed maxHope
-    console.log('[PatrolSheet] Updated group.hope to:', group.hope);
 
     // Dispatch update to parent component
     dispatch('updateGroup', group);
-    console.log('[PatrolSheet] Dispatched updateGroup event');
   }
 
   // Drag functions

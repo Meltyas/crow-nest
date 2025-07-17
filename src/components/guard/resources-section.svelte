@@ -152,8 +152,6 @@
       }
 
       dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex: newIndex });
-    } else {
-      console.log('❌ NO REORDER - same index or null draggedIndex');
     }
 
     draggedIndex = null;

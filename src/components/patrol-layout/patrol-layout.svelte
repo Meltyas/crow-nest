@@ -6,7 +6,7 @@
   export let editing: boolean = false;
   export let labels = {
     officerDrop: 'Drag an officer here',
-    soldierDrop: 'Drag soldiers here',
+    unitDrop: 'Drag units here',
   };
 
   const dispatch = createEventDispatcher();
@@ -108,8 +108,7 @@
           {/if}
         {:else}
           <div class="formation-placeholder">
-            <div class="formation-icon">🛡️</div>
-            <div class="formation-label">Soldier</div>
+            <div class="formation-label">Token</div>
           </div>
         {/if}
       </div>
@@ -597,7 +596,8 @@
     height: 50px;
     border-radius: 50%;
     border: 2px solid #d4af37;
-    background: rgba(255, 255, 255, 0.9);
+    background: #000000;
+    color: #ffffff;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -664,6 +664,7 @@
   }
 
   .formation-label {
+    color: #ffffff;
     font-size: 0.6rem;
     text-align: center;
     line-height: 1;

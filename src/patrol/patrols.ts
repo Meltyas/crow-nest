@@ -9,18 +9,7 @@ export type Patrol = Group;
 export function getPatrols(): Patrol[] {
   const stored =
     (game.settings.get(MODULE_ID, SETTING_PATROLS) as Patrol[]) ?? [];
-  console.log("getPatrols - raw stored data:", stored);
   const result = stored.map((p) => ({ mods: {}, ...p }));
-  console.log("getPatrols - processed result:", result);
-  console.log(
-    "getPatrols - temporaryModifiers details:",
-    result.map((p) => ({
-      id: p.id,
-      name: p.name,
-      temporaryModifiers: p.temporaryModifiers,
-      temporaryModifiersKeys: Object.keys(p.temporaryModifiers || {}),
-    }))
-  );
   return result;
 }
 

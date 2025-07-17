@@ -101,11 +101,6 @@ export class PatrolSheetManager {
   // Update group data and persist changes
   async updateGroup(updatedGroup: Group) {
     try {
-      console.log(
-        "[PatrolSheetManager] updateGroup called with:",
-        updatedGroup
-      );
-
       // Import the required functions
       const { groupsStore, persistGroups } = await import("@/stores/groups");
 
@@ -113,7 +108,6 @@ export class PatrolSheetManager {
       groupsStore.update((groups) => {
         const groupIndex = groups.findIndex((g) => g.id === updatedGroup.id);
         if (groupIndex !== -1) {
-          console.log("[PatrolSheetManager] Found group at index:", groupIndex);
           groups[groupIndex] = { ...groups[groupIndex], ...updatedGroup };
         }
         return groups;
@@ -126,13 +120,7 @@ export class PatrolSheetManager {
       });
       unsubscribe(); // Immediately unsubscribe after getting the current value
 
-      console.log("[PatrolSheetManager] About to persist groups");
       await persistGroups(currentGroups);
-
-      console.log(
-        "[PatrolSheetManager] Group updated and persisted:",
-        updatedGroup
-      );
     } catch (error) {
       console.error("[PatrolSheetManager] Error updating group:", error);
     }
@@ -191,14 +179,14 @@ export class PatrolSheetManager {
 
   // Función común para deploy de patrullas (reutilizable)
   async deployPatrolFromSheet(group: Group) {
-    if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
+    if (!group.officer && (!group.units || group.units.length === 0)) {
       (ui as any).notifications?.warn("No members in the group to deploy");
       return;
     }
 
     const members = [] as any[];
     if (group.officer) members.push(group.officer);
-    members.push(...group.soldiers);
+    members.push(...group.units);
 
     // Get canvas position (center of canvas view)
     const canvas = (game as any).canvas;

@@ -190,22 +190,11 @@ Hooks.once("ready", () => {
   Hooks.on(
     "updateSetting",
     (setting: any, value: any, options: any, userId: string) => {
-      console.log("[Main] Setting updated:", setting.key, "by user:", userId);
-
       // Handle main patrols data changes - this is where the real data lives
       if (setting.key === `${MODULE_ID}.patrols`) {
-        console.log("[Main] Patrols data updated, triggering groups sync");
         const currentUserId = game.user?.id;
         if (userId !== currentUserId) {
           // Update the groups store with the new data
-          console.log("[Main] Updating groups store with new patrol data");
-          console.log("[Main] Patrol data value:", value);
-          console.log(
-            "[Main] Value type:",
-            typeof value,
-            "isArray:",
-            Array.isArray(value)
-          );
 
           // Parse the actual data from Foundry's setting structure
           let actualData = value;
@@ -218,7 +207,6 @@ Hooks.once("ready", () => {
             typeof value.value === "string"
           ) {
             try {
-              console.log("[Main] Parsing JSON from value.value");
               actualData = JSON.parse(value.value);
             } catch (error) {
               console.error(
@@ -231,7 +219,6 @@ Hooks.once("ready", () => {
           // If it's already a string, try to parse it
           else if (typeof value === "string") {
             try {
-              console.log("[Main] Parsing JSON from string value");
               actualData = JSON.parse(value);
             } catch (error) {
               console.error("[Main] Error parsing JSON from string:", error);
@@ -239,17 +226,8 @@ Hooks.once("ready", () => {
             }
           }
 
-          console.log("[Main] Parsed actual data:", actualData);
-          console.log(
-            "[Main] Actual data type:",
-            typeof actualData,
-            "isArray:",
-            Array.isArray(actualData)
-          );
-
           // Validate that the parsed data is an array before setting it
           if (Array.isArray(actualData)) {
-            console.log("[Main] Parsed data is valid array, updating store");
             import("@/stores/groups").then(({ groupsStore }) => {
               groupsStore.set(actualData);
             });
@@ -261,13 +239,9 @@ Hooks.once("ready", () => {
 
       // Handle sync events for other types
       else if (setting.key === `${MODULE_ID}.syncEvent`) {
-        console.log("[Main] Received sync event via settings:", value);
-
         // Don't process events from the same user (avoid loops)
         const currentUserId = game.user?.id;
         if (userId !== currentUserId && value) {
-          console.log("[Main] Processing remote sync event");
-
           // Parse the actual event from the value
           let actualEvent;
           try {
@@ -284,7 +258,6 @@ Hooks.once("ready", () => {
               actualEvent = value;
             }
 
-            console.log("[Main] Parsed event:", actualEvent);
             groupsSyncManager.handleRemoteEvent(actualEvent);
           } catch (error) {
             console.error(
@@ -294,10 +267,6 @@ Hooks.once("ready", () => {
               value
             );
           }
-        } else {
-          console.log(
-            "[Main] Ignoring sync event from same user or empty value"
-          );
         }
       }
     }
@@ -383,7 +352,7 @@ Hooks.once("ready", () => {
             id: "test",
             name: "Test Group",
             officer: null,
-            soldiers: [],
+            units: [],
             mods: {},
           },
         ],
@@ -446,7 +415,7 @@ Hooks.on("dropCanvasData", async (canvas: any, data: any) => {
 
   const members = [] as any[];
   if (patrol.officer) members.push(patrol.officer);
-  members.push(...patrol.soldiers);
+  members.push(...patrol.units);
 
   const grid = canvas.grid.size;
   let offsetX = 0;
@@ -580,7 +549,7 @@ if (typeof globalThis !== "undefined") {
         id: "test-patrol-123",
         name: "Test Patrol",
         officer: { name: "Test Officer", img: "icons/svg/mystery-man.svg" },
-        soldiers: [],
+        units: [],
         mods: {},
       };
 
@@ -706,15 +675,10 @@ async function cleanupOldButtonRecords() {
       "usedRollButtons",
       cleanedButtons
     );
-    console.log(
-      `Cleaned up ${usedButtons.length - cleanedButtons.length} old button records`
-    );
   }
 }
 
 async function handleAddHope(groupId: string) {
-  console.log("[Main] handleAddHope called for group:", groupId);
-
   // Import the store functions
   const { groupsStore, persistGroups } = await import("@/stores/groups");
 
@@ -735,8 +699,6 @@ async function handleAddHope(groupId: string) {
   const group = currentGroups[groupIndex];
   const newHope = Math.min((group.hope || 0) + 1, group.maxHope || 6);
 
-  console.log("[Main] Updating hope from", group.hope, "to", newHope);
-
   // Update the group
   currentGroups[groupIndex] = { ...group, hope: newHope };
 
@@ -747,26 +709,20 @@ async function handleAddHope(groupId: string) {
   ui.notifications?.info(
     `Added Hope to ${group.name || "Patrol"}. Hope: ${newHope}/${group.maxHope || 6}`
   );
-
-  console.log("[Main] Hope update completed");
 }
 
 async function handleAddFear() {
   const game_global = globalThis.game as any;
 
   if (game_global.system?.id === "daggerheart") {
-    console.log("Detected Daggerheart system, attempting to add Fear...");
-
     try {
       // Use the correct setting name: "ResourcesFear" (not "Resources.Fear")
       const currentFear =
         (game as any).settings.get("daggerheart", "ResourcesFear") || 0;
-      console.log("Current Fear value:", currentFear);
 
       // Use default max fear of 12
       const maxFear = 12;
       const newFear = Math.min(Number(currentFear) + 1, maxFear);
-      console.log(`Updating Fear from ${currentFear} to ${newFear}`);
 
       // Update the Fear setting
       await (game as any).settings.set("daggerheart", "ResourcesFear", newFear);
@@ -781,8 +737,6 @@ async function handleAddFear() {
           <strong style="color: #dc3545;">Fear increased to ${newFear}/${maxFear}</strong>
         </div>`,
       });
-
-      console.log("Fear successfully updated!");
     } catch (error) {
       console.error("Failed to update Daggerheart Fear:", error);
       ui.notifications?.warn(

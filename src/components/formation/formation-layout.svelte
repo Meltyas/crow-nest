@@ -2,39 +2,39 @@
   import type { GroupMember } from '@/shared/group';
   import { createEventDispatcher } from 'svelte';
 
-  export let soldiers: (GroupMember | null)[] = [];
-  export let maxSoldiers: number = 5;
+  export let units: (GroupMember | null)[] = [];
+  export let maxUnits: number = 5;
   export let editing: boolean = false;
   export let labels = {
-    soldierDrop: 'Drag soldiers here'
+    unitDrop: 'Drag units here'
   };
 
   const dispatch = createEventDispatcher();
 
-  // Ensure soldiers array has the correct number of slots
+  // Ensure units array has the correct number of slots
   $: {
-    while (soldiers.length < maxSoldiers) {
-      soldiers.push(null);
+    while (units.length < maxUnits) {
+      units.push(null);
     }
-    if (soldiers.length > maxSoldiers) {
-      soldiers = soldiers.slice(0, maxSoldiers);
+    if (units.length > maxUnits) {
+      units = units.slice(0, maxUnits);
     }
   }
 
   function handleDrop(event: DragEvent, position: number) {
     event.preventDefault();
-    dispatch('dropSoldier', { event, position });
+    dispatch('dropUnit', { event, position });
   }
 
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
   }
 
-  function removeSoldier(position: number) {
-    dispatch('removeSoldier', { position });
+  function removeUnit(position: number) {
+    dispatch('removeUnit', { position });
   }
 
-  // Formation layouts for different soldier counts
+  // Formation layouts for different unit counts
   function getFormationLayout(count: number) {
     switch (count) {
       case 0:
@@ -77,42 +77,42 @@
     }
   }
 
-  $: formation = getFormationLayout(maxSoldiers);
+  $: formation = getFormationLayout(maxUnits);
 </script>
 
 <div class="formation-container {formation.class}">
-  {#if maxSoldiers === 0}
+  {#if maxUnits === 0}
     <div class="empty-formation">
       <i class="fas fa-user-slash"></i>
-      <span>No soldiers</span>
+      <span>No units</span>
     </div>
   {:else}
     {#each formation.rows as row, rowIndex}
       <div class="formation-row" data-row={rowIndex}>
         {#each row as position}
           <div
-            class="soldier-slot {soldiers[position] ? 'occupied' : 'empty'}"
+            class="unit-slot {units[position] ? 'occupied' : 'empty'}"
             data-position={position}
             on:drop={(e) => handleDrop(e, position)}
             on:dragover={handleDragOver}
             role="button"
             tabindex="0"
-            aria-label={soldiers[position] ? `Soldier: ${soldiers[position]?.name}` : labels.soldierDrop}
+            aria-label={units[position] ? `Unit: ${units[position]?.name}` : labels.unitDrop}
           >
-            {#if soldiers[position]}
-              <div class="soldier-card">
+            {#if units[position]}
+              <div class="unit-card">
                 <img
-                  src={soldiers[position]?.img || 'icons/svg/mystery-man.svg'}
-                  alt={soldiers[position]?.name || 'Soldier'}
-                  class="soldier-image"
+                  src={units[position]?.img || 'icons/svg/mystery-man.svg'}
+                  alt={units[position]?.name || 'Unit'}
+                  class="unit-image"
                 />
-                <div class="soldier-name">{soldiers[position]?.name || 'Unknown'}</div>
+                <div class="unit-name">{units[position]?.name || 'Unknown'}</div>
                 {#if editing}
                   <button
-                    class="remove-soldier-btn"
-                    on:click={() => removeSoldier(position)}
+                    class="remove-unit-btn"
+                    on:click={() => removeUnit(position)}
                     type="button"
-                    aria-label="Remove soldier"
+                    aria-label="Remove unit"
                   >
                     <i class="fas fa-times"></i>
                   </button>
@@ -121,7 +121,7 @@
             {:else}
               <div class="empty-slot">
                 <i class="fas fa-plus"></i>
-                <span class="drop-hint">{labels.soldierDrop}</span>
+                <span class="drop-hint">{labels.unitDrop}</span>
               </div>
             {/if}
           </div>
@@ -165,7 +165,7 @@
     justify-content: center;
   }
 
-  .soldier-slot {
+  .unit-slot {
     width: 60px;
     height: 60px;
     border: 2px solid #666;
@@ -178,22 +178,22 @@
     background: rgba(255, 255, 255, 0.05);
   }
 
-  .soldier-slot.empty {
+  .unit-slot.empty {
     border-style: dashed;
     cursor: pointer;
   }
 
-  .soldier-slot.empty:hover {
+  .unit-slot.empty:hover {
     border-color: #4a90e2;
     background: rgba(74, 144, 226, 0.1);
   }
 
-  .soldier-slot.occupied {
+  .unit-slot.occupied {
     border-color: #4a90e2;
     background: rgba(74, 144, 226, 0.2);
   }
 
-  .soldier-card {
+  .unit-card {
     width: 100%;
     height: 100%;
     display: flex;
@@ -204,7 +204,7 @@
     gap: 2px;
   }
 
-  .soldier-image {
+  .unit-image {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -212,7 +212,7 @@
     border: 1px solid #666;
   }
 
-  .soldier-name {
+  .unit-name {
     font-size: 0.6rem;
     color: #fff;
     text-align: center;
@@ -223,7 +223,7 @@
     white-space: nowrap;
   }
 
-  .remove-soldier-btn {
+  .remove-unit-btn {
     position: absolute;
     top: -4px;
     right: -4px;
@@ -241,7 +241,7 @@
     transition: all 0.2s ease;
   }
 
-  .remove-soldier-btn:hover {
+  .remove-unit-btn:hover {
     background: #c82333;
     transform: scale(1.1);
   }
@@ -295,7 +295,7 @@
   }
 
   /* Drag and drop states */
-  .soldier-slot[data-drag-over="true"] {
+  .unit-slot[data-drag-over="true"] {
     border-color: #28a745;
     background: rgba(40, 167, 69, 0.2);
     transform: scale(1.05);
@@ -307,12 +307,12 @@
       padding: 0.5rem;
     }
 
-    .soldier-slot {
+    .unit-slot {
       width: 50px;
       height: 50px;
     }
 
-    .soldier-image {
+    .unit-image {
       width: 24px;
       height: 24px;
     }

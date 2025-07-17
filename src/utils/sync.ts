@@ -93,21 +93,16 @@ export class SyncManager {
 
   // Broadcast a change to all connected players
   async broadcast(event: SyncEvent) {
-    console.log("[SyncManager] Broadcasting event directly:", event);
-
     // For groups/patrols data, save directly to the main setting
     // This will trigger updateSetting hook on all clients
     if (event.type === "groups" || event.type === "patrols") {
-      console.log("[SyncManager] Saving groups/patrols data directly");
       try {
         await (game as any).settings.set(MODULE_ID, "patrols", event.data);
-        console.log("[SyncManager] Groups/patrols data saved successfully");
       } catch (error) {
         console.error("[SyncManager] Error saving groups/patrols data:", error);
       }
     } else {
       // For other types, use the sync setting
-      console.log("[SyncManager] Using sync setting for type:", event.type);
       await this.saveSyncEvent(event);
     }
 
@@ -125,9 +120,7 @@ export class SyncManager {
         timestamp: Date.now(),
       };
 
-      console.log("[SyncManager] Setting sync event in Foundry settings");
       await (game as any).settings.set(MODULE_ID, "syncEvent", uniqueEvent);
-      console.log("[SyncManager] Sync event set successfully");
     } catch (error) {
       console.error("[SyncManager] Error setting sync event:", error);
     }
@@ -135,54 +128,26 @@ export class SyncManager {
 
   // Handle incoming sync events from other players
   handleRemoteEvent(event: SyncEvent) {
-    console.log("[SyncManager] Received remote event:", event);
     this.notifyLocalListeners(event);
   }
 
   private notifyLocalListeners(event: SyncEvent) {
-    console.log(
-      "[SyncManager] notifyLocalListeners called with event type:",
-      event.type
-    );
-
     // Check for registered event handlers first
     const handler = this.eventHandlers.get(event.type);
     if (handler) {
-      console.log("[SyncManager] Found event handler for type:", event.type);
       handler(event);
-    } else {
-      console.log("[SyncManager] No event handler found for type:", event.type);
     }
 
     const callbacks = this.listeners.get(event.type);
     if (callbacks) {
-      console.log(
-        "[SyncManager] Found",
-        callbacks.length,
-        "listeners for type:",
-        event.type
-      );
       callbacks.forEach((callback) => callback(event));
-    } else {
-      console.log("[SyncManager] No listeners found for type:", event.type);
     }
 
     // Also notify 'all' listeners
     const allCallbacks = this.listeners.get("all");
     if (allCallbacks) {
-      console.log(
-        "[SyncManager] Found",
-        allCallbacks.length,
-        "listeners for type: all"
-      );
       allCallbacks.forEach((callback) => callback(event));
     }
-
-    console.log("[SyncManager] Current listeners map:", this.listeners);
-    console.log(
-      "[SyncManager] Current event handlers map:",
-      this.eventHandlers
-    );
   }
 }
 
@@ -203,15 +168,11 @@ export function createSyncEvent(
 
 // Initialize settings-based sync listener (to be called from main.ts)
 export function initializeSync() {
-  console.log("[Sync] Settings-based sync system setup completed");
   // The actual hook registration is done in main.ts where Hooks is available
 }
 
 // Cleanup function (no longer needed for settings-based sync)
 export function cleanupSync() {
-  console.log(
-    "[Sync] Cleanup called - settings-based sync requires no cleanup"
-  );
   // Settings-based sync uses Foundry's built-in hooks
   // No manual cleanup required
 }

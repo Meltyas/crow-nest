@@ -465,7 +465,7 @@
                   on:repFileChange={handlers.handleRepFileChange}
                   on:showReputationInChat={handlers.handleShowReputationInChat}
                   on:toggleReputationDetails={handlers.handleToggleReputationDetails}
-                  on:reorderReputation={(e) => { console.log('🔗 GUARD INTERCEPTED reorderReputation:', e.detail); handlers.reorderReputation(e); }}
+                  on:reorderReputation={(e) => { handlers.reorderReputation(e); }}
                 />
 
               <!-- Resources Tab -->
@@ -482,7 +482,7 @@
                   on:newResImageClick={handlers.handleNewResImageClick}
                   on:resFileChange={handlers.handleResFileChange}
                   on:showResourceInChat={handlers.showResourceInChat}
-                  on:reorderResources={(e) => { console.log('🔗 GUARD INTERCEPTED reorderResources:', e.detail); handlers.reorderResources(e); }}
+                  on:reorderResources={(e) => { handlers.reorderResources(e); }}
                 />
               {/if}
             </div>
@@ -497,7 +497,7 @@
                 addGroup: 'Add Patrol',
                 removeGroup: 'Remove Patrol',
                 officerDrop: 'Drag an officer here',
-                soldierDrop: 'Drag soldiers here',
+                soldierDrop: 'Drag units here',
               }}
             />
 

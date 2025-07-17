@@ -29,12 +29,12 @@ export interface Group {
   id: string;
   name: string;
   officer: GroupMember | null;
-  soldiers: GroupMember[];
+  units: GroupMember[];
   mods: Record<string, number>;
   skills: GroupSkill[];
   experiences: GroupExperience[];
   temporaryModifiers: GroupTemporaryModifiers;
-  maxSoldiers: number;
+  maxUnits: number;
   hope: number; // 0-6 hope level
   maxHope: number; // 1-6 maximum hope level
 }

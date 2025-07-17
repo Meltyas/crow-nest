@@ -30,7 +30,7 @@
     addGroup: 'Add Patrol',
     removeGroup: 'Remove Patrol',
     officerDrop: 'Drag Officer here',
-    soldierDrop: 'Drag soldiers here',
+    soldierDrop: 'Drag units here',
   };
   export let isAdminMode = false; // Flag to detect if we're in admin mode
   export let sectionTitle = ''; // Optional section title
@@ -65,12 +65,12 @@
       adminsStore.set(admins);
     }
 
-    // Migrate existing groups to have maxSoldiers, hope and maxHope if they don't have them
+    // Migrate existing groups to have maxUnits, hope and maxHope if they don't have them
     let needsUpdate = false;
     const currentGroups = [...groups];
     for (const group of currentGroups) {
-      if (group.maxSoldiers === undefined) {
-        group.maxSoldiers = 5;
+      if (group.maxUnits === undefined) {
+        group.maxUnits = 5;
         needsUpdate = true;
       }
       if (group.hope === undefined) {
@@ -190,22 +190,15 @@
   }
 
   async function persist() {
-    console.log("Persisting groups:", groups);
-    console.log("Groups with temporaryModifiers:", groups.map(g => ({ id: g.id, name: g.name, temporaryModifiers: g.temporaryModifiers })));
     if (isAdminMode) {
       await persistAdmins(groups);
-      console.log("Persisted to admins store");
     } else {
       await persistGroups(groups);
-      console.log("Persisted to groups store");
     }
   }
 
   // Helper function to update groups and sync
   function updateGroups(newGroups: Group[]) {
-    console.log("updateGroups called with:", newGroups);
-    console.log("updateGroups temporaryModifiers:", newGroups.map(g => ({ id: g.id, temporaryModifiers: g.temporaryModifiers })));
-
     groups = newGroups;
     if (isAdminMode) {
       adminsStore.set(groups);
@@ -223,12 +216,12 @@
         id: newGroupId,
         name: '',
         officer: null,
-        soldiers: [],
+        units: [],
         mods: {},
         skills: [],
         experiences: [],
         temporaryModifiers: {},
-        maxSoldiers: 5,
+        maxUnits: 5,
         hope: 0,
         maxHope: 3,
       },
@@ -265,11 +258,11 @@
     persist();
   }
 
-  function removeSoldier(group: Group, soldier: GroupMember) {
-    const index = group.soldiers.indexOf(soldier);
+  function removeUnit(group: Group, unit: GroupMember) {
+    const index = group.units.indexOf(unit);
     if (index > -1) {
-      group.soldiers.splice(index, 1);
-      group.soldiers = [...group.soldiers];
+      group.units.splice(index, 1);
+      group.units = [...group.units];
       groups = [...groups];
       persist();
     }
@@ -337,16 +330,16 @@
     persist();
   }
 
-  async function onDropSoldier(event: DragEvent, group: Group) {
+  async function onDropUnit(event: DragEvent, group: Group) {
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    const maxSoldiers = group.maxSoldiers || 5;
+    const maxUnits = group.maxUnits || 5;
 
     // Find the first empty slot in the formation
     let targetIndex = -1;
-    for (let i = 0; i < maxSoldiers; i++) {
-      if (!group.soldiers[i]) {
+    for (let i = 0; i < maxUnits; i++) {
+      if (!group.units[i]) {
         targetIndex = i;
         break;
       }
@@ -354,15 +347,15 @@
 
     if (targetIndex === -1) {
       // All slots are occupied, replace the last one
-      targetIndex = maxSoldiers - 1;
+      targetIndex = maxUnits - 1;
     }
 
-    // Ensure soldiers array has the correct number of slots
-    while (group.soldiers.length < maxSoldiers) {
-      group.soldiers.push(null);
+    // Ensure units array has the correct number of slots
+    while (group.units.length < maxUnits) {
+      group.units.push(null);
     }
 
-    group.soldiers[targetIndex] = {
+    group.units[targetIndex] = {
       id: actor.id || '',
       name: actor.name || '',
       img: actor.img || '',
@@ -372,20 +365,20 @@
     persist();
   }
 
-  async function onDropSoldierAtPosition(event: DragEvent, group: Group, position: number) {
+  async function onDropUnitAtPosition(event: DragEvent, group: Group, position: number) {
     event.preventDefault();
     const actor = await actorFromDrop(event);
     if (!actor) return;
 
-    const maxSoldiers = group.maxSoldiers || 5;
+    const maxUnits = group.maxUnits || 5;
 
-    // Ensure soldiers array has the correct number of slots
-    while (group.soldiers.length < maxSoldiers) {
-      group.soldiers.push(null);
+    // Ensure units array has the correct number of slots
+    while (group.units.length < maxUnits) {
+      group.units.push(null);
     }
 
     // Always allow placing the actor in the target position (allow duplicates)
-    group.soldiers[position] = {
+    group.units[position] = {
       id: actor.id || '',
       name: actor.name || '',
       img: actor.img || '',
@@ -395,9 +388,9 @@
     persist();
   }
 
-  function removeSoldierAtPosition(group: Group, position: number) {
-    if (position >= 0 && position < group.soldiers.length) {
-      group.soldiers[position] = null;
+  function removeUnitAtPosition(group: Group, position: number) {
+    if (position >= 0 && position < group.units.length) {
+      group.units[position] = null;
       groups = [...groups];
       persist();
     }
@@ -501,14 +494,14 @@
   }
 
   async function deployGroup(group: Group) {
-    if (!group.officer && (!group.soldiers || group.soldiers.length === 0)) {
+    if (!group.officer && (!group.units || group.units.length === 0)) {
       ui.notifications?.warn("No members in the group to deploy");
       return;
     }
 
     const members = [] as GroupMember[];
     if (group.officer) members.push(group.officer);
-    members.push(...group.soldiers);
+    members.push(...group.units);
 
     // Get canvas position (center of canvas view)
     const canvas = game.canvas as any;
@@ -587,19 +580,19 @@
     patrolExtraInfo = { ...patrolExtraInfo }; // Trigger reactivity
   }
 
-  function handleMaxSoldiersChange(group: Group) {
-    const maxSoldiers = group.maxSoldiers || 5;
+  function handleMaxUnitsChange(group: Group) {
+    const maxUnits = group.maxUnits || 5;
 
-    // Adjust soldiers array to match the new max
-    if (group.soldiers.length < maxSoldiers) {
+    // Adjust units array to match the new max
+    if (group.units.length < maxUnits) {
       // Add null slots if we need more
-      while (group.soldiers.length < maxSoldiers) {
-        group.soldiers.push(null);
+      while (group.units.length < maxUnits) {
+        group.units.push(null);
       }
-    } else if (group.soldiers.length > maxSoldiers) {
-      // When reducing from 6 to 5, remove the 6th soldier (index 5)
-      // This will free up the soldier that was in the 6th position
-      group.soldiers = group.soldiers.slice(0, maxSoldiers);
+    } else if (group.units.length > maxUnits) {
+      // When reducing from 6 to 5, remove the 6th unit (index 5)
+      // This will free up the unit that was in the 6th position
+      group.units = group.units.slice(0, maxUnits);
     }
 
     groups = [...groups];
@@ -752,9 +745,6 @@
                 statEffects: statEffects
               };
 
-              console.log("Temporary modifier added:", modifierId, group.temporaryModifiers[modifierId]);
-              console.log("Group temporaryModifiers after adding:", group.temporaryModifiers);
-
               // Create a complete new copy of the groups array with the modified group
               const updatedGroups = groups.map(g =>
                 g.id === group.id
@@ -762,7 +752,6 @@
                   : g
               );
 
-              console.log("Updated groups before persist:", updatedGroups);
               updateGroups(updatedGroups);
 
             } else if (Object.keys(statEffects).length === 0) {
@@ -998,7 +987,7 @@
     margin-bottom: 0.25rem;
   }
 
-  .drop-zone.soldiers {
+  .drop-zone.units {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
@@ -1570,7 +1559,7 @@
 
       <!-- Main Content Area -->
       <div class="group-content">
-        <!-- Officer Info (moved above soldiers) -->
+        <!-- Officer Info (moved above units) -->
 
 
         <!-- Formation and Stats Container -->
@@ -1599,10 +1588,10 @@
             on:officerDrop={(e) => onDropOfficer(e.detail.event, e.detail.group)}
             on:officerDoubleClick={(e) => openActorSheet(e.detail)}
             on:removeOfficer={(e) => removeOfficer(e.detail)}
-            on:soldierDrop={(e) => onDropSoldierAtPosition(e.detail.event, e.detail.group, e.detail.slotIndex)}
+            on:soldierDrop={(e) => onDropUnitAtPosition(e.detail.event, e.detail.group, e.detail.slotIndex)}
             on:soldierDoubleClick={(e) => openActorSheet(e.detail)}
             on:soldierDragStart={(e) => onDragMember(e.detail.event, e.detail.soldier)}
-            on:removeSoldier={(e) => removeSoldierAtPosition(e.detail.group, e.detail.slotIndex)}
+            on:removeSoldier={(e) => removeUnitAtPosition(e.detail.group, e.detail.slotIndex)}
           />
 
           <!-- Group Stats (below formation) -->
@@ -1820,8 +1809,8 @@
                        <!-- Soldados Máximos Section -->
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <label for="maxSoldiers-{group.id}" style="color: #d4af37; font-weight: bold;">Soldados Máximos:</label>
-                <select id="maxSoldiers-{group.id}" bind:value={group.maxSoldiers} on:change={() => handleMaxSoldiersChange(group)} style="background: rgba(255, 255, 255, 0.9); border: 1px solid #d4af37; border-radius: 4px; padding: 0.25rem; color: #000;">
+                <label for="maxUnits-{group.id}" style="color: #d4af37; font-weight: bold;">Unidades Máximas:</label>
+                <select id="maxUnits-{group.id}" bind:value={group.maxUnits} on:change={() => handleMaxUnitsChange(group)} style="background: rgba(255, 255, 255, 0.9); border: 1px solid #d4af37; border-radius: 4px; padding: 0.25rem; color: #000;">
                   <option value={1}>1</option>
                   <option value={2}>2</option>
                   <option value={3}>3</option>
