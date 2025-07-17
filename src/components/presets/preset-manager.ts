@@ -6,12 +6,51 @@ export class PresetManager {
   private static instance: PresetManager;
   private activePopup: any = null;
   private container: HTMLElement | null = null;
+  private isInitialized = false;
 
   static getInstance(): PresetManager {
     if (!PresetManager.instance) {
       PresetManager.instance = new PresetManager();
     }
     return PresetManager.instance;
+  }
+
+  constructor() {
+    // Inicializar automáticamente cuando se crea la instancia
+    this.initialize();
+  }
+
+  private async initialize() {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
+    // Esperar a que el juego esté listo
+    if (typeof game !== 'undefined' && game.ready) {
+      this.setupSync();
+    } else {
+      // Esperar hasta que el juego esté listo
+      const waitForGame = () => {
+        if (typeof game !== 'undefined' && game.ready) {
+          this.setupSync();
+        } else {
+          setTimeout(waitForGame, 100);
+        }
+      };
+      waitForGame();
+    }
+  }
+
+  private async setupSync() {
+    // Importar y configurar la sincronización de presets
+    try {
+      const { presetsStore } = await import('@/stores/presets');
+      // Suscribirse a los cambios en el store para mantener sincronización
+      presetsStore.subscribe(() => {
+        // Esta suscripción mantiene el store activo y sincronizado
+      });
+    } catch (error) {
+      console.warn('Error setting up preset sync:', error);
+    }
   }
 
   showPresetPopup(initialPosition?: { x: number; y: number }) {
@@ -66,7 +105,7 @@ export class PresetManager {
       if (popupElement) {
         const focusManager = PopupFocusManager.getInstance();
         focusManager.setFocus(popupElement);
-        
+
         // No necesitamos reinforceFocus aquí ya que no manejamos focus del teclado
       }
     }
@@ -115,7 +154,7 @@ export class PresetManager {
       detail: preset,
     });
     window.dispatchEvent(event);
-    
+
     // Restaurar el focus al popup de presets después de usar un preset
     // Usar un pequeño delay para asegurar que las operaciones del preset se completen
     setTimeout(() => {
@@ -151,7 +190,7 @@ export class PresetManager {
     }, 100);
   }
 
-  updatePresetFromItem(
+  async updatePresetFromItem(
     item: any,
     type:
       | "resource"
@@ -162,6 +201,60 @@ export class PresetManager {
     // Si el popup está abierto, actualizar el preset correspondiente
     if (this.activePopup) {
       this.activePopup.updatePresetFromItem(item, type);
+    } else {
+      // Si no hay popup abierto, actualizar los presets directamente
+      await this.updatePresetDirectly(item, type);
+    }
+  }
+
+  private async updatePresetDirectly(
+    item: any,
+    type:
+      | "resource"
+      | "reputation"
+      | "temporaryModifier"
+      | "situationalModifier"
+  ) {
+    // Importar el store de presets dinámicamente
+    const { presetsStore, persistPresets } = await import('@/stores/presets');
+    
+    // Obtener los presets actuales
+    let currentPresets: any = null;
+    const unsubscribe = presetsStore.subscribe(presets => {
+      currentPresets = presets;
+    });
+    unsubscribe();
+
+    if (!currentPresets || !item.key) return;
+
+    // Determinar el array de presets según el tipo
+    const presetsArray = type === 'resource' ? currentPresets.resources :
+                        type === 'reputation' ? currentPresets.reputations :
+                        type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                        currentPresets.situationalModifiers;
+
+    // Buscar el preset existente con el mismo sourceId
+    const existingPreset = presetsArray.find((p: any) => p.data.sourceId === item.key);
+
+    if (existingPreset) {
+      // Actualizar el preset existente
+      existingPreset.data = {
+        ...existingPreset.data,
+        name: item.name,
+        value: item.value,
+        description: item.details || item.description || '',
+        img: item.img || existingPreset.data.img
+      };
+      existingPreset.name = item.name;
+      existingPreset.description = item.details || item.description || '';
+
+      // Actualizar el store
+      presetsStore.update(presets => ({ ...presets }));
+      
+      // IMPORTANTE: Persistir los cambios para que se sincronicen
+      await persistPresets(currentPresets);
+
+      console.log('Preset updated directly:', existingPreset);
     }
   }
 }

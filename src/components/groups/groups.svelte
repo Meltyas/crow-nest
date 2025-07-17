@@ -564,8 +564,6 @@
   }
 
   function forceShowPatrolSheetToAll(group: Group) {
-    // Solo GM puede forzar la ficha a todos
-    if (!game.user?.isGM) return;
     patrolSheetManager.forceShowPatrolSheetToAll(group, labels);
   }
 
@@ -1844,18 +1842,12 @@
           <button class="header-button" on:click={() => toggleEditing(group)}>
             {editing[group.id] ? 'Save' : 'Edit'}
           </button>
-          {#if game.user?.isGM}
-            <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
-              Ficha
-            </button>
-            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
-              Ficha→All
-            </button>
-          {:else}
-            <button class="header-button" on:click={() => showPatrolSheet(group)}>
-              Ficha
-            </button>
-          {/if}
+          <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
+            Ficha
+          </button>
+          <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
+            Ficha→All
+          </button>
           <button
             class="header-button"
             draggable="true"
@@ -1881,18 +1873,12 @@
           <button class="header-button" on:click={() => toggleEditing(group)}>
             {editing[group.id] ? 'Save' : 'Edit'}
           </button>
-          {#if game.user?.isGM}
-            <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
-              Ficha
-            </button>
-            <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
-              Ficha→All
-            </button>
-          {:else}
-            <button class="header-button" on:click={() => showPatrolSheet(group)}>
-              Ficha
-            </button>
-          {/if}
+          <button class="header-button" on:click={() => showPatrolSheet(group)}  title="Abrir ficha para mí">
+            Ficha
+          </button>
+          <button class="header-button" on:click={() => forceShowPatrolSheetToAll(group)} title="Mostrar ficha a todos los jugadores">
+            Ficha→All
+          </button>
           <button
             class="header-button"
             draggable="true"

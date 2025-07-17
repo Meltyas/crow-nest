@@ -344,10 +344,20 @@ export class GuardHandlers {
     this.updateComponent();
   };
 
-  handleUpdateResource = () => {
+  handleUpdateResource = async () => {
     this.resources = [...this.resources];
-    this.persistResources();
+    await this.persistResources();
     this.updateComponent();
+    
+    // Importar dinámicamente y actualizar presets para todos los recursos
+    try {
+      const { presetManager } = await import('@/components/presets/preset-manager');
+      this.resources.forEach(resource => {
+        presetManager.updatePresetFromItem(resource, 'resource');
+      });
+    } catch (error) {
+      console.warn('Error updating presets:', error);
+    }
   };
 
   handleResImageClick = (event: CustomEvent) => {

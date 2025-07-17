@@ -6,8 +6,8 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
-  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import { presetManager } from '@/components/presets/preset-manager';
+  import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
@@ -17,8 +17,8 @@
     getStats,
   } from '@/guard/stats';
   import { getPatrols, savePatrols } from '@/patrol/patrols';
-  import { SyncManager } from '@/utils/sync';
   import PopupFocusManager from '@/utils/popup-focus';
+  import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { GuardHandlers } from './guard-handlers';
   import './guard.css';
@@ -79,7 +79,7 @@
 
   // Sync manager
   let syncManager: SyncManager;
-  
+
   // Focus manager
   let focusManager: PopupFocusManager;
 
@@ -108,7 +108,7 @@
 
   function handleUsePreset(event: CustomEvent) {
     const preset = event.detail;
-    
+
     switch (preset.type) {
       case 'resource':
         applyResourcePreset(preset);
@@ -129,7 +129,7 @@
 
   function applyResourcePreset(preset: any) {
     const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
-    
+
     // Verificar si ya existe un recurso con este preset ID
     const existingResource = resources.find(r => r.key === presetKey);
     if (existingResource) {
@@ -145,14 +145,14 @@
       details: preset.data.description || '',
       sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
-    
+
     resources = [...resources, newResource];
     handlers.handleAddResource({ detail: newResource });
   }
 
   function applyReputationPreset(preset: any) {
     const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
-    
+
     // Verificar si ya existe una reputación con este preset ID
     const existingReputation = reputation.find(r => r.key === presetKey);
     if (existingReputation) {
@@ -168,7 +168,7 @@
       details: preset.data.description || '',
       sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
-    
+
     reputation = [...reputation, newReputation];
     handlers.handleAddReputation({ detail: newReputation });
   }
@@ -183,16 +183,16 @@
         statEffects: preset.data.statEffects
       }
     });
-    
+
     window.dispatchEvent(event);
-    
+
     // Mostrar notificación para indicar que haga clic en un grupo
     ui.notifications?.info(`Modificador temporal "${preset.data.name}" listo. Haz clic en un grupo para aplicarlo.`);
   }
 
   function applySituationalModifierPreset(preset: any) {
     const presetKey = preset.data.sourceId; // Usar el sourceId del preset en lugar de preset.id
-    
+
     // Verificar si ya existe un modificador con este preset ID
     const existingModifier = modifiers.find(m => m.key === presetKey);
     if (existingModifier) {
@@ -209,7 +209,7 @@
       state: preset.data.modifier >= 0 ? 'positive' : 'negative',
       sourceId: preset.data.sourceId // Mantener referencia al sourceId original
     };
-    
+
     modifiers = [...modifiers, newModifier];
     handlers.handleAddModifier({ detail: newModifier });
   }
@@ -337,7 +337,7 @@
 
     // Setup real-time synchronization
     syncManager = SyncManager.getInstance();
-    
+
     // Initialize focus manager
     focusManager = PopupFocusManager.getInstance();
 
@@ -399,7 +399,7 @@
       syncManager.unsubscribe('patrols', handlers.handlePatrolsSync);
       syncManager.unsubscribe('admins', handlers.handleAdminsSync);
     }
-    
+
     // Remove preset listener
     window.removeEventListener('crow-nest-use-preset', handleUsePreset);
   });
@@ -564,13 +564,15 @@
           >
             A
           </button>
-          <button
-            class="preset-button"
-            on:click={openPresets}
-            title="Abrir Presets"
-          >
-            📋
-          </button>
+          {#if game?.user?.isGM}
+            <button
+              class="preset-button"
+              on:click={openPresets}
+              title="Abrir Presets"
+            >
+              📋
+            </button>
+          {/if}
         </div>
 
         <!-- Content Area -->

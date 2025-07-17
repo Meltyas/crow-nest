@@ -375,7 +375,7 @@ export class PatrolSheetManager {
     }
 
     // Don't process updates from our own user (to avoid loops)
-    if (updatedByUserId === game.user?.id) {
+    if (updatedByUserId === (game as any).user?.id) {
       return;
     }
 
@@ -393,15 +393,6 @@ export class PatrolSheetManager {
 
   // Check if current user should show this patrol sheet
   private shouldShowPatrolSheet(sheetData: any): boolean {
-    // Don't show to GM if they initiated it (unless specifically requested)
-    if (
-      game.user?.isGM &&
-      sheetData.initiatedBy === game.user.id &&
-      !sheetData.showToGM
-    ) {
-      return false;
-    }
-
     // Don't show if already open
     if (this.activeSheets.has(sheetData.groupId)) {
       return false;
@@ -410,7 +401,7 @@ export class PatrolSheetManager {
     // Check if sheet is meant for current user (optional targeting)
     if (
       sheetData.targetUsers &&
-      !sheetData.targetUsers.includes(game.user?.id)
+      !sheetData.targetUsers.includes((game as any).user?.id)
     ) {
       return false;
     }
@@ -445,11 +436,7 @@ export class PatrolSheetManager {
     labels: any,
     options: any = {}
   ) {
-    if (!game.user?.isGM) {
-      return;
-    }
-
-    // Show to GM first if requested
+    // Show to current user first if requested
     if (options.showToGM !== false) {
       this.showPatrolSheet(group, labels);
     }
@@ -466,7 +453,7 @@ export class PatrolSheetManager {
       groupName: group.name,
       labels: labels,
       timestamp: Date.now(),
-      initiatedBy: game.user.id,
+      initiatedBy: (game as any).user?.id || "unknown",
       showToGM: options.showToGM || false,
       targetUsers: options.targetUsers || null, // null means all users
     };
@@ -501,12 +488,8 @@ export class PatrolSheetManager {
     }
   }
 
-  // Method to clear all active patrol sheets (GM only)
+  // Method to clear all active patrol sheets (any user can do this)
   async clearAllActivePatrolSheets() {
-    if (!game.user?.isGM) {
-      return;
-    }
-
     await (game as any).settings.set(MODULE_ID, "activePatrolSheets", []);
   }
 

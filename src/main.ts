@@ -165,22 +165,13 @@ function handlePatrolSheetSettingChange(
 
 // Helper function to check if current user should see the patrol sheet
 function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
-  // Don't show to GM if they initiated it (unless specifically requested)
-  if (
-    game.user?.isGM &&
-    sheetData.initiatedBy === game.user.id &&
-    !sheetData.showToGM
-  ) {
-    return false;
-  }
-
   // Don't show if already open
   if (patrolSheetManager.activeSheets?.has(sheetData.groupId)) {
     return false;
   }
 
   // Check if sheet is meant for current user (optional targeting)
-  if (sheetData.targetUsers && !sheetData.targetUsers.includes(game.user?.id)) {
+  if (sheetData.targetUsers && !sheetData.targetUsers.includes((game as any).user?.id)) {
     return false;
   }
 
@@ -258,7 +249,7 @@ Hooks.once("ready", () => {
         if (userId !== currentUserId) {
           // Update the presets store with the new data
           let actualData = value;
-          
+
           // If it's a Foundry setting object with 'value' property that's a JSON string
           if (
             value &&
@@ -363,6 +354,11 @@ Hooks.once("ready", () => {
       patrolSheetManager.debugActiveSheetsSetting(),
   };
 
+  // Initialize preset manager to ensure it's available for all users
+  import('@/components/presets/preset-manager').then(({ presetManager }) => {
+    // No need to do anything with it, just importing it will initialize it
+  });
+
   // Create HUD
   const container = document.createElement("div");
   container.style.position = "absolute";
@@ -370,9 +366,7 @@ Hooks.once("ready", () => {
   new Hud({ target: container });
 
   // Clean up old button records on startup
-  if (game.user?.isGM) {
-    cleanupOldButtonRecords();
-  }
+  cleanupOldButtonRecords();
 });
 
 Hooks.on("getActorSheetHeaderButtons", (sheet: any, buttons: any[]) => {

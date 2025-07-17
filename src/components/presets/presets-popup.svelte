@@ -6,8 +6,8 @@
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import { addPreset, initializePresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import PopupFocusManager from '@/utils/popup-focus';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -308,7 +308,7 @@
       },
       default: "no"
     });
-    
+
     dialog.render(true);
   }
 
