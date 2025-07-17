@@ -128,7 +128,7 @@
 
     // We're creating a new preset
     let preset: PresetItem;
-    
+
     if (type === 'resource') {
       if (!newResourceForm.name.trim()) return;
       preset = {
@@ -206,7 +206,7 @@
     } else if (type === 'situationalModifier') {
       newSituationalModifierForm = { name: '', description: '', modifier: 0, situation: '', img: '' };
     }
-    
+
     showCreateForm = false;
   }
 
@@ -240,7 +240,7 @@
   function editPreset(preset: PresetItem) {
     editingPreset = preset;
     editingPresetType = preset.type;
-    
+
     // Switch to the correct tab
     if (preset.type === 'resource') {
       activeTab = 'resources';
@@ -251,7 +251,7 @@
     } else if (preset.type === 'situationalModifier') {
       activeTab = 'situationalModifiers';
     }
-    
+
     // Populate form based on preset type
     if (preset.type === 'resource') {
       newResourceForm = {
@@ -285,7 +285,7 @@
         img: preset.data.img || ''
       };
     }
-    
+
     showCreateForm = true;
   }
 
@@ -293,7 +293,7 @@
     editingPreset = null;
     editingPresetType = null;
     showCreateForm = false;
-    
+
     // Reset forms
     newResourceForm = { name: '', value: 0, description: '', img: '' };
     newReputationForm = { name: '', value: 0, description: '', img: '' };
@@ -636,80 +636,103 @@
         {/if}
 
         <!-- Presets list -->
-        <div class="presets-list">
+        <div class="presets-list grid-layout">
           {#if activeTab === 'resources'}
             {#each presets.resources as preset}
-              <div class="preset-item" on:dblclick={() => editPreset(preset)}>
-                <div class="preset-info">
-                  <h4>{preset.name}</h4>
-                  <p>Valor: {preset.data.value}</p>
-                  {#if preset.description}
-                    <p class="description">{preset.description}</p>
+              <div class="preset-item-card resource-item" on:dblclick={() => editPreset(preset)}>
+                <img class="preset-item-image" src={preset.data.img || 'icons/svg/item-bag.svg'} alt="resource" />
+                <div class="preset-item-info">
+                  <div class="preset-item-name">{preset.data.name}</div>
+                  {#if preset.data.description && preset.data.description.trim()}
+                    <div class="preset-item-details">
+                      <p>{preset.data.description}</p>
+                    </div>
                   {/if}
+                  <div class="preset-item-quantity-container">
+                    <span class="preset-item-quantity">{preset.data.value}</span>
+                  </div>
                 </div>
                 <div class="preset-actions">
-                  <button class="use-btn" on:click={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click={() => deletePreset(preset)}>×</button>
+                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
                 </div>
               </div>
             {/each}
           {:else if activeTab === 'reputations'}
             {#each presets.reputations as preset}
-              <div class="preset-item" on:dblclick={() => editPreset(preset)}>
-                <div class="preset-info">
-                  <h4>{preset.name}</h4>
-                  <p>Valor: {preset.data.value}</p>
-                  {#if preset.description}
-                    <p class="description">{preset.description}</p>
+              <div class="preset-item-card reputation-item" on:dblclick={() => editPreset(preset)}>
+                <img class="preset-item-image" src={preset.data.img || 'icons/svg/aura.svg'} alt="reputation" />
+                <div class="preset-item-info">
+                  <div class="preset-item-name">{preset.data.name}</div>
+                  {#if preset.data.description && preset.data.description.trim()}
+                    <div class="preset-item-details">
+                      <p>{preset.data.description}</p>
+                    </div>
                   {/if}
+                  <div class="preset-item-bar-container">
+                    <div class="preset-item-bar">
+                      <div class="preset-item-fill" style="width: {preset.data.value * 10}%; background: linear-gradient(90deg,
+                        hsl({(preset.data.value / 10) * 120}, 70%, 40%) 0%,
+                        hsl({(preset.data.value / 10) * 120}, 80%, 50%) 50%,
+                        hsl({(preset.data.value / 10) * 120}, 70%, 60%) 100%);">
+                      </div>
+                      {#each Array(11) as _, j}
+                        <div class="preset-item-tick" style="left: {j * 10}%;"></div>
+                      {/each}
+                    </div>
+                  </div>
                 </div>
                 <div class="preset-actions">
-                  <button class="use-btn" on:click={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click={() => deletePreset(preset)}>×</button>
+                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
                 </div>
               </div>
             {/each}
           {:else if activeTab === 'temporaryModifiers'}
             {#each presets.temporaryModifiers as preset}
-              <div class="preset-item" on:dblclick={() => editPreset(preset)}>
-                <div class="preset-info">
-                  <h4>{preset.name}</h4>
-                  <p>Tipo: {preset.data.type} | Duración: {preset.data.duration}</p>
-                  {#if preset.description}
-                    <p class="description">{preset.description}</p>
-                  {/if}
-                  <div class="stat-effects-preview">
-                    {#each Object.entries(preset.data.statEffects) as [statKey, value]}
-                      {@const stat = stats.find(s => s.key === statKey)}
-                      {#if stat && value !== 0}
-                        <span class="stat-effect-preview">
-                          <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                          {stat.name}: {value > 0 ? '+' : ''}{value}
-                        </span>
-                      {/if}
-                    {/each}
+              <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
+                <div class="preset-item-info">
+                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-details">
+                    <p><strong>Tipo:</strong> {preset.data.type} | <strong>Duración:</strong> {preset.data.duration}</p>
+                    {#if preset.description}
+                      <p class="description">{preset.description}</p>
+                    {/if}
+                    <div class="stat-effects-preview">
+                      {#each Object.entries(preset.data.statEffects) as [statKey, value]}
+                        {@const stat = stats.find(s => s.key === statKey)}
+                        {#if stat && value !== 0}
+                          <span class="stat-effect-preview">
+                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                            {stat.name}: {value > 0 ? '+' : ''}{value}
+                          </span>
+                        {/if}
+                      {/each}
+                    </div>
                   </div>
                 </div>
                 <div class="preset-actions">
-                  <button class="use-btn" on:click={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click={() => deletePreset(preset)}>×</button>
+                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
                 </div>
               </div>
             {/each}
           {:else if activeTab === 'situationalModifiers'}
             {#each presets.situationalModifiers as preset}
-              <div class="preset-item" on:dblclick={() => editPreset(preset)}>
-                <div class="preset-info">
-                  <h4>{preset.name}</h4>
-                  <p>Modificador: {preset.data.modifier > 0 ? '+' : ''}{preset.data.modifier}</p>
-                  <p>Situación: {preset.data.situation}</p>
-                  {#if preset.description}
-                    <p class="description">{preset.description}</p>
-                  {/if}
+              <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
+                <div class="preset-item-info">
+                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-details">
+                    <p><strong>Modificador:</strong> {preset.data.modifier > 0 ? '+' : ''}{preset.data.modifier}</p>
+                    <p><strong>Situación:</strong> {preset.data.situation}</p>
+                    {#if preset.description}
+                      <p class="description">{preset.description}</p>
+                    {/if}
+                  </div>
                 </div>
                 <div class="preset-actions">
-                  <button class="use-btn" on:click={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click={() => deletePreset(preset)}>×</button>
+                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
                 </div>
               </div>
             {/each}
@@ -928,6 +951,259 @@
     gap: 0.5rem;
   }
 
+  /* Grid layout para todos los tabs - 3 por línea */
+  .presets-list.grid-layout {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  /* Estilos para presets de recursos y reputaciones (estilo ItemCard) */
+  .preset-item-card {
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    border: 1px solid #d4af37;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+  }
+
+  .preset-item-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+
+  /* Estilos específicos para modificadores */
+  .preset-item-card.modifier-item {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 1rem;
+    min-height: 150px;
+  }
+
+  .preset-item-card.modifier-item:hover {
+    background: #2a2a2a;
+    border-color: #555;
+  }
+
+  .preset-item-card.modifier-item .preset-item-name {
+    color: #d4af37;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .preset-item-card.modifier-item .preset-item-details {
+    color: #ccc;
+    font-size: 0.9rem;
+  }
+
+  .preset-item-card.modifier-item .preset-item-details p {
+    margin: 0.25rem 0;
+    color: #ccc;
+  }
+
+  .preset-item-card.modifier-item .preset-item-details .description {
+    color: #999;
+    font-style: italic;
+  }
+
+  /* Botones de acción para tarjetas de modificadores */
+  .preset-item-card.modifier-item .preset-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 4px;
+    padding: 0.25rem;
+  }
+
+  .preset-item-card.modifier-item .preset-actions .use-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .preset-item-card.modifier-item .preset-actions .use-btn:hover {
+    background: #218838;
+  }
+
+  .preset-item-card.modifier-item .preset-actions .delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .preset-item-card.modifier-item .preset-actions .delete-btn:hover {
+    background: #c82333;
+  }
+
+  .preset-item-image {
+    background: #000000;
+    width: 100%;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
+    border-bottom: 2px solid #d4af37;
+  }
+
+  .preset-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    position: relative;
+    align-items: flex-start;
+  }
+
+  .preset-item-name {
+    font-family: 'Eveleth', 'Overpass', Arial, sans-serif;
+    font-size: 1rem;
+    color: #000000;
+    line-height: 1.4;
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .preset-item-details {
+    font-family: 'Overpass', sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #000000;
+    width: 100%;
+    margin: 0;
+  }
+
+  .preset-item-details p {
+    margin: 0;
+    color: #333;
+  }
+
+  /* Estilos para cantidad de recursos */
+  .preset-item-quantity-container {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .preset-item-quantity {
+    background: #374151;
+    color: #d1d5db;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    border: 1px solid #6b7280;
+    min-width: 3rem;
+    text-align: center;
+    font-family: 'Overpass', Arial, sans-serif;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Estilos para barra de reputación */
+  .preset-item-bar-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .preset-item-bar {
+    width: 100%;
+    height: 20px;
+    background: #374151;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #6b7280;
+  }
+
+  .preset-item-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    position: relative;
+  }
+
+  .preset-item-tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Botones de acción para tarjetas */
+  .preset-item-card .preset-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 4px;
+    padding: 0.25rem;
+  }
+
+  .preset-item-card .preset-actions .use-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .preset-item-card .preset-actions .use-btn:hover {
+    background: #218838;
+  }
+
+  .preset-item-card .preset-actions .delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
+  .preset-item-card .preset-actions .delete-btn:hover {
+    background: #c82333;
+  }
+
+  /* Estilos para presets normales (modificadores) */
   .preset-item {
     display: flex;
     justify-content: space-between;
