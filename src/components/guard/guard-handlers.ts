@@ -488,27 +488,19 @@ export class GuardHandlers {
 
   // Persistence methods
   private async persistStats() {
-    if (game.user?.isGM) {
-      await saveStats(this.stats);
-    }
+    await saveStats(this.stats);
   }
 
   private async persistModifiers() {
-    if (game.user?.isGM) {
-      await saveModifiers(this.modifiers);
-    }
+    await saveModifiers(this.modifiers);
   }
 
   private async persistResources() {
-    if (game.user?.isGM) {
-      await saveResources(this.resources);
-    }
+    await saveResources(this.resources);
   }
 
   private async persistReputation() {
-    if (game.user?.isGM) {
-      await saveReputation(this.reputation);
-    }
+    await saveReputation(this.reputation);
   }
 
   // Getters to return updated data to component

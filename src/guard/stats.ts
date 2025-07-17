@@ -57,10 +57,6 @@ export function getModifiers(): GuardModifier[] {
 }
 
 export async function saveStats(stats: GuardStat[]): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_STATS, stats);
 
   // Broadcast changes to all players
@@ -69,10 +65,6 @@ export async function saveStats(stats: GuardStat[]): Promise<void> {
 }
 
 export async function saveModifiers(modifiers: GuardModifier[]): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_MODIFIERS, modifiers);
 
   // Broadcast changes to all players
@@ -89,10 +81,6 @@ export function getResources(): GuardResource[] {
 }
 
 export async function saveResources(resources: GuardResource[]): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_RESOURCES, resources);
 
   // Broadcast changes to all players
@@ -112,10 +100,6 @@ export function getReputation(): GuardReputation[] {
 export async function saveReputation(
   reputation: GuardReputation[]
 ): Promise<void> {
-  if (!game.user?.isGM) {
-    return;
-  }
-
   await game.settings.set(MODULE_ID, SETTING_REPUTATION, reputation);
 
   // Broadcast changes to all players
