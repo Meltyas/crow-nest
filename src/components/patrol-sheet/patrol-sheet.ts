@@ -343,21 +343,6 @@ export class PatrolSheetManager {
     setTimeout(() => attemptRestore(), 100);
   }
 
-  // Función para limpiar localStorage (útil para debugging)
-  clearStoredSheets() {
-    localStorage.removeItem(this.storageKey);
-  }
-
-  // Función para limpiar posiciones históricas
-  clearStoredPositions() {
-    localStorage.removeItem(this.positionsKey);
-  }
-
-  // Función para debugging - mostrar estado actual
-  debugState() {
-    // Debug function - remove in production
-  }
-
   // Función para obtener todo el historial de posiciones
   private getPositionHistory() {
     try {

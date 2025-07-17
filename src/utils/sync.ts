@@ -48,30 +48,6 @@ export class SyncManager {
     this.eventHandlers.clear();
   }
 
-  // Get number of registered event handlers (for debugging)
-  getEventHandlerCount(): number {
-    return this.eventHandlers.size;
-  }
-
-  // Debug methods to inspect sync state
-  getListeners() {
-    return this.listeners;
-  }
-
-  getEventHandlers() {
-    return this.eventHandlers;
-  }
-
-  getListenerCount(type?: string): number {
-    if (type) {
-      return this.listeners.get(type)?.length || 0;
-    }
-    return Array.from(this.listeners.values()).reduce(
-      (total, callbacks) => total + callbacks.length,
-      0
-    );
-  }
-
   // Register a listener for sync events
   subscribe(type: string, callback: (event: SyncEvent) => void) {
     if (!this.listeners.has(type)) {

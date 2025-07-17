@@ -302,18 +302,7 @@ Hooks.once("ready", () => {
   (game.modules.get(MODULE_ID) as any).api = {
     getGroups: () => getPatrols(),
     patrolSheetManager: patrolSheetManager,
-    // Explicitly expose the forceShowPatrolSheetToAll method
-    forceShowPatrolSheetToAll: (group: any, labels: any) =>
-      patrolSheetManager.forceShowPatrolSheetToAll(group, labels),
-    debugPatrolSheets: () => patrolSheetManager.debugState(),
-    debugSyncHandlers: () => patrolSheetManager.debugSyncHandlers(),
-    testSyncCommunication: () => patrolSheetManager.testSyncCommunication(),
-    testSocketReception: () => patrolSheetManager.testSocketReception(),
-    testSocketDirectly: () => patrolSheetManager.testSocketDirectly(),
-    debugSocketSystem: () => patrolSheetManager.debugSocketSystem(),
-    forceSocketReinitialization: () =>
-      patrolSheetManager.forceSocketReinitialization(),
-    // NEW: Settings-based patrol sheet methods
+    // Settings-based patrol sheet methods
     forceShowPatrolSheetToAllViaSettings: (
       group: any,
       labels: any,
@@ -328,68 +317,6 @@ Hooks.once("ready", () => {
       patrolSheetManager.clearAllActivePatrolSheets(),
     debugActiveSheetsSetting: () =>
       patrolSheetManager.debugActiveSheetsSetting(),
-    clearPatrolPositions: () => patrolSheetManager.clearStoredPositions(),
-    // Cleanup functions for sync issues
-    cleanupSync: () => patrolSheetManager.manualCleanupSync(),
-    reinitializeSync: () => {
-      patrolSheetManager.manualCleanupSync();
-      initializeSync();
-      const syncManager = SyncManager.getInstance();
-      syncManager.clearEventHandler("patrol-sheet");
-      syncManager.registerEventHandler("patrol-sheet", (event) => {
-        patrolSheetManager.handleSyncEvent(event);
-      });
-      return { success: true, message: "Sync system reinitialized" };
-    },
-    // New sync diagnostic functions
-    testGroupsSync: () => {
-      const syncManager = SyncManager.getInstance();
-      const testEvent = {
-        type: "groups" as const,
-        action: "update" as const,
-        data: [
-          {
-            id: "test",
-            name: "Test Group",
-            officer: null,
-            units: [],
-            mods: {},
-          },
-        ],
-        timestamp: Date.now(),
-        user: game.user?.name || "unknown",
-      };
-      syncManager.broadcast(testEvent);
-    },
-    checkSyncListeners: () => {
-      const syncManager = SyncManager.getInstance();
-
-      const listeners = syncManager.getListeners();
-      for (const [type, callbacks] of listeners.entries()) {
-        // Silent iteration
-      }
-
-      return {
-        totalListeners: syncManager.getListenerCount(),
-        eventHandlersCount: syncManager.getEventHandlerCount(),
-        groupsListeners: syncManager.getListenerCount("groups"),
-        listenersByType: Array.from(listeners.entries()).map(
-          ([type, callbacks]) => ({
-            type,
-            count: callbacks.length,
-          })
-        ),
-      };
-    },
-    checkLocalStorage: () => {
-      const activeSheets = localStorage.getItem("crow-nest-open-patrol-sheets");
-      const positions = localStorage.getItem("crow-nest-patrol-positions");
-
-      return {
-        activeSheets: activeSheets ? JSON.parse(activeSheets) : null,
-        positions: positions ? JSON.parse(positions) : null,
-      };
-    },
   };
 
   // Create HUD
@@ -480,85 +407,6 @@ Hooks.on("dropCanvasData", async (canvas: any, data: any) => {
 
   return false;
 });
-
-// API for debugging purposes
-if (typeof globalThis !== "undefined") {
-  globalThis.CrowNest = {
-    patrol: PatrolSheetManager.getInstance(),
-    testSyncCommunication: () => {
-      if (game.socket) {
-        const testData = {
-          test: "manual test",
-          timestamp: Date.now(),
-          from: game.user?.name,
-          isGM: game.user?.isGM,
-        };
-
-        game.socket.emit(`module.${MODULE_ID}-test`, testData);
-
-        // Also test the main channel
-        const syncEvent = {
-          type: "patrol-sheet",
-          action: "show",
-          data: { test: "patrol sheet communication test" },
-          timestamp: Date.now(),
-          user: game.user?.name ?? "unknown",
-        };
-
-        game.socket.emit(`module.${MODULE_ID}`, syncEvent);
-      }
-    },
-    testShowPatrolToAll: () => {
-      const patrol = PatrolSheetManager.getInstance();
-      if (patrol.currentGroup) {
-        patrol.showPatrolSheetToAll(patrol.currentGroup);
-      }
-    },
-    forceShowPatrol: (groupData: any) => {
-      const syncManager = SyncManager.getInstance();
-      const event = {
-        type: "patrol-sheet" as const,
-        action: "show" as const,
-        data: groupData,
-        timestamp: Date.now(),
-        user: game.user?.name ?? "unknown",
-      };
-      syncManager.broadcast(event);
-    },
-    checkSocketStatus: () => {
-      return {
-        socketExists: !!game.socket,
-        socketConnected: game.socket?.connected,
-        socketId: game.socket?.id,
-        user: {
-          name: game.user?.name,
-          id: game.user?.id,
-          isGM: game.user?.isGM,
-        },
-        connectedUsers: game.users?.contents?.map((u) => ({
-          name: u.name,
-          id: u.id,
-          active: u.active,
-          role: u.role,
-          isGM: u.isGM,
-        })),
-      };
-    },
-    simulatePlayerReceive: () => {
-      const fakePatrolData = {
-        id: "test-patrol-123",
-        name: "Test Patrol",
-        officer: { name: "Test Officer", img: "icons/svg/mystery-man.svg" },
-        units: [],
-        mods: {},
-      };
-
-      // Directly call the handler as if received from socket
-      const patrol = PatrolSheetManager.getInstance();
-      patrol.handleShowPatrolSheet(fakePatrolData);
-    },
-  };
-}
 
 // Hook to handle chat button clicks for Hope/Fear management
 Hooks.on("renderChatMessage", (message: any, html: JQuery) => {

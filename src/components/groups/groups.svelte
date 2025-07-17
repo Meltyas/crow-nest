@@ -34,7 +34,7 @@
   };
   export let isAdminMode = false; // Flag to detect if we're in admin mode
   export let sectionTitle = ''; // Optional section title
-  export let sectionImage = ''; // Optional decorative image for section title
+  export const sectionImage = ''; // Optional decorative image for section title
 
   // Use appropriate store based on isAdminMode
   $: currentStore = isAdminMode ? adminsStore : groupsStore;
