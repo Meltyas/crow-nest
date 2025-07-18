@@ -139,8 +139,22 @@
   function safeGetPresetProperty(preset: any, property: string, defaultValue: any = '') {
     try {
       if (!preset || typeof preset !== 'object') return defaultValue;
-      if (!preset.data || typeof preset.data !== 'object') return defaultValue;
-      return preset.data[property] || defaultValue;
+
+      // Try to get from preset.data first, then from preset level, then default
+      let value = defaultValue;
+
+      if (preset.data && typeof preset.data === 'object' && preset.data[property] !== undefined) {
+        value = preset.data[property];
+      } else if (preset[property] !== undefined) {
+        value = preset[property];
+      }
+
+      // Handle undefined or null values
+      if (value === undefined || value === null || value === 'undefined') {
+        return defaultValue;
+      }
+
+      return value;
     } catch (error) {
       console.warn('Error getting preset property:', error);
       return defaultValue;
@@ -489,6 +503,131 @@
     });
 
     dialog.render(true);
+  }
+
+  function cleanupCorruptedPresets() {
+    const dialog = new Dialog({
+      title: "Limpiar Presets Corruptos",
+      content: `<p>¿Estás seguro de que quieres eliminar todos los presets que aparecen como "undefined" o están corruptos?</p><p><strong>Esta acción no se puede deshacer.</strong></p>`,
+      buttons: {
+        yes: {
+          icon: '<i class="fas fa-broom"></i>',
+          label: "Sí, limpiar",
+          callback: () => {
+            let removedCount = 0;
+
+            presetsStore.update(currentPresets => {
+              const cleanedPresets = { ...currentPresets };
+
+              // Limpiar recursos
+              const validResources = cleanedPresets.resources.filter(preset => {
+                const isValid = preset &&
+                              preset.name &&
+                              preset.name !== 'undefined' &&
+                              preset.name.trim() !== '' &&
+                              preset.data &&
+                              typeof preset.data === 'object';
+                if (!isValid) removedCount++;
+                return isValid;
+              });
+              cleanedPresets.resources = validResources;
+
+              // Limpiar reputaciones
+              const validReputations = cleanedPresets.reputations.filter(preset => {
+                const isValid = preset &&
+                              preset.name &&
+                              preset.name !== 'undefined' &&
+                              preset.name.trim() !== '' &&
+                              preset.data &&
+                              typeof preset.data === 'object';
+                if (!isValid) removedCount++;
+                return isValid;
+              });
+              cleanedPresets.reputations = validReputations;
+
+              // Limpiar efectos de patrulla
+              const validPatrolEffects = cleanedPresets.patrolEffects.filter(preset => {
+                const isValid = preset &&
+                              preset.name &&
+                              preset.name !== 'undefined' &&
+                              preset.name.trim() !== '' &&
+                              preset.data &&
+                              typeof preset.data === 'object';
+                if (!isValid) removedCount++;
+                return isValid;
+              });
+              cleanedPresets.patrolEffects = validPatrolEffects;
+
+              // Limpiar modificadores situacionales
+              const validSituationalModifiers = cleanedPresets.situationalModifiers.filter(preset => {
+                const isValid = preset &&
+                              preset.name &&
+                              preset.name !== 'undefined' &&
+                              preset.name.trim() !== '' &&
+                              preset.data &&
+                              typeof preset.data === 'object';
+                if (!isValid) removedCount++;
+                return isValid;
+              });
+              cleanedPresets.situationalModifiers = validSituationalModifiers;
+
+              return cleanedPresets;
+            });
+
+            // Persistir los cambios
+            presetsStore.subscribe(async (presets) => {
+              try {
+                await persistPresets(presets);
+                console.log('Cleaned presets saved successfully');
+              } catch (error) {
+                console.error('Error saving cleaned presets:', error);
+              }
+            })();
+
+            // Mostrar notificación
+            if (game?.ui?.notifications) {
+              game.ui.notifications.info(`Se eliminaron ${removedCount} presets corruptos.`);
+            }
+          }
+        },
+        no: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancelar"
+        }
+      },
+      default: "no"
+    });
+
+    dialog.render(true);
+  }
+
+  function debugPresets() {
+    console.log('🔍 [DEBUG] Current presets in component:', presets);
+    console.log('🔍 [DEBUG] Resources count:', presets.resources?.length || 0);
+    console.log('🔍 [DEBUG] Resources:', presets.resources);
+    console.log('🔍 [DEBUG] Reputations count:', presets.reputations?.length || 0);
+    console.log('🔍 [DEBUG] Reputations:', presets.reputations);
+    console.log('🔍 [DEBUG] PatrolEffects count:', presets.patrolEffects?.length || 0);
+    console.log('🔍 [DEBUG] PatrolEffects:', presets.patrolEffects);
+    console.log('🔍 [DEBUG] SituationalModifiers count:', presets.situationalModifiers?.length || 0);
+    console.log('🔍 [DEBUG] SituationalModifiers:', presets.situationalModifiers);
+
+    // Debug individual preset validity
+    ['resources', 'reputations', 'patrolEffects', 'situationalModifiers'].forEach(category => {
+      console.log(`🔍 [DEBUG] Checking ${category}:`);
+      const categoryPresets = presets[category] || [];
+      categoryPresets.forEach((preset, index) => {
+        console.log(`  [${index}] Name: "${preset?.name}" | Valid: ${!!(preset && preset.name && preset.name !== 'undefined' && preset.name.trim() !== '' && preset.data && typeof preset.data === 'object')}`);
+        if (!preset || !preset.name || preset.name === 'undefined') {
+          console.log(`    ❌ Invalid preset:`, preset);
+        }
+      });
+    });
+
+    // Show notification
+    if (game?.ui?.notifications) {
+      game.ui.notifications.info('Debug info mostrada en consola (F12)');
+    }
   }
 
   function editPreset(preset: PresetItem) {
@@ -1001,6 +1140,12 @@
           <button class="add-preset-btn" on:click={() => showCreateForm = !showCreateForm}>
             + Crear Preset
           </button>
+          <button class="cleanup-btn" on:click={cleanupCorruptedPresets} title="Eliminar presets corruptos o undefined">
+            🧹 Limpiar Corruptos
+          </button>
+          <button class="debug-btn" on:click={debugPresets} title="Mostrar debug de presets en consola">
+            🔍 Debug
+          </button>
         </div>
 
         <!-- Create form -->
@@ -1228,7 +1373,9 @@
                   </div>
                 </div>
                 <div class="preset-actions">
-                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  {#if game?.user?.isGM}
+                    <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                  {/if}
                   <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
                 </div>
               </div>
@@ -1267,25 +1414,32 @@
               </div>
             {/each}
           {:else if activeTab === 'patrolEffects'}
+            <!-- Debug: Log patrol effects -->
             {#each presets.patrolEffects.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>
+                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
                   <div class="preset-item-details">
                     <p><strong>Tipo:</strong> {safeGetPresetProperty(preset, 'type', 'buff')} | <strong>Duración:</strong> {safeGetPresetProperty(preset, 'duration', '1 turno')}</p>
-                    {#if preset.description}
-                      <p class="description">{preset.description}</p>
+                    {#if safeGetPresetProperty(preset, 'description')}
+                      <p class="description">{safeGetPresetProperty(preset, 'description')}</p>
                     {/if}
                     {#if game?.user?.isGM}
                       <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
                     {/if}
                     <div class="stat-effects-preview">
                       {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
-                        {@const stat = stats.find(s => s.key === statKey)}
+                        {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">
                             <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
                             {stat.name}: {value > 0 ? '+' : ''}{value}
+                          </span>
+                        {:else if value !== 0}
+                          <!-- Fallback para stats que no se encuentran -->
+                          <span class="stat-effect-preview">
+                            <img src="icons/svg/shield.svg" alt="Unknown stat" />
+                            {statKey}: {value > 0 ? '+' : ''}{value}
                           </span>
                         {/if}
                       {/each}
@@ -1305,19 +1459,25 @@
                   <img class="preset-item-image-modifier" src={safeGetPresetProperty(preset, 'img')} alt="situational modifier" />
                 {/if}
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>
+                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
                   <div class="preset-item-details">
-                    <p><strong>Descripción:</strong> {safeGetPresetProperty(preset, 'description') || safeGetPresetProperty(preset, 'situation') || ''}</p>
+                    <p><strong>Descripción:</strong> {safeGetPresetProperty(preset, 'description') || safeGetPresetProperty(preset, 'situation') || 'Sin descripción'}</p>
                     {#if game?.user?.isGM}
                       <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
                     {/if}
                     <div class="stat-effects-preview">
                       {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
-                        {@const stat = stats.find(s => s.key === statKey)}
+                        {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">
                             <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
                             {stat.name}: {value > 0 ? '+' : ''}{value}
+                          </span>
+                        {:else if value !== 0}
+                          <!-- Fallback para stats que no se encuentran -->
+                          <span class="stat-effect-preview">
+                            <img src="icons/svg/shield.svg" alt="Unknown stat" />
+                            {statKey}: {value > 0 ? '+' : ''}{value}
                           </span>
                         {/if}
                       {/each}
@@ -1441,6 +1601,9 @@
 
   .add-section {
     margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .add-preset-btn {
@@ -1455,6 +1618,36 @@
 
   .add-preset-btn:hover {
     background: #218838;
+  }
+
+  .cleanup-btn {
+    background: #ff6b35;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+  }
+
+  .cleanup-btn:hover {
+    background: #e55a2b;
+  }
+
+  .debug-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+  }
+
+  .debug-btn:hover {
+    background: #5a6268;
   }
 
   .create-form {

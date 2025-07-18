@@ -179,7 +179,9 @@
               {/each}
             </div>
             <div class="modifier-buttons">
-              <button class="preset-button" on:click={() => createPresetFromSituationalModifier(mod)} title="Crear preset con este modificador">Preset</button>
+                {#if typeof game !== 'undefined' && game.user?.isGM}
+                <button class="preset-button" on:click={() => createPresetFromSituationalModifier(mod)} title="Crear preset con este modificador">Preset</button>
+                {/if}
               <button class="remove-button" on:click={() => removeModifier(i)}>X</button>
             </div>
           </div>

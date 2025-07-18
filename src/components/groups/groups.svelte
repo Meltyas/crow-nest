@@ -228,31 +228,7 @@
         group.patrolEffects = {};
         needsUpdate = true;
       }
-      
-      // Migrate patrolEffects to patrolEffects
-      if (group.patrolEffects && Object.keys(group.patrolEffects).length > 0) {
-        console.log(`Groups.svelte - Migrating patrolEffects to patrolEffects for group: ${group.name}`);
-        
-        // Copy all patrolEffects to patrolEffects if patrolEffects is empty
-        if (Object.keys(group.patrolEffects).length === 0) {
-          for (const [modifierId, modifier] of Object.entries(group.patrolEffects)) {
-            group.patrolEffects[modifierId] = {
-              name: modifier.name,
-              description: modifier.description,
-              statEffects: modifier.statEffects,
-              sourceId: modifier.sourceId,
-              key: modifier.key
-            };
-          }
-          needsUpdate = true;
-          console.log(`Groups.svelte - Migrated ${Object.keys(group.patrolEffects).length} patrolEffects to patrolEffects`);
-        }
-        
-        // Clear patrolEffects after migration
-        delete (group as any).patrolEffects;
-        needsUpdate = true;
-      }
-      
+
       // Ensure patrolEffects structure is correct
       if (group.patrolEffects) {
         // Migrate old patrolEffects format (single stat) to new format (multi-stat)
@@ -2309,13 +2285,15 @@
                       </div>
                       {#if editing[group.id]}
                         <div style="display: flex; gap: 0.5rem;">
-                          <button
-                            on:click={() => createPatrolEffectPreset(effect)}
-                            style="padding: 0.25rem 0.5rem; background: #d4af37; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                            title="Crear preset con este efecto"
-                          >
-                            Preset
-                          </button>
+                            {#if game?.user?.isGM}
+                            <button
+                              on:click={() => createPatrolEffectPreset(effect)}
+                              style="padding: 0.25rem 0.5rem; background: #d4af37; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
+                              title="Crear preset con este efecto"
+                            >
+                              Preset
+                            </button>
+                            {/if}
                           <button
                             on:click={() => removePatrolEffect(group, effectId)}
                             style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"

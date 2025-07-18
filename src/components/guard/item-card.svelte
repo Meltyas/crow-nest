@@ -366,7 +366,9 @@
           {:else}
             <input class="item-input number" type="number" min="0" bind:value={item[config.valueProperty]} on:change={handleUpdate} />
           {/if}
-          <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
+            {#if typeof game !== 'undefined' && game.user?.isGM}
+            <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
+            {/if}
           <button class="remove-button" on:click={handleRemove}>✕</button>
         </div>
       </div>

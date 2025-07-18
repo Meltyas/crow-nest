@@ -700,16 +700,16 @@
           {#if activeTab === 'resources'}
             {#each presets.resources as preset}
               <div class="preset-item-card resource-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={preset.data.img || 'icons/svg/item-bag.svg'} alt="resource" />
+                <img class="preset-item-image" src={preset.data?.img || 'icons/svg/item-bag.svg'} alt="resource" />
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.data.name}</div>
-                  {#if preset.data.description && preset.data.description.trim()}
+                  <div class="preset-item-name">{preset.name || preset.data?.name || 'Sin nombre'}</div>
+                  {#if (preset.description || preset.data?.description) && (preset.description || preset.data?.description).trim()}
                     <div class="preset-item-details">
-                      <p>{preset.data.description}</p>
+                      <p>{preset.description || preset.data?.description}</p>
                     </div>
                   {/if}
                   <div class="preset-item-quantity-container">
-                    <span class="preset-item-quantity">{preset.data.value}</span>
+                    <span class="preset-item-quantity">{preset.data?.value || 0}</span>
                   </div>
                 </div>
                 <div class="preset-actions">
@@ -721,20 +721,20 @@
           {:else if activeTab === 'reputations'}
             {#each presets.reputations as preset}
               <div class="preset-item-card reputation-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={preset.data.img || 'icons/svg/aura.svg'} alt="reputation" />
+                <img class="preset-item-image" src={preset.data?.img || 'icons/svg/aura.svg'} alt="reputation" />
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.data.name}</div>
-                  {#if preset.data.description && preset.data.description.trim()}
+                  <div class="preset-item-name">{preset.name || preset.data?.name || 'Sin nombre'}</div>
+                  {#if (preset.description || preset.data?.description) && (preset.description || preset.data?.description).trim()}
                     <div class="preset-item-details">
-                      <p>{preset.data.description}</p>
+                      <p>{preset.description || preset.data?.description}</p>
                     </div>
                   {/if}
                   <div class="preset-item-bar-container">
                     <div class="preset-item-bar">
-                      <div class="preset-item-fill" style="width: {preset.data.value * 10}%; background: linear-gradient(90deg,
-                        hsl({(preset.data.value / 10) * 120}, 70%, 40%) 0%,
-                        hsl({(preset.data.value / 10) * 120}, 80%, 50%) 50%,
-                        hsl({(preset.data.value / 10) * 120}, 70%, 60%) 100%);">
+                      <div class="preset-item-fill" style="width: {(preset.data?.value || 0) * 10}%; background: linear-gradient(90deg,
+                        hsl({((preset.data?.value || 0) / 10) * 120}, 70%, 40%) 0%,
+                        hsl({((preset.data?.value || 0) / 10) * 120}, 80%, 50%) 50%,
+                        hsl({((preset.data?.value || 0) / 10) * 120}, 70%, 60%) 100%);">
                       </div>
                       {#each Array(11) as _, j}
                         <div class="preset-item-tick" style="left: {j * 10}%;"></div>
@@ -752,14 +752,14 @@
             {#each presets.patrolEffects as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-name">{preset.name || preset.data?.name || 'Sin nombre'}</div>
                   <div class="preset-item-details">
-                    <p><strong>Tipo:</strong> {preset.data.type} | <strong>Duración:</strong> {preset.data.duration}</p>
-                    {#if preset.description}
-                      <p class="description">{preset.description}</p>
+                    <p><strong>Tipo:</strong> {preset.data?.type || 'buff'} | <strong>Duración:</strong> {preset.data?.duration || '1 turno'}</p>
+                    {#if preset.description || preset.data?.description}
+                      <p class="description">{preset.description || preset.data?.description}</p>
                     {/if}
                     <div class="stat-effects-preview">
-                      {#each Object.entries(preset.data.statEffects || {}) as [statKey, value]}
+                      {#each Object.entries(preset.data?.statEffects || {}) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat && value !== 0}
                           <span class="stat-effect-preview">
@@ -780,16 +780,16 @@
           {:else if activeTab === 'situationalModifiers'}
             {#each presets.situationalModifiers as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
-                {#if preset.data.img}
+                {#if preset.data?.img}
                   <img class="preset-item-image-modifier" src={preset.data.img} alt="situational modifier" />
                 {/if}
                 <div class="preset-item-info">
-                  <div class="preset-item-name">{preset.name}</div>
+                  <div class="preset-item-name">{preset.name || preset.data?.name || 'Sin nombre'}</div>
                   <div class="preset-item-details">
-                    <p><strong>Modificador:</strong> {preset.data.modifier > 0 ? '+' : ''}{preset.data.modifier}</p>
-                    <p><strong>Situación:</strong> {preset.data.situation}</p>
-                    {#if preset.description}
-                      <p class="description">{preset.description}</p>
+                    <p><strong>Modificador:</strong> {(preset.data?.modifier || 0) > 0 ? '+' : ''}{preset.data?.modifier || 0}</p>
+                    <p><strong>Situación:</strong> {preset.data?.situation || 'Sin especificar'}</p>
+                    {#if preset.description || preset.data?.description}
+                      <p class="description">{preset.description || preset.data?.description}</p>
                     {/if}
                   </div>
                 </div>
