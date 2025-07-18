@@ -204,11 +204,11 @@
       existingModifier.img = preset.data.img || 'icons/svg/upgrade.svg';
       existingModifier.mods = preset.data.statEffects || {};
       existingModifier.sourceId = preset.data.sourceId; // Preserve sourceId
-      
+
       // Determine state based on stat effects
       const totalEffect = Object.values(existingModifier.mods).reduce((sum: number, value: number) => sum + value, 0);
       existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-      
+
       modifiers = [...modifiers]; // Trigger reactivity
       handlers.handleUpdateModifier();
       return;
@@ -264,7 +264,7 @@
     const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
     const stableSourceId = `temp-${nameKey}-${effectsKey}`;
-    
+
     const item = {
       sourceId: stableSourceId, // Use stable sourceId instead of timestamp-based one
       key: stableSourceId, // Also use as key for consistency

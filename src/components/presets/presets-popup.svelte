@@ -670,7 +670,7 @@
     } else {
       // For other types, use existing logic
       sourceIdToUse = item.sourceId || item.key || generateUUID();
-      
+
       // First, check if there's already a preset with the same key (for items that have a key property)
       if (item.key) {
         const presetsArray = type === 'resource' ? presets.resources :
