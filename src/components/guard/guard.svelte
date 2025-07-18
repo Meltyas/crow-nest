@@ -391,6 +391,27 @@
     presetManager.createPresetFromExistingItem(item, 'situationalModifier');
   }
 
+  function updatePresetFromModifier() {
+    console.log('Guard.svelte - Updating presets from modified modifiers');
+    
+    // Update all situational modifiers that have sourceId/key
+    modifiers.forEach(modifier => {
+      if (modifier.sourceId || modifier.key) {
+        const item = {
+          sourceId: modifier.sourceId || modifier.key,
+          name: modifier.name,
+          description: modifier.description || '',
+          situation: modifier.description || 'Situación específica',
+          img: modifier.img || 'icons/svg/upgrade.svg',
+          statEffects: modifier.mods || {}
+        };
+        
+        console.log('Guard.svelte - Updating preset for modifier:', modifier.name, 'with item:', item);
+        presetManager.updatePresetFromItem(item, 'situationalModifier');
+      }
+    });
+  }
+
   function onDragStart(event: MouseEvent) {
     isDragging = true;
     dragOffset = {
@@ -752,6 +773,7 @@
                   on:newModImageClick={handlers.handleNewModImageClick}
                   on:modFileChange={handlers.handleModFileChange}
                   on:createPresetFromSituationalModifier={createSituationalModifierPreset}
+                  on:updatePresetFromModifier={updatePresetFromModifier}
                 />
               </div>
 
