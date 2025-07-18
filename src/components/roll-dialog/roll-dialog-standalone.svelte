@@ -126,7 +126,7 @@
       group.hope -= hopeCost;
 
       // Update the store and persist the change
-      let updatedGroups: Group[];
+      let updatedGroups: Group[] = [];
       groupsStore.update(groups => {
         const groupIndex = groups.findIndex(g => g.id === group.id);
         if (groupIndex !== -1) {
@@ -264,8 +264,11 @@
                   <span>${hopeDie}</span>
                   |
                   <span>${fearDie}</span>
+                  ${(hasAdvantage || hasDisadvantage) ? `
+                  |
+                  <span class="${hasAdvantage ? 'advantage' : 'disadvantage'}">${hasAdvantage ? '+' : '-'}${advantageDie}</span>` : ''}
                 </span>
-                <span class="part-total">${hopeResult + fearResult}</span>
+                <span class="part-total">${hopeResult + fearResult}${(hasAdvantage || hasDisadvantage) ? ` ${hasAdvantage ? '+' : '-'} ${advantageResult}` : ''}</span>
               </header>
               <div class="flexrow">
                 <ol class="dice-rolls duality">
@@ -291,6 +294,18 @@
                       </div>
                     </div>
                   </li>
+                  ${(hasAdvantage || hasDisadvantage) ? `
+                  <li class="roll die ${advantageDie.substr(1)}" title="${hasAdvantage ? 'Advantage' : 'Disadvantage'}">
+                    <div class="dice-container">
+                      <div class="dice-title">${hasAdvantage ? 'Advantage' : 'Disadvantage'}</div>
+                      <div class="dice-inner-container ${hasAdvantage ? 'advantage' : 'disadvantage'}" title="${hasAdvantage ? 'Advantage' : 'Disadvantage'}">
+                        <div class="dice-wrapper">
+                          <img class="dice" src="systems/daggerheart/assets/icons/dice/${hasAdvantage ? 'hope' : 'fear'}/${advantageDie}.svg">
+                        </div>
+                        <div class="dice-value">${advantageResult}</div>
+                      </div>
+                    </div>
+                  </li>` : ''}
                 </ol>
               </div>
             </div>
@@ -984,10 +999,31 @@
     background: #9b59b6;
     color: #ffffff;
     font-weight: bold;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid rgba(155, 89, 182, 0.3);
-    text-shadow: 0 0 2px rgba(155, 89, 182, 0.5);
+  }
+
+  /* Advantage/Disadvantage dice styling */
+  :global(.crow-nest-roll .dice-inner-container.advantage) {
+    border: 2px solid #28a745;
+    border-radius: 6px;
+    background: rgba(40, 167, 69, 0.1);
+        color: #ffffff;
+  }
+
+  :global(.crow-nest-roll .dice-inner-container.disadvantage) {
+    border: 2px solid #dc3545;
+    border-radius: 6px;
+    background: rgba(220, 53, 69, 0.1);
+    color: #ffffff;
+  }
+
+  :global(.crow-nest-roll .part-formula .advantage) {
+    color: #28a745;
+    font-weight: bold;
+  }
+
+  :global(.crow-nest-roll .part-formula .disadvantage) {
+    color: #dc3545;
+    font-weight: bold;
   }
 
 
