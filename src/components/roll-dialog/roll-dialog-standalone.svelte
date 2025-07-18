@@ -332,6 +332,7 @@
       </div>` : ''}
     </div>
   </div>
+  ${((hopeWins || tie) && group.id !== 'guard-mock') || fearWins ? `
   <div class="dice-roll daggerheart chat roll">
     <div class="dice-result">
       <div class="dice-actions duality-alone">
@@ -339,7 +340,7 @@
           <div>${finalTotal} ${hopeWins ? 'With Hope' : fearWins ? 'With Fear' : 'Critical Success - Tie'}</div>
         </div>
         <div class="roll-action-buttons">
-          ${hopeWins || tie ? `<button class="roll-action-btn hope-btn" data-action="add-hope" data-roll-id="${rollId}">
+          ${(hopeWins || tie) && group.id !== 'guard-mock' ? `<button class="roll-action-btn hope-btn" data-action="add-hope" data-roll-id="${rollId}">
             <i class="fas fa-plus"></i> Add Hope to Patrol
           </button>` : ''}
           ${fearWins ? `<button class="roll-action-btn fear-btn" data-action="add-fear" data-roll-id="${rollId}">
@@ -348,7 +349,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div>` : ''}
 </div>`;
 
     // Send to chat
