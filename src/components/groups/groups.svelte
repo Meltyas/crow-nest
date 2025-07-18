@@ -16,6 +16,7 @@
   import type { Group, GroupMember, GroupSkill } from "@/shared/group";
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
+  import { presetsStore } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
@@ -75,6 +76,110 @@
   // Sync manager
   let syncManager: SyncManager;
 
+  // Handler for preset updates to sync temporary modifiers
+  function handlePresetUpdated(event: CustomEvent) {
+    console.log('Groups.svelte - Recibiendo evento handlePresetUpdated:', event.detail);
+    const { preset } = event.detail;
+    
+    // Validar que el preset tenga la estructura correcta
+    if (!preset || !preset.type || !preset.data) {
+      console.warn('Groups.svelte - Preset inválido:', preset);
+      return;
+    }
+    
+    // Solo procesar presets de modificadores temporales
+    if (preset.type === 'temporaryModifier' && preset.data.name && preset.data.statEffects) {
+      console.log('Groups.svelte - Procesando preset de modificador temporal:', preset);
+      
+      // Generate the same stable sourceId that would be used when applying the modifier
+      const nameKey = preset.data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const effectsKey = Object.keys(preset.data.statEffects || {}).sort().join('-');
+      const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+      
+      console.log('Groups.svelte - Preset data.sourceId:', preset.data.sourceId);
+      console.log('Groups.svelte - Generated stable sourceId:', stableSourceId);
+      console.log('Groups.svelte - ¿Son iguales?', preset.data.sourceId === stableSourceId);
+      
+      // Use the preset's sourceId if it matches our stable pattern, otherwise use the generated one
+      const searchSourceId = preset.data.sourceId && preset.data.sourceId.startsWith('temp-') ? preset.data.sourceId : stableSourceId;
+      
+      console.log('Groups.svelte - Buscando modificadores con sourceId:', searchSourceId);
+      
+      // Buscar y actualizar todos los modificadores temporales en todos los grupos que tengan el mismo sourceId
+      let hasUpdates = false;
+      const updatedGroups = groups.map(group => {
+        if (!group.temporaryModifiers) return group;
+        
+        console.log('Groups.svelte - Revisando grupo:', group.name);
+        console.log('Groups.svelte - Modificadores en grupo:', Object.keys(group.temporaryModifiers));
+        
+        // Log all modifiers in this group for debugging
+        for (const [modifierId, modifier] of Object.entries(group.temporaryModifiers)) {
+          console.log('Groups.svelte - Modificador ID:', modifierId, 'sourceId:', modifier.sourceId, 'key:', modifier.key);
+        }
+        
+        // Buscar modificadores que coincidan con el sourceId
+        const updatedModifiers = { ...group.temporaryModifiers };
+        let groupHasUpdates = false;
+        
+        for (const [modifierId, modifier] of Object.entries(updatedModifiers)) {
+          console.log('Groups.svelte - Comparando:', modifier.sourceId, '===', searchSourceId);
+          if (modifier.sourceId === searchSourceId) {
+            console.log('Groups.svelte - ¡MATCH! Actualizando modificador temporal en grupo:', group.name, modifier);
+            
+            // Actualizar el modificador con los datos del preset
+            updatedModifiers[modifierId] = {
+              ...modifier,
+              name: preset.data.name,
+              description: preset.data.description || '',
+              statEffects: preset.data.statEffects || {}
+            };
+            
+            groupHasUpdates = true;
+            hasUpdates = true;
+          }
+        }
+        
+        if (groupHasUpdates) {
+          return { ...group, temporaryModifiers: updatedModifiers };
+        }
+        
+        return group;
+      });
+      
+      if (hasUpdates) {
+        // Actualizar los grupos con los modificadores temporales actualizados
+        updateGroups(updatedGroups);
+        console.log('Groups.svelte - Modificadores temporales actualizados desde preset');
+      } else {
+        console.log('Groups.svelte - No se encontraron modificadores para actualizar con sourceId:', searchSourceId);
+      }
+    }
+  }
+
+  // Create preset from a new temporary modifier
+  function createTemporaryModifierPreset(modifier) {
+    const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(modifier.statEffects).sort().join('-');
+    const sourceId = `temp-${nameKey}-${effectsKey}`;
+    
+    // Check if preset already exists
+    const existingPresets = $presetsStore.temporaryModifier || [];
+    const existingPreset = existingPresets.find(p => p.sourceId === sourceId);
+    
+    if (!existingPreset) {
+      console.log('Groups.svelte - Creating new preset for modifier:', modifier);
+      presetManager.createPresetFromExistingItem({
+        name: modifier.name,
+        description: modifier.description,
+        statEffects: modifier.statEffects,
+        sourceId: sourceId
+      }, 'temporaryModifier');
+    } else {
+      console.log('Groups.svelte - Preset already exists for sourceId:', sourceId);
+    }
+  }
+
   onMount(() => {
     stats = getStats() as GuardStat[];
     modifiers = getModifiers();
@@ -88,6 +193,8 @@
     // Migrate existing groups to have maxUnits, hope and maxHope if they don't have them
     let needsUpdate = false;
     const currentGroups = [...groups];
+    console.log('Groups.svelte - Starting migration check for', currentGroups.length, 'groups');
+    
     for (const group of currentGroups) {
       if (group.maxUnits === undefined) {
         group.maxUnits = 5;
@@ -132,7 +239,11 @@
       } else {
         // Migrate old temporaryModifiers format (single stat) to new format (multi-stat)
         let modifiersUpdated = false;
+        console.log(`Groups.svelte - Checking ${Object.keys(group.temporaryModifiers).length} modifiers in group: ${group.name}`);
+        
         for (const [modifierId, modifier] of Object.entries(group.temporaryModifiers)) {
+          console.log(`Groups.svelte - Checking modifier ${modifierId}:`, modifier);
+          
           // Check if it's the old format (has statKey and value)
           if ('statKey' in modifier && 'value' in modifier && !('statEffects' in modifier)) {
             // Convert to new format
@@ -145,20 +256,42 @@
               }
             };
             modifiersUpdated = true;
+            console.log(`Groups.svelte - Converted old format modifier: ${modifierId}`);
+          }
+          
+          // Ensure all modifiers have sourceId and key (for sync compatibility)
+          if (!modifier.sourceId && modifier.name && modifier.statEffects) {
+            const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
+            const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+            
+            modifier.sourceId = stableSourceId;
+            modifier.key = stableSourceId;
+            modifiersUpdated = true;
+            
+            console.log(`Migrated modifier "${modifier.name}" to have sourceId: ${stableSourceId} in group: ${group.name}`);
+          } else if (modifier.sourceId) {
+            console.log(`Modifier "${modifier.name}" already has sourceId: ${modifier.sourceId} in group: ${group.name}`);
+          } else {
+            console.warn(`Modifier in group ${group.name} missing required fields:`, modifier);
           }
         }
         if (modifiersUpdated) {
           needsUpdate = true;
+          console.log(`Groups.svelte - Group ${group.name} needs update due to modifier changes`);
         }
       }
     }
     if (needsUpdate) {
+      console.log('Groups.svelte - Migration needed, updating groups');
       if (isAdminMode) {
         adminsStore.set(currentGroups);
       } else {
         groupsStore.set(currentGroups);
       }
       persist();
+    } else {
+      console.log('Groups.svelte - No migration needed');
     }
 
     // Setup real-time synchronization only for stats and modifiers
@@ -195,11 +328,13 @@
     };
 
     window.addEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
+    presetManager.addEventListener('presetUpdated', handlePresetUpdated);
 
     // Cleanup function
     return () => {
       document.removeEventListener('click', handleGlobalClick);
       window.removeEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
+      presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
     };
 
     // Groups sync is handled globally, no need to subscribe here
@@ -210,6 +345,11 @@
       syncManager.unsubscribe('stats', handleStatsSync);
       syncManager.unsubscribe('modifiers', handleModifiersSync);
       // No need to unsubscribe from groups - it's global
+    }
+    
+    // Remove preset manager listener if still available
+    if (presetManager) {
+      presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
     }
   });
 
@@ -938,13 +1078,20 @@
                 group.temporaryModifiers = {};
               }
 
+              // Generate stable sourceId for new modifier
+              const nameKey = modifierName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+              const effectsKey = Object.keys(statEffects).sort().join('-');
+              const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+              
               // Generate unique ID for this modifier
               const modifierId = generateUUID();
 
               group.temporaryModifiers[modifierId] = {
                 name: modifierName,
                 description: modifierDescription,
-                statEffects: statEffects
+                statEffects: statEffects,
+                sourceId: stableSourceId, // Add stable sourceId for sync
+                key: stableSourceId // Add key for consistency
               };
 
               // Create a complete new copy of the groups array with the modified group
@@ -955,6 +1102,20 @@
               );
 
               updateGroups(updatedGroups);
+
+              console.log('Groups.svelte - New modifier created, creating preset:', {
+                sourceId: stableSourceId,
+                name: modifierName,
+                description: modifierDescription,
+                statEffects: statEffects
+              });
+
+              // Create a preset for this new modifier
+              createTemporaryModifierPreset({
+                name: modifierName,
+                description: modifierDescription,
+                statEffects: statEffects
+              });
 
             } else if (Object.keys(statEffects).length === 0) {
               ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
@@ -1055,11 +1216,36 @@
               group.temporaryModifiers[modifierId] = {
                 name: modifierName,
                 description: modifierDescription,
-                statEffects: statEffects
+                statEffects: statEffects,
+                sourceId: existingModifier.sourceId, // Preserve existing sourceId
+                key: existingModifier.key // Preserve existing key
               };
 
               // Use updateGroups helper instead of manual update
               updateGroups([...groups]);
+
+              // Notify preset manager about the modifier update (reverse sync)
+              if (existingModifier.sourceId) {
+                console.log('Groups.svelte - Notifying preset manager of modifier update:', {
+                  sourceId: existingModifier.sourceId,
+                  name: modifierName,
+                  description: modifierDescription,
+                  statEffects: statEffects
+                });
+                
+                const updatedModifier = {
+                  sourceId: existingModifier.sourceId,
+                  key: existingModifier.key,
+                  name: modifierName,
+                  description: modifierDescription,
+                  statEffects: statEffects,
+                  type: 'neutral',
+                  duration: ''
+                };
+                
+                // Update the preset via preset manager
+                presetManager.updatePresetFromItem(updatedModifier, 'temporaryModifier');
+              }
             } else if (Object.keys(statEffects).length === 0) {
               ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
             }
@@ -1097,19 +1283,6 @@
     updateGroups([...groups]);
   }
 
-  function createTemporaryModifierPreset(modifier: any) {
-    const item = {
-      sourceId: `temp-${modifier.name}-${Date.now()}`, // Generar un sourceId único para temporal
-      name: modifier.name,
-      description: modifier.description || '',
-      type: 'neutral',
-      duration: modifier.duration || '',
-      statEffects: modifier.statEffects || {}
-    };
-
-    presetManager.createPresetFromExistingItem(item, 'temporaryModifier');
-  }
-
   function applyTemporaryModifierToGroup(group: Group) {
     if (!pendingTemporaryModifier) return;
 
@@ -1118,11 +1291,20 @@
       group.temporaryModifiers = {};
     }
 
-    // Use preset ID if available, otherwise generate UUID
-    const modifierId = pendingTemporaryModifier.presetId ? `preset_${pendingTemporaryModifier.presetId}` : generateUUID();
+    // Generate a stable sourceId based on the modifier's content (same logic as createTemporaryModifierPreset)
+    const nameKey = pendingTemporaryModifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(pendingTemporaryModifier.statEffects || {}).sort().join('-');
+    const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+    
+    const modifierId = `preset_${stableSourceId}`;
 
-    // Check if this modifier already exists in the group
-    if (group.temporaryModifiers[modifierId]) {
+    // Check if this modifier already exists in the group (check by sourceId)
+    const existingModifierId = Object.keys(group.temporaryModifiers).find(id => {
+      const modifier = group.temporaryModifiers[id];
+      return modifier.sourceId === stableSourceId || id === modifierId;
+    });
+
+    if (existingModifierId) {
       ui.notifications?.warn(`El modificador temporal "${pendingTemporaryModifier.name}" ya está aplicado a ${group.name}.`);
       // Clear the pending modifier
       pendingTemporaryModifier = null;
@@ -1135,7 +1317,8 @@
       name: pendingTemporaryModifier.name,
       description: pendingTemporaryModifier.description,
       statEffects: pendingTemporaryModifier.statEffects,
-      sourceId: pendingTemporaryModifier.presetId // Store reference to preset if available
+      sourceId: stableSourceId, // Use the stable sourceId for consistency
+      key: stableSourceId // Also store as key for consistency with other items
     };
 
     // Update the groups

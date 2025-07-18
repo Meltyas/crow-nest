@@ -643,6 +643,8 @@
   function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
     console.log('Creating preset from item:', item, 'Type:', type);
     console.log('Item sourceId:', item.sourceId);
+    console.log('Item key:', item.key);
+    console.log('Item name:', item.name);
     console.log('Item statEffects:', item.statEffects);
 
     // Validar que el item tenga la estructura correcta
@@ -651,17 +653,48 @@
       return;
     }
 
-    // Asegurar que el item tenga un sourceId válido
-    if (!item.sourceId || item.sourceId === '') {
-      item.sourceId = item.key || generateUUID();
-      console.log('Generated new sourceId for item:', item.sourceId);
-    }
-
     // Validar que presets tenga la estructura correcta
     if (!presets || typeof presets !== 'object') {
       console.warn('Invalid presets structure:', presets);
       return;
     }
+
+    // For temporary modifiers, create a stable key based on name and properties
+    let sourceIdToUse;
+    if (type === 'temporaryModifier') {
+      // Create a stable identifier based on the modifier's content
+      const nameKey = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const effectsKey = Object.keys(item.statEffects || {}).sort().join('-');
+      sourceIdToUse = `temp-${nameKey}-${effectsKey}`;
+      console.log('Generated stable sourceId for temporary modifier:', sourceIdToUse);
+    } else {
+      // For other types, use existing logic
+      sourceIdToUse = item.sourceId || item.key || generateUUID();
+      
+      // First, check if there's already a preset with the same key (for items that have a key property)
+      if (item.key) {
+        const presetsArray = type === 'resource' ? presets.resources :
+                            type === 'reputation' ? presets.reputations :
+                            type === 'temporaryModifier' ? presets.temporaryModifiers :
+                            presets.situationalModifiers;
+
+        if (Array.isArray(presetsArray)) {
+          const existingPresetByKey = presetsArray.find(p => p.data && (p.data.key === item.key || p.data.sourceId === item.key));
+          if (existingPresetByKey) {
+            sourceIdToUse = existingPresetByKey.data.sourceId || existingPresetByKey.data.key || item.key;
+            console.log('Found existing preset with matching key, reusing sourceId:', sourceIdToUse);
+          } else {
+            // Use the item's key as sourceId for consistency
+            sourceIdToUse = item.key;
+            console.log('Using item key as sourceId for consistency:', sourceIdToUse);
+          }
+        }
+      }
+    }
+
+    // Assign the determined sourceId to the item
+    item.sourceId = sourceIdToUse;
+    console.log('Final sourceId for item:', item.sourceId);
 
     // Check if preset already exists with same sourceId
     if (item.sourceId) {

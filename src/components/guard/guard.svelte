@@ -178,10 +178,11 @@
     // Activar modo de aplicación de modificador temporal
     const event = new CustomEvent('crow-nest-apply-temporary-modifier', {
       detail: {
-        presetId: preset.id, // Incluir el ID del preset
+        presetId: preset.data.sourceId || preset.id, // Use sourceId for consistency, fallback to id
         name: preset.data.name,
         description: preset.data.description || '',
-        statEffects: preset.data.statEffects
+        statEffects: preset.data.statEffects,
+        sourceId: preset.data.sourceId // Also pass sourceId directly
       }
     });
 
@@ -259,8 +260,14 @@
   }
 
   function createTemporaryModifierPreset(modifier: any) {
+    // Create a stable identifier based on the modifier's content
+    const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
+    const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+    
     const item = {
-      sourceId: `temp-${modifier.name}-${Date.now()}`, // Generar un sourceId único para temporal
+      sourceId: stableSourceId, // Use stable sourceId instead of timestamp-based one
+      key: stableSourceId, // Also use as key for consistency
       name: modifier.name,
       description: modifier.description || '',
       type: 'neutral',
@@ -271,69 +278,9 @@
     presetManager.createPresetFromExistingItem(item, 'temporaryModifier');
   }
 
-  function handlePresetUpdated(event: CustomEvent) {
-    console.log('Guard.svelte - Recibiendo evento handlePresetUpdated:', event.detail);
-    const { preset } = event.detail;
-    
-    // Validar que el preset tenga la estructura correcta
-    if (!preset || !preset.type || !preset.data) {
-      console.warn('Guard.svelte - Preset inválido:', preset);
-      return;
-    }
-    
-    // Solo procesar presets situacionales
-    if (preset.type === 'situationalModifier' && preset.data.sourceId) {
-      console.log('Guard.svelte - Procesando preset situacional:', preset);
-      // Buscar el modificador correspondiente por sourceId o key
-      const existingModifier = modifiers.find(m => m.sourceId === preset.data.sourceId || m.key === preset.data.sourceId);
-      console.log('Guard.svelte - Modificador encontrado:', existingModifier);
-      
-      if (existingModifier) {
-        // Actualizar el modificador existente con los datos del preset
-        existingModifier.name = preset.data.name;
-        existingModifier.description = preset.data.description || '';
-        existingModifier.img = preset.data.img || 'icons/svg/upgrade.svg';
-        existingModifier.mods = preset.data.statEffects || {};
-        existingModifier.sourceId = preset.data.sourceId; // Asegurar que el sourceId se mantenga
-        
-        // Determinar el estado basado en los efectos
-        const modsValues = Object.values(existingModifier.mods || {});
-        const totalEffect = modsValues.reduce((sum: number, value: number) => {
-          const numValue = Number(value) || 0;
-          return sum + numValue;
-        }, 0);
-        existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-        
-        // Actualizar la lista de modificadores para disparar reactividad
-        modifiers = [...modifiers];
-        
-        // Persistir los cambios
-        handlers.handleUpdateModifier();
-        
-        console.log('Guard.svelte - Modificador actualizado desde preset:', existingModifier);
-      }
-    }
-  }
 
-  function updatePresetFromModifier(event: CustomEvent) {
-    // Actualizar todos los presets relacionados con los modificadores actuales
-    modifiers.forEach(modifier => {
-      // Usar sourceId o key como identificador
-      const sourceId = modifier.sourceId || modifier.key;
-      if (sourceId) {
-        const item = {
-          sourceId: sourceId,
-          name: modifier.name,
-          description: modifier.description || '',
-          situation: modifier.description || 'Situación específica',
-          img: modifier.img || 'icons/svg/upgrade.svg',
-          statEffects: modifier.mods || {}
-        };
-        console.log('Guard.svelte - Actualizando preset automáticamente:', item);
-        presetManager.updatePresetFromItem(item, 'situationalModifier');
-      }
-    });
-  }
+
+
 
   function createSituationalModifierPreset(event: CustomEvent) {
     const modifier = event.detail;
@@ -432,9 +379,6 @@
     syncManager.subscribe('patrols', handlers.handlePatrolsSync);
     syncManager.subscribe('admins', handlers.handleAdminsSync);
 
-    // Listen for preset updates to sync with modifiers
-    presetManager.addEventListener('presetUpdated', handlePresetUpdated);
-
     // Update handlers with initial data
     updateHandlersData();
 
@@ -488,7 +432,6 @@
 
     // Remove preset listeners
     window.removeEventListener('crow-nest-use-preset', handleUsePreset);
-    presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
   });
 
   function getTotalStatValue(stat: Stat): number {
@@ -707,7 +650,6 @@
                   on:addModifier={handlers.handleAddModifier}
                   on:removeModifier={handlers.handleRemoveModifier}
                   on:updateModifier={handlers.handleUpdateModifier}
-                  on:updatePresetFromModifier={updatePresetFromModifier}
                   on:toggleEditingMods={handleToggleEditingMods}
                   on:modImageClick={handlers.handleModImageClick}
                   on:newModImageClick={handlers.handleNewModImageClick}
