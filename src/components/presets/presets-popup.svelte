@@ -24,6 +24,20 @@
     return type as 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier';
   }
 
+  // Function to save the active tab to localStorage
+  function saveActiveTabToStorage(tab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers') {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('crow-nest-presets-last-tab', tab);
+    }
+  }
+
+  // Function to change tab and save to localStorage
+  function changeTab(newTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers') {
+    activeTab = newTab;
+    saveActiveTabToStorage(newTab);
+    if (!editingPreset) showCreateForm = false;
+  }
+
   // Helper function to safely get stat effects and prevent undefined iteration
   function safeGetStatEffects(data: any): Record<string, number> {
     try {
@@ -157,7 +171,9 @@
 
   let stats = getStats();
 
-  let activeTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers' = 'resources';
+  // Load last active tab from localStorage or default to 'resources'
+  let activeTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers' = 
+    (typeof localStorage !== 'undefined' && localStorage.getItem('crow-nest-presets-last-tab') as any) || 'resources';
   let popupElement: HTMLElement;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
@@ -482,13 +498,13 @@
     // Switch to the correct tab based on normalized type
     const normalizedType = normalizePresetType(preset.type);
     if (normalizedType === 'resource') {
-      activeTab = 'resources';
+      changeTab('resources');
     } else if (normalizedType === 'reputation') {
-      activeTab = 'reputations';
+      changeTab('reputations');
     } else if (normalizedType === 'patrolEffect') {
-      activeTab = 'patrolEffects';
+      changeTab('patrolEffects');
     } else if (normalizedType === 'situationalModifier') {
-      activeTab = 'situationalModifiers';
+      changeTab('situationalModifiers');
     }
 
     // Populate form based on preset type
@@ -910,25 +926,25 @@
       <div class="tabs">
         <button
           class="tab {activeTab === 'resources' ? 'active' : ''}"
-          on:click={() => { activeTab = 'resources'; if (!editingPreset) showCreateForm = false; }}
+          on:click={() => changeTab('resources')}
         >
           Recursos
         </button>
         <button
           class="tab {activeTab === 'reputations' ? 'active' : ''}"
-          on:click={() => { activeTab = 'reputations'; if (!editingPreset) showCreateForm = false; }}
+          on:click={() => changeTab('reputations')}
         >
           Reputaciones
         </button>
         <button
           class="tab {activeTab === 'patrolEffects' ? 'active' : ''}"
-          on:click={() => { activeTab = 'patrolEffects'; if (!editingPreset) showCreateForm = false; }}
+          on:click={() => changeTab('patrolEffects')}
         >
           Efectos de Patrulla
         </button>
         <button
           class="tab {activeTab === 'situationalModifiers' ? 'active' : ''}"
-          on:click={() => { activeTab = 'situationalModifiers'; if (!editingPreset) showCreateForm = false; }}
+          on:click={() => changeTab('situationalModifiers')}
         >
           Mod. Situacionales
         </button>
