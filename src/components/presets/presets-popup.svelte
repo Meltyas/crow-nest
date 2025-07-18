@@ -15,6 +15,15 @@
   import PopupFocusManager from '@/utils/popup-focus';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
+  // Helper function to normalize preset types for legacy compatibility
+  function normalizePresetType(type: string): 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier' {
+    // Handle legacy type name
+    if (type === 'temporaryModifier') {
+      return 'patrolEffect';
+    }
+    return type as 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier';
+  }
+
   // Helper function to safely get stat effects and prevent undefined iteration
   function safeGetStatEffects(data: any): Record<string, number> {
     try {
@@ -429,7 +438,8 @@
   }
 
   function usePreset(preset: PresetItem) {
-    updatePresetUsage(preset.id, preset.type);
+    const normalizedType = normalizePresetType(preset.type);
+    updatePresetUsage(preset.id, normalizedType);
     dispatch('usePreset', preset);
   }
 
@@ -443,7 +453,12 @@
           icon: '<i class="fas fa-check"></i>',
           label: "Sí, eliminar",
           callback: () => {
-            removePreset(preset.id, preset.type);
+            // Normalizar el tipo para manejar casos legacy como "temporaryModifier"
+            let normalizedType = preset.type;
+            if (preset.type === 'temporaryModifier') {
+              normalizedType = 'patrolEffect';
+            }
+            removePreset(preset.id, normalizedType);
           }
         },
         no: {
@@ -462,35 +477,36 @@
 
   function editPreset(preset: PresetItem) {
     editingPreset = preset;
-    editingPresetType = preset.type;
+    editingPresetType = normalizePresetType(preset.type);
 
-    // Switch to the correct tab
-    if (preset.type === 'resource') {
+    // Switch to the correct tab based on normalized type
+    const normalizedType = normalizePresetType(preset.type);
+    if (normalizedType === 'resource') {
       activeTab = 'resources';
-    } else if (preset.type === 'reputation') {
+    } else if (normalizedType === 'reputation') {
       activeTab = 'reputations';
-    } else if (preset.type === 'patrolEffect') {
+    } else if (normalizedType === 'patrolEffect') {
       activeTab = 'patrolEffects';
-    } else if (preset.type === 'situationalModifier') {
+    } else if (normalizedType === 'situationalModifier') {
       activeTab = 'situationalModifiers';
     }
 
     // Populate form based on preset type
-    if (preset.type === 'resource') {
+    if (normalizedType === 'resource') {
       newResourceForm = {
         name: preset.data.name,
         value: preset.data.value,
         description: preset.data.description || '',
         img: preset.data.img || ''
       };
-    } else if (preset.type === 'reputation') {
+    } else if (normalizedType === 'reputation') {
       newReputationForm = {
         name: preset.data.name,
         value: preset.data.value,
         description: preset.data.description || '',
         img: preset.data.img || ''
       };
-    } else if (preset.type === 'patrolEffect') {
+    } else if (normalizedType === 'patrolEffect') {
       newPatrolEffectForm = {
         name: preset.data.name,
         description: preset.data.description || '',
@@ -499,7 +515,7 @@
         duration: preset.data.duration,
         statEffects: { ...safeGetStatEffects(preset.data) }
       };
-    } else if (preset.type === 'situationalModifier') {
+    } else if (normalizedType === 'situationalModifier') {
       newSituationalModifierForm = {
         name: preset.data.name,
         description: preset.data.description || preset.data.situation || '',
@@ -529,11 +545,14 @@
     console.log('SaveEdit - Before update, editingPreset.id:', editingPreset.id);
     console.log('SaveEdit - Before update, editingPreset.data.sourceId:', editingPreset.data.sourceId);
 
+    // Normalize the preset type for consistency
+    const normalizedType = normalizePresetType(editingPreset.type);
+
     // Update the preset directly in the store without changing the ID
     presetsStore.update(currentPresets => {
-      const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
-                          editingPreset.type === 'reputation' ? currentPresets.reputations :
-                          editingPreset.type === 'patrolEffect' ? currentPresets.patrolEffects :
+      const presetsArray = normalizedType === 'resource' ? currentPresets.resources :
+                          normalizedType === 'reputation' ? currentPresets.reputations :
+                          normalizedType === 'patrolEffect' ? currentPresets.patrolEffects :
                           currentPresets.situationalModifiers;
 
       const presetIndex = presetsArray.findIndex(p => p.id === editingPreset.id);
@@ -541,27 +560,28 @@
         // Update the existing preset while preserving its ID and sourceId
         presetsArray[presetIndex] = {
           ...editingPreset, // Keep the original ID and other properties
-          name: editingPreset.type === 'resource' ? newResourceForm.name :
-                editingPreset.type === 'reputation' ? newReputationForm.name :
-                editingPreset.type === 'patrolEffect' ? newPatrolEffectForm.name :
+          type: normalizedType, // Update to normalized type
+          name: normalizedType === 'resource' ? newResourceForm.name :
+                normalizedType === 'reputation' ? newReputationForm.name :
+                normalizedType === 'patrolEffect' ? newPatrolEffectForm.name :
                 newSituationalModifierForm.name,
-          description: editingPreset.type === 'resource' ? newResourceForm.description :
-                      editingPreset.type === 'reputation' ? newReputationForm.description :
-                      editingPreset.type === 'patrolEffect' ? newPatrolEffectForm.description :
+          description: normalizedType === 'resource' ? newResourceForm.description :
+                      normalizedType === 'reputation' ? newReputationForm.description :
+                      normalizedType === 'patrolEffect' ? newPatrolEffectForm.description :
                       newSituationalModifierForm.description,
-          data: editingPreset.type === 'resource' ? {
+          data: normalizedType === 'resource' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newResourceForm.name,
             value: newResourceForm.value,
             description: newResourceForm.description,
             img: newResourceForm.img
-          } : editingPreset.type === 'reputation' ? {
+          } : normalizedType === 'reputation' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newReputationForm.name,
             value: newReputationForm.value,
             description: newReputationForm.description,
             img: newReputationForm.img
-          } : editingPreset.type === 'patrolEffect' ? {
+          } : normalizedType === 'patrolEffect' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newPatrolEffectForm.name,
             description: newPatrolEffectForm.description,
@@ -569,7 +589,7 @@
             value: newPatrolEffectForm.value,
             duration: newPatrolEffectForm.duration,
             statEffects: newPatrolEffectForm.statEffects || {}
-          } : editingPreset.type === 'situationalModifier' ? {
+          } : normalizedType === 'situationalModifier' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newSituationalModifierForm.name,
             description: newSituationalModifierForm.description,
@@ -581,6 +601,7 @@
 
         console.log('SaveEdit - After update, preset.id:', presetsArray[presetIndex].id);
         console.log('SaveEdit - After update, preset.data.sourceId:', presetsArray[presetIndex].data.sourceId);
+        console.log('SaveEdit - After update, preset.type:', presetsArray[presetIndex].type);
       }
 
       return currentPresets;
@@ -598,9 +619,9 @@
     // Obtener el preset actualizado del store para emitir el evento
     let updatedPreset = null;
     const currentPresets = presets; // Use the current presets from our local state
-    const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
-                        editingPreset.type === 'reputation' ? currentPresets.reputations :
-                        editingPreset.type === 'patrolEffect' ? currentPresets.patrolEffects :
+    const presetsArray = normalizedType === 'resource' ? currentPresets.resources :
+                        normalizedType === 'reputation' ? currentPresets.reputations :
+                        normalizedType === 'patrolEffect' ? currentPresets.patrolEffects :
                         currentPresets.situationalModifiers;
 
     updatedPreset = presetsArray.find(p => p.id === editingPreset.id);
