@@ -172,7 +172,7 @@
   let stats = getStats();
 
   // Load last active tab from localStorage or default to 'resources'
-  let activeTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers' = 
+  let activeTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers' =
     (typeof localStorage !== 'undefined' && localStorage.getItem('crow-nest-presets-last-tab') as any) || 'resources';
   let popupElement: HTMLElement;
   let isDragging = false;
@@ -725,15 +725,27 @@
       // Always use the existing sourceId to maintain synchronization
       sourceIdToUse = item.sourceId;
       console.log('Using existing sourceId from item:', sourceIdToUse);
-    } else if (type === 'patrolEffect') {
-      // Only generate new sourceId if item doesn't have one
-      const nameKey = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const effectsKey = Object.keys(item.statEffects || {}).sort().join('-');
-      sourceIdToUse = `patrol-${nameKey}-${effectsKey}`;
-      console.log('Generated new sourceId for patrol effect:', sourceIdToUse);
     } else {
-      // For other types, use existing logic
-      sourceIdToUse = item.key || generateUUID();
+      // Generate appropriate sourceId based on type
+      if (type === 'patrolEffect') {
+        const nameKey = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const effectsKey = Object.keys(item.statEffects || {}).sort().join('-');
+        sourceIdToUse = `patrol-${nameKey}-${effectsKey}`;
+        console.log('Generated new sourceId for patrol effect:', sourceIdToUse);
+      } else if (type === 'resource') {
+        sourceIdToUse = item.key || `resource-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+        console.log('Generated new sourceId for resource:', sourceIdToUse);
+      } else if (type === 'reputation') {
+        sourceIdToUse = item.key || `reputation-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+        console.log('Generated new sourceId for reputation:', sourceIdToUse);
+      } else if (type === 'situationalModifier') {
+        sourceIdToUse = item.key || `situational-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+        console.log('Generated new sourceId for situational modifier:', sourceIdToUse);
+      } else {
+        // Fallback for any other types
+        sourceIdToUse = item.key || generateUUID();
+        console.log('Generated fallback sourceId:', sourceIdToUse);
+      }
     }
 
     // Assign the determined sourceId to the item
@@ -771,10 +783,11 @@
         });
 
         // Switch to the correct tab and show the updated preset
-        activeTab = type === 'resource' ? 'resources' :
-                    type === 'reputation' ? 'reputations' :
-                    type === 'patrolEffect' ? 'patrolEffects' :
-                    'situationalModifiers';
+        const targetTab = type === 'resource' ? 'resources' :
+                         type === 'reputation' ? 'reputations' :
+                         type === 'patrolEffect' ? 'patrolEffects' :
+                         'situationalModifiers';
+        changeTab(targetTab);
 
         dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
         return;
@@ -820,7 +833,20 @@
 
     // Asegurar que el item tenga un sourceId válido
     if (!item.sourceId || item.sourceId === '') {
-      item.sourceId = item.key || generateUUID();
+      // Generate appropriate sourceId based on type, similar to createPresetFromItem
+      if (type === 'patrolEffect') {
+        const nameKey = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const effectsKey = Object.keys(item.statEffects || {}).sort().join('-');
+        item.sourceId = `patrol-${nameKey}-${effectsKey}`;
+      } else if (type === 'resource') {
+        item.sourceId = item.key || `resource-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+      } else if (type === 'reputation') {
+        item.sourceId = item.key || `reputation-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+      } else if (type === 'situationalModifier') {
+        item.sourceId = item.key || `situational-${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}` || generateUUID();
+      } else {
+        item.sourceId = item.key || generateUUID();
+      }
       console.log('Generated new sourceId for item during update:', item.sourceId);
     }
 
@@ -851,23 +877,41 @@
         console.log('Found existing preset, updating:', existingPreset);
 
         // Update existing preset with new data based on type
-        if (type === 'situationalModifier') {
+        if (type === 'resource') {
           existingPreset.data = {
             ...existingPreset.data,
             name: item.name,
-            description: item.description || '',
-            situation: item.description || item.situation || existingPreset.data.situation,
+            value: item.value !== undefined ? item.value : existingPreset.data.value,
+            description: item.description || item.details || existingPreset.data.description || '',
             img: item.img || existingPreset.data.img,
+            sourceId: sourceId
+          };
+        } else if (type === 'reputation') {
+          existingPreset.data = {
+            ...existingPreset.data,
+            name: item.name,
+            value: item.value !== undefined ? item.value : existingPreset.data.value,
+            description: item.description || item.details || existingPreset.data.description || '',
+            img: item.img || existingPreset.data.img,
+            sourceId: sourceId
+          };
+        } else if (type === 'patrolEffect') {
+          existingPreset.data = {
+            ...existingPreset.data,
+            name: item.name,
+            description: item.description || item.details || existingPreset.data.description || '',
+            type: item.type || existingPreset.data.type || 'buff',
+            value: item.value !== undefined ? item.value : existingPreset.data.value,
+            duration: item.duration || existingPreset.data.duration || '1 turno',
             statEffects: safeGetStatEffects(item) || safeGetStatEffects(existingPreset.data),
             sourceId: sourceId
           };
-        } else {
-          // For other types (resource, reputation, patrolEffect)
+        } else if (type === 'situationalModifier') {
           existingPreset.data = {
             ...existingPreset.data,
             name: item.name,
-            value: item.value,
-            description: item.details || item.description || '',
+            description: item.description || item.details || existingPreset.data.description || '',
+            situation: item.description || item.situation || existingPreset.data.situation,
             img: item.img || existingPreset.data.img,
             statEffects: safeGetStatEffects(item) || safeGetStatEffects(existingPreset.data),
             sourceId: sourceId

@@ -107,8 +107,9 @@
     presetManager.showPresetPopup();
   }
 
-  function handleUsePreset(event: CustomEvent) {
-    const preset = event.detail;
+  function handleUsePreset(event: Event) {
+    const customEvent = event as CustomEvent;
+    const preset = customEvent.detail;
 
     switch (preset.type) {
       case 'resource':
@@ -125,6 +126,98 @@
         break;
       default:
         console.warn('Unknown preset type:', preset.type);
+    }
+  }
+
+  function handlePresetUpdated(event: CustomEvent) {
+    const { preset } = event.detail;
+    console.log('Guard.svelte - Recibiendo evento presetUpdated:', preset);
+
+    if (!preset || !preset.data || !preset.data.sourceId) {
+      console.warn('Guard.svelte - Invalid preset in presetUpdated event:', preset);
+      return;
+    }
+
+    // Update the corresponding item based on preset type
+    switch (preset.type) {
+      case 'situationalModifier':
+        updateSituationalModifierFromPreset(preset);
+        break;
+      case 'resource':
+        updateResourceFromPreset(preset);
+        break;
+      case 'reputation':
+        updateReputationFromPreset(preset);
+        break;
+      case 'patrolEffect':
+        // PatrolEffects are temporary and don't have persistent items to update
+        console.log('PatrolEffect preset updated - no persistent item to update');
+        break;
+      default:
+        console.warn('Unknown preset type in presetUpdated:', preset.type);
+    }
+  }
+
+  function updateSituationalModifierFromPreset(preset: any) {
+    const sourceId = preset.data.sourceId;
+    const existingModifier = modifiers.find(m => m.sourceId === sourceId || m.key === sourceId);
+    
+    if (existingModifier) {
+      console.log('Guard.svelte - Updating existing situational modifier from preset:', existingModifier);
+      
+      // Update the existing modifier with the preset data
+      existingModifier.name = preset.data.name;
+      existingModifier.description = preset.data.description || '';
+      existingModifier.img = preset.data.img || existingModifier.img;
+      existingModifier.mods = preset.data.statEffects || {};
+      
+      // Determine state based on stat effects
+      const totalEffect = Object.values(existingModifier.mods).reduce((sum, value) => sum + (Number(value) || 0), 0);
+      existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
+      
+      // Trigger reactivity and persistence
+      modifiers = [...modifiers];
+      handlers.handleUpdateModifier();
+      
+      console.log('Guard.svelte - Situational modifier updated:', existingModifier);
+    }
+  }
+
+  function updateResourceFromPreset(preset: any) {
+    const sourceId = preset.data.sourceId;
+    const existingResource = resources.find(r => r.key === sourceId);
+    
+    if (existingResource) {
+      console.log('Guard.svelte - Updating existing resource from preset:', existingResource);
+      
+      existingResource.name = preset.data.name;
+      existingResource.value = preset.data.value;
+      existingResource.details = preset.data.description || '';
+      existingResource.img = preset.data.img || existingResource.img;
+      
+      resources = [...resources];
+      handlers.handleUpdateResource();
+      
+      console.log('Guard.svelte - Resource updated:', existingResource);
+    }
+  }
+
+  function updateReputationFromPreset(preset: any) {
+    const sourceId = preset.data.sourceId;
+    const existingReputation = reputation.find(r => r.key === sourceId);
+    
+    if (existingReputation) {
+      console.log('Guard.svelte - Updating existing reputation from preset:', existingReputation);
+      
+      existingReputation.name = preset.data.name;
+      existingReputation.value = preset.data.value;
+      existingReputation.details = preset.data.description || '';
+      existingReputation.img = preset.data.img || existingReputation.img;
+      
+      reputation = [...reputation];
+      handlers.handleUpdateReputation();
+      
+      console.log('Guard.svelte - Reputation updated:', existingReputation);
     }
   }
 
@@ -148,7 +241,7 @@
     };
 
     resources = [...resources, newResource];
-    handlers.handleAddResource({ detail: newResource });
+    handlers.handleUpdateResource();
   }
 
   function applyReputationPreset(preset: any) {
@@ -171,7 +264,7 @@
     };
 
     reputation = [...reputation, newReputation];
-    handlers.handleAddReputation({ detail: newReputation });
+    handlers.handleUpdateReputation();
   }
 
   function applyPatrolEffectPreset(preset: any) {
@@ -223,13 +316,13 @@
       mods: preset.data.statEffects || {},
       sourceId: preset.data.sourceId, // Preserve sourceId
       state: (() => {
-        const totalEffect = Object.values(preset.data.statEffects || {}).reduce((sum: number, value: number) => sum + value, 0);
+        const totalEffect = Object.values(preset.data.statEffects || {}).reduce((sum: number, value) => sum + (Number(value) || 0), 0);
         return totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-      })()
+      })() as 'positive' | 'neutral' | 'negative'
     };
 
     modifiers = [...modifiers, newModifier];
-    handlers.handleAddModifier({ detail: newModifier });
+    handlers.handleUpdateModifier();
   }
 
   // Functions to create presets from existing items
@@ -418,6 +511,9 @@
 
     // Listen for preset usage events
     window.addEventListener('crow-nest-use-preset', handleUsePreset);
+
+    // Listen for preset update events from PresetManager
+    presetManager.addEventListener('presetUpdated', handlePresetUpdated);
   });
 
   onDestroy(() => {
@@ -432,6 +528,7 @@
 
     // Remove preset listeners
     window.removeEventListener('crow-nest-use-preset', handleUsePreset);
+    presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
   });
 
   function getTotalStatValue(stat: Stat): number {
