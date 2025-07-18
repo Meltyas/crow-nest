@@ -290,24 +290,24 @@
   function saveOrCreatePreset(type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('[saveOrCreatePreset] Called with type:', type);
     console.log('[saveOrCreatePreset] Current presets structure:', presets);
-    
+
     // Ensure presets are properly initialized
     if (!presets || typeof presets !== 'object') {
       console.error('[saveOrCreatePreset] Presets not properly initialized:', presets);
       return;
     }
-    
+
     // Ensure the specific category exists
     const category = type === 'resource' ? 'resources' :
                     type === 'reputation' ? 'reputations' :
                     type === 'patrolEffect' ? 'patrolEffects' :
                     'situationalModifiers';
-                    
+
     if (!Array.isArray(presets[category])) {
       console.warn(`[saveOrCreatePreset] Category ${category} is not an array, initializing:`, presets[category]);
       presets[category] = [];
     }
-    
+
     if (editingPreset && editingPresetType === type) {
       // We're editing an existing preset
       saveEdit();
