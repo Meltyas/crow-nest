@@ -92,7 +92,7 @@ Hooks.once("init", () => {
     default: {
       resources: [],
       reputations: [],
-      temporaryModifiers: [],
+      patrolEffects: [],
       situationalModifiers: [],
     },
   });

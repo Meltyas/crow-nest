@@ -1,7 +1,7 @@
 export interface PresetItem {
   id: string;
   name: string;
-  type: "resource" | "reputation" | "temporaryModifier" | "situationalModifier";
+  type: "resource" | "reputation" | "patrolEffect" | "situationalModifier";
   description?: string;
   data: any; // Estructura específica según el tipo
   createdAt: number;
@@ -22,7 +22,7 @@ export interface ReputationPreset {
   img?: string;
 }
 
-export interface TemporaryModifierPreset {
+export interface PatrolEffectPreset {
   name: string;
   description?: string;
   type: string;
@@ -43,6 +43,6 @@ export interface SituationalModifierPreset {
 export interface PresetCollection {
   resources: PresetItem[];
   reputations: PresetItem[];
-  temporaryModifiers: PresetItem[];
+  patrolEffects: PresetItem[];
   situationalModifiers: PresetItem[];
 }

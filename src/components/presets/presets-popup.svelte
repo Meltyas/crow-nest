@@ -64,7 +64,7 @@
       }
 
       // Sanitize statEffects for modifier types
-      if (preset.type === 'temporaryModifier' || preset.type === 'situationalModifier') {
+      if (preset.type === 'patrolEffect' || preset.type === 'situationalModifier') {
         preset.data.statEffects = safeGetStatEffects(preset.data);
       }
 
@@ -81,7 +81,7 @@
       const sanitized: PresetCollection = {
         resources: [],
         reputations: [],
-        temporaryModifiers: [],
+        patrolEffects: [],
         situationalModifiers: []
       };
 
@@ -92,8 +92,8 @@
         if (Array.isArray(presets.reputations)) {
           sanitized.reputations = presets.reputations.map(sanitizePreset).filter(p => p !== null);
         }
-        if (Array.isArray(presets.temporaryModifiers)) {
-          sanitized.temporaryModifiers = presets.temporaryModifiers.map(sanitizePreset).filter(p => p !== null);
+        if (Array.isArray(presets.patrolEffects)) {
+          sanitized.patrolEffects = presets.patrolEffects.map(sanitizePreset).filter(p => p !== null);
         }
         if (Array.isArray(presets.situationalModifiers)) {
           sanitized.situationalModifiers = presets.situationalModifiers.map(sanitizePreset).filter(p => p !== null);
@@ -106,7 +106,7 @@
       return {
         resources: [],
         reputations: [],
-        temporaryModifiers: [],
+        patrolEffects: [],
         situationalModifiers: []
       };
     }
@@ -130,25 +130,25 @@
   export let initialPosition: { x: number; y: number } | undefined = undefined;
 
   // Expose function to create preset from existing item
-  export function createPresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
+  export function createPresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     createPresetFromItem(item, type);
   }
 
   // Expose function to update preset from existing item
-  export function updatePresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
+  export function updatePresetFromItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     updatePresetFromExistingItem(item, type);
   }
 
   let presets: PresetCollection = {
     resources: [],
     reputations: [],
-    temporaryModifiers: [],
+    patrolEffects: [],
     situationalModifiers: []
   };
 
   let stats = getStats();
 
-  let activeTab: 'resources' | 'reputations' | 'temporaryModifiers' | 'situationalModifiers' = 'resources';
+  let activeTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers' = 'resources';
   let popupElement: HTMLElement;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
@@ -173,7 +173,7 @@
     img: ''
   };
 
-  let newTemporaryModifierForm = {
+  let newPatrolEffectForm = {
     name: '',
     description: '',
     type: 'buff',
@@ -191,7 +191,7 @@
 
   let showCreateForm = false;
   let editingPreset: PresetItem | null = null;
-  let editingPresetType: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier' | null = null;
+  let editingPresetType: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier' | null = null;
 
   onMount(async () => {
     await initializePresets();
@@ -287,7 +287,27 @@
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  function saveOrCreatePreset(type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
+  function saveOrCreatePreset(type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
+    console.log('[saveOrCreatePreset] Called with type:', type);
+    console.log('[saveOrCreatePreset] Current presets structure:', presets);
+    
+    // Ensure presets are properly initialized
+    if (!presets || typeof presets !== 'object') {
+      console.error('[saveOrCreatePreset] Presets not properly initialized:', presets);
+      return;
+    }
+    
+    // Ensure the specific category exists
+    const category = type === 'resource' ? 'resources' :
+                    type === 'reputation' ? 'reputations' :
+                    type === 'patrolEffect' ? 'patrolEffects' :
+                    'situationalModifiers';
+                    
+    if (!Array.isArray(presets[category])) {
+      console.warn(`[saveOrCreatePreset] Category ${category} is not an array, initializing:`, presets[category]);
+      presets[category] = [];
+    }
+    
     if (editingPreset && editingPresetType === type) {
       // We're editing an existing preset
       saveEdit();
@@ -331,21 +351,21 @@
         },
         createdAt: Date.now()
       };
-    } else if (type === 'temporaryModifier') {
-      if (!newTemporaryModifierForm.name.trim()) return;
+    } else if (type === 'patrolEffect') {
+      if (!newPatrolEffectForm.name.trim()) return;
       const sourceId = generateUUID();
       preset = {
         id: generateId(),
-        name: newTemporaryModifierForm.name,
-        type: 'temporaryModifier',
-        description: newTemporaryModifierForm.description,
+        name: newPatrolEffectForm.name,
+        type: 'patrolEffect',
+        description: newPatrolEffectForm.description,
         data: {
-          name: newTemporaryModifierForm.name,
-          description: newTemporaryModifierForm.description,
-          type: newTemporaryModifierForm.type,
-          value: newTemporaryModifierForm.value,
-          duration: newTemporaryModifierForm.duration,
-          statEffects: newTemporaryModifierForm.statEffects || {},
+          name: newPatrolEffectForm.name,
+          description: newPatrolEffectForm.description,
+          type: newPatrolEffectForm.type,
+          value: newPatrolEffectForm.value,
+          duration: newPatrolEffectForm.duration,
+          statEffects: newPatrolEffectForm.statEffects || {},
           sourceId: sourceId
         },
         createdAt: Date.now()
@@ -373,15 +393,18 @@
       return;
     }
 
+    console.log('[saveOrCreatePreset] Created preset:', preset);
+    console.log('[saveOrCreatePreset] About to call addPreset');
     addPreset(preset);
+    console.log('[saveOrCreatePreset] addPreset completed');
 
     // Reset form
     if (type === 'resource') {
       newResourceForm = { name: '', value: 0, description: '', img: '' };
     } else if (type === 'reputation') {
       newReputationForm = { name: '', value: 0, description: '', img: '' };
-    } else if (type === 'temporaryModifier') {
-      newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
+    } else if (type === 'patrolEffect') {
+      newPatrolEffectForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
     } else if (type === 'situationalModifier') {
       newSituationalModifierForm = { name: '', description: '', img: '', statEffects: {} as Record<string, number> };
     }
@@ -397,8 +420,8 @@
     saveOrCreatePreset('reputation');
   }
 
-  function createTemporaryModifierPreset() {
-    saveOrCreatePreset('temporaryModifier');
+  function createPatrolEffectPreset() {
+    saveOrCreatePreset('patrolEffect');
   }
 
   function createSituationalModifierPreset() {
@@ -446,8 +469,8 @@
       activeTab = 'resources';
     } else if (preset.type === 'reputation') {
       activeTab = 'reputations';
-    } else if (preset.type === 'temporaryModifier') {
-      activeTab = 'temporaryModifiers';
+    } else if (preset.type === 'patrolEffect') {
+      activeTab = 'patrolEffects';
     } else if (preset.type === 'situationalModifier') {
       activeTab = 'situationalModifiers';
     }
@@ -467,8 +490,8 @@
         description: preset.data.description || '',
         img: preset.data.img || ''
       };
-    } else if (preset.type === 'temporaryModifier') {
-      newTemporaryModifierForm = {
+    } else if (preset.type === 'patrolEffect') {
+      newPatrolEffectForm = {
         name: preset.data.name,
         description: preset.data.description || '',
         type: preset.data.type,
@@ -496,7 +519,7 @@
     // Reset forms
     newResourceForm = { name: '', value: 0, description: '', img: '' };
     newReputationForm = { name: '', value: 0, description: '', img: '' };
-    newTemporaryModifierForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
+    newPatrolEffectForm = { name: '', description: '', type: 'buff', value: 0, duration: '1 turno', statEffects: {} as Record<string, number> };
     newSituationalModifierForm = { name: '', description: '', img: '', statEffects: {} as Record<string, number> };
   }
 
@@ -510,7 +533,7 @@
     presetsStore.update(currentPresets => {
       const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
                           editingPreset.type === 'reputation' ? currentPresets.reputations :
-                          editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                          editingPreset.type === 'patrolEffect' ? currentPresets.patrolEffects :
                           currentPresets.situationalModifiers;
 
       const presetIndex = presetsArray.findIndex(p => p.id === editingPreset.id);
@@ -520,11 +543,11 @@
           ...editingPreset, // Keep the original ID and other properties
           name: editingPreset.type === 'resource' ? newResourceForm.name :
                 editingPreset.type === 'reputation' ? newReputationForm.name :
-                editingPreset.type === 'temporaryModifier' ? newTemporaryModifierForm.name :
+                editingPreset.type === 'patrolEffect' ? newPatrolEffectForm.name :
                 newSituationalModifierForm.name,
           description: editingPreset.type === 'resource' ? newResourceForm.description :
                       editingPreset.type === 'reputation' ? newReputationForm.description :
-                      editingPreset.type === 'temporaryModifier' ? newTemporaryModifierForm.description :
+                      editingPreset.type === 'patrolEffect' ? newPatrolEffectForm.description :
                       newSituationalModifierForm.description,
           data: editingPreset.type === 'resource' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
@@ -538,14 +561,14 @@
             value: newReputationForm.value,
             description: newReputationForm.description,
             img: newReputationForm.img
-          } : editingPreset.type === 'temporaryModifier' ? {
+          } : editingPreset.type === 'patrolEffect' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
-            name: newTemporaryModifierForm.name,
-            description: newTemporaryModifierForm.description,
-            type: newTemporaryModifierForm.type,
-            value: newTemporaryModifierForm.value,
-            duration: newTemporaryModifierForm.duration,
-            statEffects: newTemporaryModifierForm.statEffects || {}
+            name: newPatrolEffectForm.name,
+            description: newPatrolEffectForm.description,
+            type: newPatrolEffectForm.type,
+            value: newPatrolEffectForm.value,
+            duration: newPatrolEffectForm.duration,
+            statEffects: newPatrolEffectForm.statEffects || {}
           } : editingPreset.type === 'situationalModifier' ? {
             ...editingPreset.data, // Preserve sourceId and other properties
             name: newSituationalModifierForm.name,
@@ -577,7 +600,7 @@
     const currentPresets = presets; // Use the current presets from our local state
     const presetsArray = editingPreset.type === 'resource' ? currentPresets.resources :
                         editingPreset.type === 'reputation' ? currentPresets.reputations :
-                        editingPreset.type === 'temporaryModifier' ? currentPresets.temporaryModifiers :
+                        editingPreset.type === 'patrolEffect' ? currentPresets.patrolEffects :
                         currentPresets.situationalModifiers;
 
     updatedPreset = presetsArray.find(p => p.id === editingPreset.id);
@@ -591,13 +614,13 @@
   }
 
   function addStatEffect(statKey: string, value: number) {
-    newTemporaryModifierForm.statEffects[statKey] = value;
-    newTemporaryModifierForm = { ...newTemporaryModifierForm };
+    newPatrolEffectForm.statEffects[statKey] = value;
+    newPatrolEffectForm = { ...newPatrolEffectForm };
   }
 
   function removeStatEffect(statKey: string) {
-    delete newTemporaryModifierForm.statEffects[statKey];
-    newTemporaryModifierForm = { ...newTemporaryModifierForm };
+    delete newPatrolEffectForm.statEffects[statKey];
+    newPatrolEffectForm = { ...newPatrolEffectForm };
   }
 
   function addSituationalStatEffect(statKey: string, value: number) {
@@ -640,7 +663,7 @@
   }
 
   // Function to create preset from existing item
-  function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
+  function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('Creating preset from item:', item, 'Type:', type);
     console.log('Item sourceId:', item.sourceId);
     console.log('Item key:', item.key);
@@ -659,37 +682,21 @@
       return;
     }
 
-    // For temporary modifiers, create a stable key based on name and properties
+    // Use the item's existing sourceId if available, otherwise generate a new one
     let sourceIdToUse;
-    if (type === 'temporaryModifier') {
-      // Create a stable identifier based on the modifier's content
+    if (item.sourceId) {
+      // Always use the existing sourceId to maintain synchronization
+      sourceIdToUse = item.sourceId;
+      console.log('Using existing sourceId from item:', sourceIdToUse);
+    } else if (type === 'patrolEffect') {
+      // Only generate new sourceId if item doesn't have one
       const nameKey = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const effectsKey = Object.keys(item.statEffects || {}).sort().join('-');
-      sourceIdToUse = `temp-${nameKey}-${effectsKey}`;
-      console.log('Generated stable sourceId for temporary modifier:', sourceIdToUse);
+      sourceIdToUse = `patrol-${nameKey}-${effectsKey}`;
+      console.log('Generated new sourceId for patrol effect:', sourceIdToUse);
     } else {
       // For other types, use existing logic
-      sourceIdToUse = item.sourceId || item.key || generateUUID();
-
-      // First, check if there's already a preset with the same key (for items that have a key property)
-      if (item.key) {
-        const presetsArray = type === 'resource' ? presets.resources :
-                            type === 'reputation' ? presets.reputations :
-                            type === 'temporaryModifier' ? presets.temporaryModifiers :
-                            presets.situationalModifiers;
-
-        if (Array.isArray(presetsArray)) {
-          const existingPresetByKey = presetsArray.find(p => p.data && (p.data.key === item.key || p.data.sourceId === item.key));
-          if (existingPresetByKey) {
-            sourceIdToUse = existingPresetByKey.data.sourceId || existingPresetByKey.data.key || item.key;
-            console.log('Found existing preset with matching key, reusing sourceId:', sourceIdToUse);
-          } else {
-            // Use the item's key as sourceId for consistency
-            sourceIdToUse = item.key;
-            console.log('Using item key as sourceId for consistency:', sourceIdToUse);
-          }
-        }
-      }
+      sourceIdToUse = item.key || generateUUID();
     }
 
     // Assign the determined sourceId to the item
@@ -700,7 +707,7 @@
     if (item.sourceId) {
       const presetsArray = type === 'resource' ? presets.resources :
                           type === 'reputation' ? presets.reputations :
-                          type === 'temporaryModifier' ? presets.temporaryModifiers :
+                          type === 'patrolEffect' ? presets.patrolEffects :
                           presets.situationalModifiers;
 
       // Validar que el array de presets exista
@@ -729,7 +736,7 @@
         // Switch to the correct tab and show the updated preset
         activeTab = type === 'resource' ? 'resources' :
                     type === 'reputation' ? 'reputations' :
-                    type === 'temporaryModifier' ? 'temporaryModifiers' :
+                    type === 'patrolEffect' ? 'patrolEffects' :
                     'situationalModifiers';
 
         dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
@@ -757,7 +764,7 @@
     // Switch to the correct tab and show the new preset
     activeTab = type === 'resource' ? 'resources' :
                 type === 'reputation' ? 'reputations' :
-                type === 'temporaryModifier' ? 'temporaryModifiers' :
+                type === 'patrolEffect' ? 'patrolEffects' :
                 'situationalModifiers';
 
     // Dispatch event to parent component
@@ -765,7 +772,7 @@
   }
 
   // Function to update preset from existing item (only if it exists)
-  function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'temporaryModifier' | 'situationalModifier') {
+  function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('Updating preset from item:', item, 'Type:', type);
 
     // Validar que el item tenga la estructura correcta
@@ -792,7 +799,7 @@
 
       const presetsArray = type === 'resource' ? presets.resources :
                           type === 'reputation' ? presets.reputations :
-                          type === 'temporaryModifier' ? presets.temporaryModifiers :
+                          type === 'patrolEffect' ? presets.patrolEffects :
                           presets.situationalModifiers;
 
       // Validar que el array de presets exista
@@ -818,7 +825,7 @@
             sourceId: sourceId
           };
         } else {
-          // For other types (resource, reputation, temporaryModifier)
+          // For other types (resource, reputation, patrolEffect)
           existingPreset.data = {
             ...existingPreset.data,
             name: item.name,
@@ -893,10 +900,10 @@
           Reputaciones
         </button>
         <button
-          class="tab {activeTab === 'temporaryModifiers' ? 'active' : ''}"
-          on:click={() => { activeTab = 'temporaryModifiers'; if (!editingPreset) showCreateForm = false; }}
+          class="tab {activeTab === 'patrolEffects' ? 'active' : ''}"
+          on:click={() => { activeTab = 'patrolEffects'; if (!editingPreset) showCreateForm = false; }}
         >
-          Mod. Temporales
+          Efectos de Patrulla
         </button>
         <button
           class="tab {activeTab === 'situationalModifiers' ? 'active' : ''}"
@@ -1008,15 +1015,15 @@
                 </button>
                 <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
               </div>
-            {:else if activeTab === 'temporaryModifiers'}
-              <h3>{editingPreset ? 'Editar Modificador Temporal' : 'Crear Modificador Temporal'}</h3>
+            {:else if activeTab === 'patrolEffects'}
+              <h3>{editingPreset ? 'Editar Efecto de Patrulla' : 'Crear Efecto de Patrulla'}</h3>
               <div class="form-group">
                 <label>Nombre:</label>
-                <input bind:value={newTemporaryModifierForm.name} placeholder="Nombre del modificador" />
+                <input bind:value={newPatrolEffectForm.name} placeholder="Nombre del efecto" />
               </div>
               <div class="form-group">
                 <label>Tipo:</label>
-                <select bind:value={newTemporaryModifierForm.type}>
+                <select bind:value={newPatrolEffectForm.type}>
                   <option value="buff">Buff</option>
                   <option value="debuff">Debuff</option>
                   <option value="neutral">Neutral</option>
@@ -1024,11 +1031,11 @@
               </div>
               <div class="form-group">
                 <label>Duración:</label>
-                <input bind:value={newTemporaryModifierForm.duration} placeholder="ej: 1 turno, 10 minutos" />
+                <input bind:value={newPatrolEffectForm.duration} placeholder="ej: 1 turno, 10 minutos" />
               </div>
               <div class="form-group">
                 <label>Descripción:</label>
-                <textarea bind:value={newTemporaryModifierForm.description} placeholder="Descripción opcional"></textarea>
+                <textarea bind:value={newPatrolEffectForm.description} placeholder="Descripción opcional"></textarea>
               </div>
               <div class="form-group">
                 <label>Efectos en Stats:</label>
@@ -1039,7 +1046,7 @@
                       <span>{stat.name}</span>
                       <input
                         type="number"
-                        value={newTemporaryModifierForm.statEffects[stat.key] || 0}
+                        value={newPatrolEffectForm.statEffects[stat.key] || 0}
                         on:input={(e) => {
                           const value = parseInt(e.currentTarget.value) || 0;
                           addStatEffect(stat.key, value);
@@ -1050,7 +1057,7 @@
                 </div>
               </div>
               <div class="form-buttons">
-                <button class="create-btn" on:click={createTemporaryModifierPreset}>
+                <button class="create-btn" on:click={createPatrolEffectPreset}>
                   {editingPreset ? 'Guardar' : 'Crear'}
                 </button>
                 <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
@@ -1178,8 +1185,8 @@
                 </div>
               </div>
             {/each}
-          {:else if activeTab === 'temporaryModifiers'}
-            {#each presets.temporaryModifiers.filter(p => p && p.data) as preset}
+          {:else if activeTab === 'patrolEffects'}
+            {#each presets.patrolEffects.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 <div class="preset-item-info">
                   <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>

@@ -62,7 +62,7 @@
   // Data
   let stats: GuardStat[] = [];
   let groupName: string = '';
-  let showTemporaryModifiers = false;
+  let showPatrolEffects = false;
 
   // Initialize handlers and data
   function updateComponentData() {
@@ -244,31 +244,31 @@
                 {/each}
               </div>
 
-              <!-- Temporary Modifiers Toggle Button -->
-              {#if group.temporaryModifiers && Object.keys(group.temporaryModifiers).length > 0}
+              <!-- Patrol Effects Toggle Button -->
+              {#if group.patrolEffects && Object.keys(group.patrolEffects).length > 0}
                 <div class="temp-modifiers-toggle">
-                  <button class="toggle-button" on:click={() => showTemporaryModifiers = !showTemporaryModifiers}>
-                    <span class="toggle-icon {showTemporaryModifiers ? 'expanded' : 'collapsed'}">▼</span>
+                  <button class="toggle-button" on:click={() => showPatrolEffects = !showPatrolEffects}>
+                    <span class="toggle-icon {showPatrolEffects ? 'expanded' : 'collapsed'}">▼</span>
                   </button>
                 </div>
               {/if}
             </div>
 
-            <!-- Temporary Modifiers Section -->
-            {#if group.temporaryModifiers && Object.keys(group.temporaryModifiers).length > 0 && showTemporaryModifiers}
+            <!-- Patrol Effects Section -->
+            {#if group.patrolEffects && Object.keys(group.patrolEffects).length > 0 && showPatrolEffects}
               <div class="temp-modifiers-section">
-                <h4 class="temp-modifiers-title">Modificadores Temporales</h4>
+                <h4 class="temp-modifiers-title">Efectos de Patrulla</h4>
                 <div class="temp-modifiers-list">
-                  {#each Object.entries(group.temporaryModifiers) as [modifierId, modifier]}
+                  {#each Object.entries(group.patrolEffects) as [effectId, effect]}
                     <div class="temp-modifier-item">
                       <div class="modifier-header">
-                        <span class="modifier-name">{modifier.name}</span>
+                        <span class="modifier-name">{effect.name}</span>
                       </div>
 
                       <!-- Show stat effects -->
-                      {#if modifier.statEffects && Object.keys(modifier.statEffects).length > 0}
+                      {#if effect.statEffects && Object.keys(effect.statEffects).length > 0}
                         <div class="modifier-effects">
-                          {#each Object.entries(modifier.statEffects || {}) as [statKey, value]}
+                          {#each Object.entries(effect.statEffects || {}) as [statKey, value]}
                             {@const stat = stats.find(s => s.key === statKey)}
                             {#if stat && value !== 0}
                               <div class="effect-item">
@@ -284,8 +284,8 @@
                       {/if}
 
                       <!-- Description if exists -->
-                      {#if modifier.description}
-                        <div class="modifier-description">{modifier.description}</div>
+                      {#if effect.description}
+                        <div class="modifier-description">{effect.description}</div>
                       {/if}
                     </div>
                   {/each}

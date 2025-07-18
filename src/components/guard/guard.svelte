@@ -117,8 +117,8 @@
       case 'reputation':
         applyReputationPreset(preset);
         break;
-      case 'temporaryModifier':
-        applyTemporaryModifierPreset(preset);
+      case 'patrolEffect':
+        applyPatrolEffectPreset(preset);
         break;
       case 'situationalModifier':
         applySituationalModifierPreset(preset);
@@ -174,9 +174,9 @@
     handlers.handleAddReputation({ detail: newReputation });
   }
 
-  function applyTemporaryModifierPreset(preset: any) {
+  function applyPatrolEffectPreset(preset: any) {
     // Activar modo de aplicación de modificador temporal
-    const event = new CustomEvent('crow-nest-apply-temporary-modifier', {
+    const event = new CustomEvent('crow-nest-apply-patrol-effect', {
       detail: {
         presetId: preset.data.sourceId || preset.id, // Use sourceId for consistency, fallback to id
         name: preset.data.name,
@@ -259,7 +259,7 @@
     presetManager.createPresetFromExistingItem(item, 'reputation');
   }
 
-  function createTemporaryModifierPreset(modifier: any) {
+  function createPatrolEffectPreset(modifier: any) {
     // Create a stable identifier based on the modifier's content
     const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
@@ -275,7 +275,7 @@
       statEffects: modifier.statEffects || {}
     };
 
-    presetManager.createPresetFromExistingItem(item, 'temporaryModifier');
+    presetManager.createPresetFromExistingItem(item, 'patrolEffect');
   }
 
 

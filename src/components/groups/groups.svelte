@@ -69,9 +69,9 @@
   let rollDialogBaseValue = 0;
   let rollDialogTotalModifier = 0;
 
-  // Temporary modifier application state
-  let pendingTemporaryModifier: any = null;
-  let applyingTemporaryModifier = false;
+  // Patrol Effect application state
+  let pendingPatrolEffect: any = null;
+  let applyingPatrolEffect = false;
 
   // Sync manager
   let syncManager: SyncManager;
@@ -87,49 +87,40 @@
       return;
     }
 
-    // Solo procesar presets de modificadores temporales
-    if (preset.type === 'temporaryModifier' && preset.data.name && preset.data.statEffects) {
-      console.log('Groups.svelte - Procesando preset de modificador temporal:', preset);
+    // Solo procesar presets de efectos de patrulla
+    if (preset.type === 'patrolEffect' && preset.data.sourceId) {
+      console.log('Groups.svelte - Procesando preset de efecto de patrulla:', preset);
 
-      // Generate the same stable sourceId that would be used when applying the modifier
-      const nameKey = preset.data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const effectsKey = Object.keys(preset.data.statEffects || {}).sort().join('-');
-      const stableSourceId = `temp-${nameKey}-${effectsKey}`;
-
-      console.log('Groups.svelte - Preset data.sourceId:', preset.data.sourceId);
-      console.log('Groups.svelte - Generated stable sourceId:', stableSourceId);
-      console.log('Groups.svelte - ¿Son iguales?', preset.data.sourceId === stableSourceId);
-
-      // Use the preset's sourceId if it matches our stable pattern, otherwise use the generated one
-      const searchSourceId = preset.data.sourceId && preset.data.sourceId.startsWith('temp-') ? preset.data.sourceId : stableSourceId;
+      // Use the preset's sourceId directly - no need to generate a new one
+      const searchSourceId = preset.data.sourceId;
 
       console.log('Groups.svelte - Buscando modificadores con sourceId:', searchSourceId);
 
-      // Buscar y actualizar todos los modificadores temporales en todos los grupos que tengan el mismo sourceId
+      // Buscar y actualizar todos los efectos de patrulla en todos los grupos que tengan el mismo sourceId
       let hasUpdates = false;
       const updatedGroups = groups.map(group => {
-        if (!group.temporaryModifiers) return group;
+        if (!group.patrolEffects) return group;
 
         console.log('Groups.svelte - Revisando grupo:', group.name);
-        console.log('Groups.svelte - Modificadores en grupo:', Object.keys(group.temporaryModifiers));
+        console.log('Groups.svelte - Efectos en grupo:', Object.keys(group.patrolEffects));
 
         // Log all modifiers in this group for debugging
-        for (const [modifierId, modifier] of Object.entries(group.temporaryModifiers)) {
-          console.log('Groups.svelte - Modificador ID:', modifierId, 'sourceId:', modifier.sourceId, 'key:', modifier.key);
+        for (const [effectId, effect] of Object.entries(group.patrolEffects)) {
+          console.log('Groups.svelte - Efecto ID:', effectId, 'sourceId:', effect.sourceId, 'key:', effect.key);
         }
 
-        // Buscar modificadores que coincidan con el sourceId
-        const updatedModifiers = { ...group.temporaryModifiers };
+        // Buscar efectos que coincidan con el sourceId
+        const updatedEffects = { ...group.patrolEffects };
         let groupHasUpdates = false;
 
-        for (const [modifierId, modifier] of Object.entries(updatedModifiers)) {
-          console.log('Groups.svelte - Comparando:', modifier.sourceId, '===', searchSourceId);
-          if (modifier.sourceId === searchSourceId) {
-            console.log('Groups.svelte - ¡MATCH! Actualizando modificador temporal en grupo:', group.name, modifier);
+        for (const [effectId, effect] of Object.entries(updatedEffects)) {
+          console.log('Groups.svelte - Comparando:', effect.sourceId, '===', searchSourceId);
+          if (effect.sourceId === searchSourceId) {
+            console.log('Groups.svelte - ¡MATCH! Actualizando efecto de patrulla en grupo:', group.name, effect);
 
-            // Actualizar el modificador con los datos del preset
-            updatedModifiers[modifierId] = {
-              ...modifier,
+            // Actualizar el efecto con los datos del preset
+            updatedEffects[effectId] = {
+              ...effect,
               name: preset.data.name,
               description: preset.data.description || '',
               statEffects: preset.data.statEffects || {}
@@ -141,40 +132,40 @@
         }
 
         if (groupHasUpdates) {
-          return { ...group, temporaryModifiers: updatedModifiers };
+          return { ...group, patrolEffects: updatedEffects };
         }
 
         return group;
       });
 
       if (hasUpdates) {
-        // Actualizar los grupos con los modificadores temporales actualizados
+        // Actualizar los grupos con los efectos de patrulla actualizados
         updateGroups(updatedGroups);
-        console.log('Groups.svelte - Modificadores temporales actualizados desde preset');
+        console.log('Groups.svelte - Efectos de patrulla actualizados desde preset');
       } else {
-        console.log('Groups.svelte - No se encontraron modificadores para actualizar con sourceId:', searchSourceId);
+        console.log('Groups.svelte - No se encontraron efectos para actualizar con sourceId:', searchSourceId);
       }
     }
   }
 
-  // Create preset from a new temporary modifier
-  function createTemporaryModifierPreset(modifier) {
-    const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const effectsKey = Object.keys(modifier.statEffects).sort().join('-');
+  // Create preset from a new patrol effect
+  function createPatrolEffectPreset(effect) {
+    const nameKey = effect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(effect.statEffects).sort().join('-');
     const sourceId = `temp-${nameKey}-${effectsKey}`;
 
     // Check if preset already exists
-    const existingPresets = $presetsStore.temporaryModifier || [];
+    const existingPresets = $presetsStore.patrolEffect || [];
     const existingPreset = existingPresets.find(p => p.sourceId === sourceId);
 
     if (!existingPreset) {
-      console.log('Groups.svelte - Creating new preset for modifier:', modifier);
+      console.log('Groups.svelte - Creating new preset for effect:', effect);
       presetManager.createPresetFromExistingItem({
-        name: modifier.name,
-        description: modifier.description,
-        statEffects: modifier.statEffects,
+        name: effect.name,
+        description: effect.description,
+        statEffects: effect.statEffects,
         sourceId: sourceId
-      }, 'temporaryModifier');
+      }, 'patrolEffect');
     } else {
       console.log('Groups.svelte - Preset already exists for sourceId:', sourceId);
     }
@@ -233,52 +224,79 @@
           needsUpdate = true;
         }
       }
-      if (group.temporaryModifiers === undefined) {
-        group.temporaryModifiers = {};
+      if (group.patrolEffects === undefined) {
+        group.patrolEffects = {};
         needsUpdate = true;
-      } else {
-        // Migrate old temporaryModifiers format (single stat) to new format (multi-stat)
-        let modifiersUpdated = false;
-        console.log(`Groups.svelte - Checking ${Object.keys(group.temporaryModifiers).length} modifiers in group: ${group.name}`);
+      }
+      
+      // Migrate patrolEffects to patrolEffects
+      if (group.patrolEffects && Object.keys(group.patrolEffects).length > 0) {
+        console.log(`Groups.svelte - Migrating patrolEffects to patrolEffects for group: ${group.name}`);
+        
+        // Copy all patrolEffects to patrolEffects if patrolEffects is empty
+        if (Object.keys(group.patrolEffects).length === 0) {
+          for (const [modifierId, modifier] of Object.entries(group.patrolEffects)) {
+            group.patrolEffects[modifierId] = {
+              name: modifier.name,
+              description: modifier.description,
+              statEffects: modifier.statEffects,
+              sourceId: modifier.sourceId,
+              key: modifier.key
+            };
+          }
+          needsUpdate = true;
+          console.log(`Groups.svelte - Migrated ${Object.keys(group.patrolEffects).length} patrolEffects to patrolEffects`);
+        }
+        
+        // Clear patrolEffects after migration
+        delete (group as any).patrolEffects;
+        needsUpdate = true;
+      }
+      
+      // Ensure patrolEffects structure is correct
+      if (group.patrolEffects) {
+        // Migrate old patrolEffects format (single stat) to new format (multi-stat)
+        let effectsUpdated = false;
+        console.log(`Groups.svelte - Checking ${Object.keys(group.patrolEffects).length} effects in group: ${group.name}`);
 
-        for (const [modifierId, modifier] of Object.entries(group.temporaryModifiers)) {
-          console.log(`Groups.svelte - Checking modifier ${modifierId}:`, modifier);
+        for (const [effectId, effect] of Object.entries(group.patrolEffects)) {
+          console.log(`Groups.svelte - Checking effect ${effectId}:`, effect);
 
           // Check if it's the old format (has statKey and value)
-          if ('statKey' in modifier && 'value' in modifier && !('statEffects' in modifier)) {
+          if ('statKey' in effect && 'value' in effect && !('statEffects' in effect)) {
             // Convert to new format
-            const oldModifier = modifier as any;
-            group.temporaryModifiers[modifierId] = {
-              name: oldModifier.name,
-              description: oldModifier.description,
+            const oldEffect = effect as any;
+            group.patrolEffects[effectId] = {
+              name: oldEffect.name,
+              description: oldEffect.description,
               statEffects: {
-                [oldModifier.statKey]: oldModifier.value
+                [oldEffect.statKey]: oldEffect.value
               }
             };
-            modifiersUpdated = true;
-            console.log(`Groups.svelte - Converted old format modifier: ${modifierId}`);
+            effectsUpdated = true;
+            console.log(`Groups.svelte - Converted old format effect: ${effectId}`);
           }
 
-          // Ensure all modifiers have sourceId and key (for sync compatibility)
-          if (!modifier.sourceId && modifier.name && modifier.statEffects) {
-            const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
+          // Ensure all effects have sourceId and key (for sync compatibility)
+          if (!effect.sourceId && effect.name && effect.statEffects) {
+            const nameKey = effect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            const effectsKey = Object.keys(effect.statEffects || {}).sort().join('-');
             const stableSourceId = `temp-${nameKey}-${effectsKey}`;
 
-            modifier.sourceId = stableSourceId;
-            modifier.key = stableSourceId;
-            modifiersUpdated = true;
+            effect.sourceId = stableSourceId;
+            effect.key = stableSourceId;
+            effectsUpdated = true;
 
-            console.log(`Migrated modifier "${modifier.name}" to have sourceId: ${stableSourceId} in group: ${group.name}`);
-          } else if (modifier.sourceId) {
-            console.log(`Modifier "${modifier.name}" already has sourceId: ${modifier.sourceId} in group: ${group.name}`);
+            console.log(`Migrated effect "${effect.name}" to have sourceId: ${stableSourceId} in group: ${group.name}`);
+          } else if (effect.sourceId) {
+            console.log(`Effect "${effect.name}" already has sourceId: ${effect.sourceId} in group: ${group.name}`);
           } else {
-            console.warn(`Modifier in group ${group.name} missing required fields:`, modifier);
+            console.warn(`Effect in group ${group.name} missing required fields:`, effect);
           }
         }
-        if (modifiersUpdated) {
+        if (effectsUpdated) {
           needsUpdate = true;
-          console.log(`Groups.svelte - Group ${group.name} needs update due to modifier changes`);
+          console.log(`Groups.svelte - Group ${group.name} needs update due to effect changes`);
         }
       }
     }
@@ -321,19 +339,19 @@
 
     document.addEventListener('click', handleGlobalClick);
 
-    // Listen for temporary modifier application events
-    const handleTemporaryModifierApplication = (event: CustomEvent) => {
-      pendingTemporaryModifier = event.detail;
-      applyingTemporaryModifier = true;
+    // Listen for patrol effect application events
+    const handlePatrolEffectApplication = (event: CustomEvent) => {
+      pendingPatrolEffect = event.detail;
+      applyingPatrolEffect = true;
     };
 
-    window.addEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
+    window.addEventListener('crow-nest-apply-patrol-effect', handlePatrolEffectApplication);
     presetManager.addEventListener('presetUpdated', handlePresetUpdated);
 
     // Cleanup function
     return () => {
       document.removeEventListener('click', handleGlobalClick);
-      window.removeEventListener('crow-nest-apply-temporary-modifier', handleTemporaryModifierApplication);
+      window.removeEventListener('crow-nest-apply-patrol-effect', handlePatrolEffectApplication);
       presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
     };
 
@@ -398,7 +416,7 @@
         mods: {},
         skills: [],
         experiences: [],
-        temporaryModifiers: {},
+        patrolEffects: {},
         maxUnits: 5,
         maxSoldiers: 5, // Add maxSoldiers for formation layout
         hope: 0,
@@ -712,11 +730,11 @@
   }
 
   function totalStat(stat: GuardStat, group: Group): number {
-    // Calculate temporary modifiers for this stat
-    const temporaryMod = Object.values(group.temporaryModifiers || {})
-      .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+    // Calculate patrol effects for this stat
+    const patrolEffectMod = Object.values(group.patrolEffects || {})
+      .reduce((sum, effect) => sum + (effect.statEffects[stat.key] || 0), 0);
 
-    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
+    return stat.value + guardBonus(stat.key) + (group.mods[stat.key] || 0) + patrolEffectMod;
   }
 
   function roll(stat: GuardStat, group: Group) {
@@ -724,11 +742,11 @@
     rollDialogGroup = group;
     rollDialogBaseValue = stat.value;
 
-    // Calculate temporary modifiers for this stat
-    const temporaryMod = Object.values(group.temporaryModifiers || {})
-      .reduce((sum, mod) => sum + (mod.statEffects[stat.key] || 0), 0);
+    // Calculate patrol effects for this stat
+    const patrolEffectMod = Object.values(group.patrolEffects || {})
+      .reduce((sum, effect) => sum + (effect.statEffects[stat.key] || 0), 0);
 
-    rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0) + temporaryMod;
+    rollDialogTotalModifier = guardBonus(stat.key) + (group.mods[stat.key] || 0) + patrolEffectMod;
     rollDialogOpen = true;
   }
 
@@ -1014,8 +1032,8 @@
     persist();
   }
 
-  function addTemporaryModifier(group: Group) {
-    // Use Foundry's Dialog system to create multi-stat modifier
+  function addPatrolEffect(group: Group) {
+    // Use Foundry's Dialog system to create multi-stat effect
     if (!Dialog) {
       console.error("Dialog not available");
       return;
@@ -1031,16 +1049,16 @@
     `).join('');
 
     new Dialog({
-      title: "Añadir Modificador Temporal Multi-Stat",
+      title: "Añadir Efecto de Patrulla Multi-Stat",
       content: `
         <form>
           <div class="form-group">
-            <label>Nombre del modificador:</label>
-            <input type="text" name="modifierName" placeholder="Ej: Falta de personal, Bendición divina..." autofocus />
+            <label>Nombre del efecto:</label>
+            <input type="text" name="effectName" placeholder="Ej: Falta de personal, Bendición divina..." autofocus />
           </div>
           <div class="form-group">
             <label>Descripción:</label>
-            <textarea name="modifierDescription" placeholder="Descripción del modificador" rows="3" style="width: 100%; resize: vertical;"></textarea>
+            <textarea name="effectDescription" placeholder="Descripción del efecto" rows="3" style="width: 100%; resize: vertical;"></textarea>
           </div>
           <div class="form-group">
             <label>Stats afectados y valores:</label>
@@ -1056,8 +1074,8 @@
           label: "Añadir",
           callback: (html: any) => {
             const form = html[0].querySelector("form");
-            const modifierName = form.modifierName.value.trim();
-            const modifierDescription = form.modifierDescription.value.trim();
+            const effectName = form.effectName.value.trim();
+            const effectDescription = form.effectDescription.value.trim();
 
             // Collect selected stats and their values
             const statEffects: Record<string, number> = {};
@@ -1072,23 +1090,23 @@
               }
             });
 
-            if (modifierName && Object.keys(statEffects).length > 0) {
-              // Initialize temporaryModifiers if undefined
-              if (!group.temporaryModifiers) {
-                group.temporaryModifiers = {};
+            if (effectName && Object.keys(statEffects).length > 0) {
+              // Initialize patrolEffects if undefined
+              if (!group.patrolEffects) {
+                group.patrolEffects = {};
               }
 
-              // Generate stable sourceId for new modifier
-              const nameKey = modifierName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+              // Generate stable sourceId for new effect
+              const nameKey = effectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
               const effectsKey = Object.keys(statEffects).sort().join('-');
               const stableSourceId = `temp-${nameKey}-${effectsKey}`;
 
-              // Generate unique ID for this modifier
-              const modifierId = generateUUID();
+              // Generate unique ID for this effect
+              const effectId = generateUUID();
 
-              group.temporaryModifiers[modifierId] = {
-                name: modifierName,
-                description: modifierDescription,
+              group.patrolEffects[effectId] = {
+                name: effectName,
+                description: effectDescription,
                 statEffects: statEffects,
                 sourceId: stableSourceId, // Add stable sourceId for sync
                 key: stableSourceId // Add key for consistency
@@ -1097,23 +1115,23 @@
               // Create a complete new copy of the groups array with the modified group
               const updatedGroups = groups.map(g =>
                 g.id === group.id
-                  ? { ...g, temporaryModifiers: { ...g.temporaryModifiers } }
+                  ? { ...g, patrolEffects: { ...g.patrolEffects } }
                   : g
               );
 
               updateGroups(updatedGroups);
 
-              console.log('Groups.svelte - New modifier created, creating preset:', {
+              console.log('Groups.svelte - New effect created, creating preset:', {
                 sourceId: stableSourceId,
-                name: modifierName,
-                description: modifierDescription,
+                name: effectName,
+                description: effectDescription,
                 statEffects: statEffects
               });
 
-              // Create a preset for this new modifier
-              createTemporaryModifierPreset({
-                name: modifierName,
-                description: modifierDescription,
+              // Create a preset for this new effect
+              createPatrolEffectPreset({
+                name: effectName,
+                description: effectDescription,
                 statEffects: statEffects
               });
 
@@ -1142,23 +1160,23 @@
     }).render(true);
   }
 
-  function editTemporaryModifier(group: Group, modifierId: string) {
-    // Use Foundry's Dialog system to edit multi-stat modifier
+  function editPatrolEffect(group: Group, effectId: string) {
+    // Use Foundry's Dialog system to edit multi-stat effect
     if (!Dialog) {
       console.error("Dialog not available");
       return;
     }
 
-    const existingModifier = group.temporaryModifiers[modifierId];
-    if (!existingModifier) {
-      console.error("Modifier not found");
+    const existingEffect = group.patrolEffects[effectId];
+    if (!existingEffect) {
+      console.error("Effect not found");
       return;
     }
 
     // Create checkboxes for each stat, pre-selecting and pre-filling existing values
     const statCheckboxes = stats.map(stat => {
-      const isChecked = existingModifier.statEffects[stat.key] !== undefined;
-      const currentValue = existingModifier.statEffects[stat.key] || 0;
+      const isChecked = existingEffect.statEffects[stat.key] !== undefined;
+      const currentValue = existingEffect.statEffects[stat.key] || 0;
 
       return `
         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -1170,16 +1188,16 @@
     }).join('');
 
     new Dialog({
-      title: "Editar Modificador Temporal Multi-Stat",
+      title: "Editar Efecto de Patrulla Multi-Stat",
       content: `
         <form>
           <div class="form-group">
-            <label>Nombre del modificador:</label>
-            <input type="text" name="modifierName" placeholder="Ej: Falta de personal, Bendición divina..." value="${existingModifier.name}" autofocus />
+            <label>Nombre del efecto:</label>
+            <input type="text" name="effectName" placeholder="Ej: Falta de personal, Bendición divina..." value="${existingEffect.name}" autofocus />
           </div>
           <div class="form-group">
             <label>Descripción:</label>
-            <textarea name="modifierDescription" placeholder="Descripción del modificador" rows="3" style="width: 100%; resize: vertical;">${existingModifier.description || ''}</textarea>
+            <textarea name="effectDescription" placeholder="Descripción del efecto" rows="3" style="width: 100%; resize: vertical;">${existingEffect.description || ''}</textarea>
           </div>
           <div class="form-group">
             <label>Stats afectados y valores:</label>
@@ -1195,8 +1213,8 @@
           label: "Guardar",
           callback: (html: any) => {
             const form = html[0].querySelector("form");
-            const modifierName = form.modifierName.value.trim();
-            const modifierDescription = form.modifierDescription.value.trim();
+            const effectName = form.effectName.value.trim();
+            const effectDescription = form.effectDescription.value.trim();
 
             // Collect selected stats and their values
             const statEffects: Record<string, number> = {};
@@ -1211,40 +1229,40 @@
               }
             });
 
-            if (modifierName && Object.keys(statEffects).length > 0) {
-              // Update existing modifier
-              group.temporaryModifiers[modifierId] = {
-                name: modifierName,
-                description: modifierDescription,
+            if (effectName && Object.keys(statEffects).length > 0) {
+              // Update existing effect
+              group.patrolEffects[effectId] = {
+                name: effectName,
+                description: effectDescription,
                 statEffects: statEffects,
-                sourceId: existingModifier.sourceId, // Preserve existing sourceId
-                key: existingModifier.key // Preserve existing key
+                sourceId: existingEffect.sourceId, // Preserve existing sourceId
+                key: existingEffect.key // Preserve existing key
               };
 
               // Use updateGroups helper instead of manual update
               updateGroups([...groups]);
 
-              // Notify preset manager about the modifier update (reverse sync)
-              if (existingModifier.sourceId) {
-                console.log('Groups.svelte - Notifying preset manager of modifier update:', {
-                  sourceId: existingModifier.sourceId,
-                  name: modifierName,
-                  description: modifierDescription,
+              // Notify preset manager about the effect update (reverse sync)
+              if (existingEffect.sourceId) {
+                console.log('Groups.svelte - Notifying preset manager of effect update:', {
+                  sourceId: existingEffect.sourceId,
+                  name: effectName,
+                  description: effectDescription,
                   statEffects: statEffects
                 });
 
-                const updatedModifier = {
-                  sourceId: existingModifier.sourceId,
-                  key: existingModifier.key,
-                  name: modifierName,
-                  description: modifierDescription,
+                const updatedEffect = {
+                  sourceId: existingEffect.sourceId,
+                  key: existingEffect.key,
+                  name: effectName,
+                  description: effectDescription,
                   statEffects: statEffects,
                   type: 'neutral',
                   duration: ''
                 };
 
                 // Update the preset via preset manager
-                presetManager.updatePresetFromItem(updatedModifier, 'temporaryModifier');
+                presetManager.updatePresetFromItem(updatedEffect, 'patrolEffect');
               }
             } else if (Object.keys(statEffects).length === 0) {
               ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
@@ -1271,52 +1289,52 @@
     }).render(true);
   }
 
-  function removeTemporaryModifier(group: Group, modifierId: string) {
-    if (group.temporaryModifiers && group.temporaryModifiers[modifierId]) {
-      delete group.temporaryModifiers[modifierId];
+  function removePatrolEffect(group: Group, effectId: string) {
+    if (group.patrolEffects && group.patrolEffects[effectId]) {
+      delete group.patrolEffects[effectId];
       updateGroups([...groups]);
     }
   }
 
-  function clearAllTemporaryModifiers(group: Group) {
-    group.temporaryModifiers = {};
+  function clearAllPatrolEffects(group: Group) {
+    group.patrolEffects = {};
     updateGroups([...groups]);
   }
 
-  function applyTemporaryModifierToGroup(group: Group) {
-    if (!pendingTemporaryModifier) return;
+  function applyPatrolEffectToGroup(group: Group) {
+    if (!pendingPatrolEffect) return;
 
-    // Initialize temporaryModifiers if undefined
-    if (!group.temporaryModifiers) {
-      group.temporaryModifiers = {};
+    // Initialize patrolEffects if undefined
+    if (!group.patrolEffects) {
+      group.patrolEffects = {};
     }
 
-    // Generate a stable sourceId based on the modifier's content (same logic as createTemporaryModifierPreset)
-    const nameKey = pendingTemporaryModifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const effectsKey = Object.keys(pendingTemporaryModifier.statEffects || {}).sort().join('-');
+    // Generate a stable sourceId based on the effect's content (same logic as createPatrolEffectPreset)
+    const nameKey = pendingPatrolEffect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(pendingPatrolEffect.statEffects || {}).sort().join('-');
     const stableSourceId = `temp-${nameKey}-${effectsKey}`;
 
-    const modifierId = `preset_${stableSourceId}`;
+    const effectId = `preset_${stableSourceId}`;
 
-    // Check if this modifier already exists in the group (check by sourceId)
-    const existingModifierId = Object.keys(group.temporaryModifiers).find(id => {
-      const modifier = group.temporaryModifiers[id];
-      return modifier.sourceId === stableSourceId || id === modifierId;
+    // Check if this effect already exists in the group (check by sourceId)
+    const existingEffectId = Object.keys(group.patrolEffects).find(id => {
+      const effect = group.patrolEffects[id];
+      return effect.sourceId === stableSourceId || id === effectId;
     });
 
-    if (existingModifierId) {
-      ui.notifications?.warn(`El modificador temporal "${pendingTemporaryModifier.name}" ya está aplicado a ${group.name}.`);
-      // Clear the pending modifier
-      pendingTemporaryModifier = null;
-      applyingTemporaryModifier = false;
+    if (existingEffectId) {
+      ui.notifications?.warn(`El efecto de patrulla "${pendingPatrolEffect.name}" ya está aplicado a ${group.name}.`);
+      // Clear the pending effect
+      pendingPatrolEffect = null;
+      applyingPatrolEffect = false;
       return;
     }
 
-    // Apply the modifier
-    group.temporaryModifiers[modifierId] = {
-      name: pendingTemporaryModifier.name,
-      description: pendingTemporaryModifier.description,
-      statEffects: pendingTemporaryModifier.statEffects,
+    // Apply the effect
+    group.patrolEffects[effectId] = {
+      name: pendingPatrolEffect.name,
+      description: pendingPatrolEffect.description,
+      statEffects: pendingPatrolEffect.statEffects,
       sourceId: stableSourceId, // Use the stable sourceId for consistency
       key: stableSourceId // Also store as key for consistency with other items
     };
@@ -1324,23 +1342,21 @@
     // Update the groups
     const updatedGroups = groups.map(g =>
       g.id === group.id
-        ? { ...g, temporaryModifiers: { ...g.temporaryModifiers } }
+        ? { ...g, patrolEffects: { ...g.patrolEffects } }
         : g
     );
 
     updateGroups(updatedGroups);
 
-    // Clear the pending modifier
-    pendingTemporaryModifier = null;
-    applyingTemporaryModifier = false;
+    // Clear the pending effect
+    pendingPatrolEffect = null;
+    applyingPatrolEffect = false;
 
     // Show success notification
-    ui.notifications?.info(`Modificador temporal "${group.temporaryModifiers[modifierId].name}" aplicado a ${group.name}.`);
-  }
-
-  function handleGroupClick(group: Group) {
-    if (applyingTemporaryModifier && pendingTemporaryModifier) {
-      applyTemporaryModifierToGroup(group);
+    ui.notifications?.info(`Efecto de patrulla "${group.patrolEffects[effectId].name}" aplicado a ${group.name}.`);
+  }  function handleGroupClick(group: Group) {
+    if (applyingPatrolEffect && pendingPatrolEffect) {
+      applyPatrolEffectToGroup(group);
     }
   }
 </script>
@@ -1358,13 +1374,13 @@
     transition: all 0.2s ease;
   }
 
-  .group.clickable-for-modifier {
+  .group.clickable-for-effect {
     border-color: #d4af37;
     background: rgba(212, 175, 55, 0.1);
     box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
   }
 
-  .group.clickable-for-modifier:hover {
+  .group.clickable-for-effect:hover {
     background: rgba(212, 175, 55, 0.2);
     box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
   }
@@ -1974,7 +1990,7 @@
   {#each groups as group, i}
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="group {group.officer ? 'has-officer' : ''} {dragOverIndex === i ? 'drag-over' : ''} {applyingTemporaryModifier ? 'clickable-for-modifier' : ''}"
+      class="group {group.officer ? 'has-officer' : ''} {dragOverIndex === i ? 'drag-over' : ''} {applyingPatrolEffect ? 'clickable-for-effect' : ''}"
       data-group-id="{group.id}"
       role="listitem"
       on:dragover={(e) => onGroupDragOver(e, i)}
@@ -1982,8 +1998,8 @@
       on:drop={(e) => onGroupDrop(e, i)}
       on:click={() => handleGroupClick(group)}
       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleGroupClick(group); }}
-      style="cursor: {applyingTemporaryModifier ? 'pointer' : 'default'}"
-      tabindex={applyingTemporaryModifier ? "0" : undefined}
+      style="cursor: {applyingPatrolEffect ? 'pointer' : 'default'}"
+      tabindex={applyingPatrolEffect ? "0" : undefined}
     >
 
       <!-- Group Header with editable name (DRAGGABLE) -->
@@ -2251,59 +2267,59 @@
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d4af37;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <div>
-                  <strong style="margin: 0;">Modificadores Temporales</strong>
-                  <div style="font-size: 0.75em; color: #888; font-style: italic; margin-top: 0.25rem;">Cada modificador puede afectar múltiples stats</div>
+                  <strong style="margin: 0;">Efectos de Patrulla</strong>
+                  <div style="font-size: 0.75em; color: #888; font-style: italic; margin-top: 0.25rem;">Cada efecto puede afectar múltiples stats</div>
                 </div>
                 {#if editing[group.id]}
                   <div style="display: flex; gap: 0.25rem;">
-                    <button on:click={() => addTemporaryModifier(group)} style="padding: 0.25rem 0.5rem; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Añadir nuevo modificador temporal">
+                    <button on:click={() => addPatrolEffect(group)} style="padding: 0.25rem 0.5rem; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Añadir nuevo efecto de patrulla">
                       + Añadir
                     </button>
-                    <button on:click={() => clearAllTemporaryModifiers(group)} style="padding: 0.25rem 0.5rem; background: #ff6666; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Limpiar todos los modificadores">
+                    <button on:click={() => clearAllPatrolEffects(group)} style="padding: 0.25rem 0.5rem; background: #ff6666; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Limpiar todos los efectos">
                       Clear All
                     </button>
                   </div>
                 {/if}
               </div>
 
-              {#if Object.entries(group.temporaryModifiers || {}).length === 0}
+              {#if Object.entries(group.patrolEffects || {}).length === 0}
                 <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
-                  Edit para añadir modificadores temporales
+                  Edit para añadir efectos de patrulla
                 </div>
               {:else}
-                {#each Object.entries(group.temporaryModifiers || {}) as [modifierId, modifier]}
+                {#each Object.entries(group.patrolEffects || {}) as [effectId, effect]}
                   <div
                     style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(155, 89, 182, 0.1); border: 2px solid #9b59b6; border-radius: 8px; {editing[group.id] ? 'cursor: pointer;' : ''}"
-                    class:editable-modifier={editing[group.id]}
-                    on:dblclick={editing[group.id] ? () => editTemporaryModifier(group, modifierId) : undefined}
-                    on:keydown={editing[group.id] ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editTemporaryModifier(group, modifierId); } } : undefined}
+                    class:editable-effect={editing[group.id]}
+                    on:dblclick={editing[group.id] ? () => editPatrolEffect(group, effectId) : undefined}
+                    on:keydown={editing[group.id] ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editPatrolEffect(group, effectId); } } : undefined}
                     title={editing[group.id] ? 'Doble clic para editar' : ''}
                     role={editing[group.id] ? 'button' : undefined}
                     tabindex={editing[group.id] ? '0' : undefined}
                   >
-                    <!-- Modifier Header -->
+                    <!-- Effect Header -->
                     <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                       <div style="flex: 1;">
-                        <strong style="color: #9b59b6; font-size: 1.2em; display: block; margin-bottom: 0.5rem; text-shadow: 0 0 2px rgba(155, 89, 182, 0.3);">{modifier.name}</strong>
-                        {#if modifier.description}
+                        <strong style="color: #9b59b6; font-size: 1.2em; display: block; margin-bottom: 0.5rem; text-shadow: 0 0 2px rgba(155, 89, 182, 0.3);">{effect.name}</strong>
+                        {#if effect.description}
                           <div style="color: #666; font-size: 0.9em; line-height: 1.4; margin-bottom: 0.75rem;">
-                            {modifier.description}
+                            {effect.description}
                           </div>
                         {/if}
                       </div>
                       {#if editing[group.id]}
                         <div style="display: flex; gap: 0.5rem;">
                           <button
-                            on:click={() => createTemporaryModifierPreset(modifier)}
+                            on:click={() => createPatrolEffectPreset(effect)}
                             style="padding: 0.25rem 0.5rem; background: #d4af37; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                            title="Crear preset con este modificador"
+                            title="Crear preset con este efecto"
                           >
                             Preset
                           </button>
                           <button
-                            on:click={() => removeTemporaryModifier(group, modifierId)}
+                            on:click={() => removePatrolEffect(group, effectId)}
                             style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                            title="Eliminar modificador"
+                            title="Eliminar efecto"
                           >
                             ×
                           </button>
@@ -2313,7 +2329,7 @@
 
                     <!-- Stats Effects -->
                     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                      {#each Object.entries(modifier.statEffects || {}) as [statKey, value]}
+                      {#each Object.entries(effect.statEffects || {}) as [statKey, value]}
                         {@const stat = stats.find(s => s.key === statKey)}
                         {#if stat}
                           <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(155, 89, 182, 0.15); border: 1px solid #9b59b6; border-radius: 6px;">

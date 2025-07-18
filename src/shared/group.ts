@@ -9,14 +9,16 @@ export interface GroupExperience {
   value: number; // Positive or negative modifier for the roll
 }
 
-export interface GroupTemporaryModifier {
+export interface GroupPatrolEffect {
   name: string;
   description: string;
   statEffects: Record<string, number>; // Multiple stat keys with their respective values
+  sourceId?: string; // For sync compatibility
+  key?: string; // For sync compatibility
 }
 
-export interface GroupTemporaryModifiers {
-  [modifierId: string]: GroupTemporaryModifier; // Temporary modifiers indexed by unique ID
+export interface GroupPatrolEffects {
+  [modifierId: string]: GroupPatrolEffect; // Patrol effects indexed by unique ID
 }
 
 export interface GroupMember {
@@ -34,7 +36,7 @@ export interface Group {
   mods: Record<string, number>;
   skills: GroupSkill[];
   experiences: GroupExperience[];
-  temporaryModifiers: GroupTemporaryModifiers;
+  patrolEffects: GroupPatrolEffects;
   maxUnits: number;
   maxSoldiers: number; // Maximum number of soldiers for formation layout
   hope: number; // 0-6 hope level

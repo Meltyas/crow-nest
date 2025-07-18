@@ -223,7 +223,7 @@ export class PresetManager {
     type:
       | "resource"
       | "reputation"
-      | "temporaryModifier"
+      | "patrolEffect"
       | "situationalModifier"
   ) {
     // Si el popup no está abierto, abrirlo primero
@@ -247,7 +247,7 @@ export class PresetManager {
     type:
       | "resource"
       | "reputation"
-      | "temporaryModifier"
+      | "patrolEffect"
       | "situationalModifier"
   ) {
     // Si el popup está abierto, actualizar el preset correspondiente
@@ -266,7 +266,7 @@ export class PresetManager {
         if (currentPresets && item.sourceId) {
           const presetsArray = type === "resource" ? currentPresets.resources :
                               type === "reputation" ? currentPresets.reputations :
-                              type === "temporaryModifier" ? currentPresets.temporaryModifiers :
+                              type === "patrolEffect" ? currentPresets.patrolEffects :
                               currentPresets.situationalModifiers;
           
           const existingPreset = presetsArray.find((p: any) => p.data.sourceId === item.sourceId);
@@ -286,7 +286,7 @@ export class PresetManager {
     type:
       | "resource"
       | "reputation"
-      | "temporaryModifier"
+      | "patrolEffect"
       | "situationalModifier"
   ) {
     // Importar el store de presets dinámicamente
@@ -307,8 +307,8 @@ export class PresetManager {
         ? currentPresets.resources
         : type === "reputation"
           ? currentPresets.reputations
-          : type === "temporaryModifier"
-            ? currentPresets.temporaryModifiers
+          : type === "patrolEffect"
+            ? currentPresets.patrolEffects
             : currentPresets.situationalModifiers;
 
     // Buscar el preset existente con el mismo sourceId
