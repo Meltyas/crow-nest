@@ -2,21 +2,17 @@
   // FilePicker and game are provided by Foundry at runtime
   declare const FilePicker: any;
   declare const game: any;
+  declare const Dialog: any;
 </script>
 
 <script lang="ts">
-  // FilePicker and Dialog are provided by Foundry at runtime
-  declare const FilePicker: any;
-  declare const Dialog: any;
-  
-  // Access to Foundry's game object
-  declare const game: any;
+  // Access to Foundry objects provided at runtime
 
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import { addPreset, initializePresets, persistPresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
-  import PopupFocusManager from '@/utils/popup-focus';
   import { generateUUID } from '@/utils/log';
+  import PopupFocusManager from '@/utils/popup-focus';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 
   // Helper function to safely get stat effects and prevent undefined iteration
@@ -59,6 +55,12 @@
       // Ensure data exists
       if (!preset.data) {
         preset.data = {};
+      }
+
+      // Ensure all presets have a sourceId
+      if (!preset.data.sourceId) {
+        preset.data.sourceId = generateUUID();
+        console.log('Generated sourceId for preset:', preset.name, 'sourceId:', preset.data.sourceId);
       }
 
       // Sanitize statEffects for modifier types
@@ -297,6 +299,7 @@
 
     if (type === 'resource') {
       if (!newResourceForm.name.trim()) return;
+      const sourceId = generateUUID();
       preset = {
         id: generateId(),
         name: newResourceForm.name,
@@ -306,12 +309,14 @@
           name: newResourceForm.name,
           value: newResourceForm.value,
           description: newResourceForm.description,
-          img: newResourceForm.img
+          img: newResourceForm.img,
+          sourceId: sourceId
         },
         createdAt: Date.now()
       };
     } else if (type === 'reputation') {
       if (!newReputationForm.name.trim()) return;
+      const sourceId = generateUUID();
       preset = {
         id: generateId(),
         name: newReputationForm.name,
@@ -321,7 +326,8 @@
           name: newReputationForm.name,
           value: newReputationForm.value,
           description: newReputationForm.description,
-          img: newReputationForm.img
+          img: newReputationForm.img,
+          sourceId: sourceId
         },
         createdAt: Date.now()
       };
@@ -675,7 +681,7 @@
       if (existingPreset) {
         console.log('Preset already exists, updating instead of creating new:', existingPreset);
         // Update existing preset with safe data handling
-        existingPreset.data = { 
+        existingPreset.data = {
           ...item,
           statEffects: safeGetStatEffects(item)
         };
@@ -703,7 +709,7 @@
       name: item.name,
       type: type,
       description: item.description || '',
-      data: { 
+      data: {
         ...item,
         statEffects: safeGetStatEffects(item)
       },
@@ -744,7 +750,7 @@
     // Only update if preset exists with same sourceId
     if (item.key || item.sourceId) {
       const sourceId = item.sourceId || item.key;
-      
+
       // Validar que presets tenga la estructura correcta
       if (!presets || typeof presets !== 'object') {
         console.warn('Invalid presets structure:', presets);
@@ -1093,6 +1099,9 @@
                       <p>{safeGetPresetProperty(preset, 'description')}</p>
                     </div>
                   {/if}
+                  {#if game?.user?.isGM}
+                    <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
+                  {/if}
                   <div class="preset-item-quantity-container">
                     <span class="preset-item-quantity">{safeGetPresetProperty(preset, 'value', 0)}</span>
                   </div>
@@ -1113,6 +1122,9 @@
                     <div class="preset-item-details">
                       <p>{safeGetPresetProperty(preset, 'description')}</p>
                     </div>
+                  {/if}
+                  {#if game?.user?.isGM}
+                    <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
                   {/if}
                   <div class="preset-item-bar-container">
                     <div class="preset-item-bar">
@@ -1143,8 +1155,8 @@
                     {#if preset.description}
                       <p class="description">{preset.description}</p>
                     {/if}
-                    {#if game?.user?.isGM && safeGetPresetProperty(preset, 'sourceId')}
-                      <span class="source-id-debug">sourceId: {safeGetPresetProperty(preset, 'sourceId')}</span>
+                    {#if game?.user?.isGM}
+                      <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
                     {/if}
                     <div class="stat-effects-preview">
                       {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
@@ -1175,8 +1187,8 @@
                   <div class="preset-item-name">{preset.name || 'Sin nombre'}</div>
                   <div class="preset-item-details">
                     <p><strong>Descripción:</strong> {safeGetPresetProperty(preset, 'description') || safeGetPresetProperty(preset, 'situation') || ''}</p>
-                    {#if game?.user?.isGM && safeGetPresetProperty(preset, 'sourceId')}
-                      <span class="source-id-debug">sourceId: {safeGetPresetProperty(preset, 'sourceId')}</span>
+                    {#if game?.user?.isGM}
+                      <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
                     {/if}
                     <div class="stat-effects-preview">
                       {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
