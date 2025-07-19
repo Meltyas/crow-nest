@@ -480,20 +480,10 @@ export class GuardHandlers {
   };
 
   reorderResources = (event: CustomEvent) => {
-    const { dragIndex, dropIndex } = event.detail;
-    if (dragIndex === dropIndex) return;
-
-    const newResources = [...this.resources];
-    const draggedResource = newResources[dragIndex];
-
-    // Remove the dragged item
-    newResources.splice(dragIndex, 1);
-
-    // Insert it at the new position
-    newResources.splice(dropIndex, 0, draggedResource);
-
-    this.resources = newResources;
-    this.handleUpdateResource();
+    // This handler works with preset data, not guard data
+    // The actual ordering will be handled by the preset store functions
+    console.log('Guard reorderResources - delegating to preset system:', event.detail);
+    // The unified components handle their own reordering via preset store
   };
 
   reorderReputation = (event: CustomEvent) => {

@@ -12,6 +12,8 @@ export interface Resource extends BasePresetItem {
   groupId?: string; // undefined = global, string = group-specific
   description?: string; // For details in ItemCard
   active?: boolean; // Para mostrar en guard (true) o solo en presets (false)
+  guardOrder?: number; // Order when displayed in guard (lower = higher priority)
+  presetOrder?: number; // Order when displayed in preset manager (lower = higher priority)
 }
 
 // Reputation interface
@@ -23,6 +25,8 @@ export interface Reputation extends BasePresetItem {
   groupId?: string; // undefined = global, string = group-specific
   description?: string; // For details in ItemCard
   active?: boolean; // Para mostrar en guard (true) o solo en presets (false)
+  guardOrder?: number; // Order when displayed in guard (lower = higher priority)
+  presetOrder?: number; // Order when displayed in preset manager (lower = higher priority)
 }
 
 // Patrol Effect interface

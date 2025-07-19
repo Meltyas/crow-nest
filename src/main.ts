@@ -388,7 +388,6 @@ Hooks.once("ready", () => {
   // Create Global Dialogs container
   const dialogsContainer = document.createElement("div");
   dialogsContainer.style.position = "absolute";
-  dialogsContainer.style.zIndex = "10001"; // Higher than dialogs to ensure proper layering
   document.body.appendChild(dialogsContainer);
   new GlobalDialogs({ target: dialogsContainer });
 

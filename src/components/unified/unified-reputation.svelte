@@ -2,6 +2,7 @@
   import AddItemForm from '@/components/guard/add-item-form.svelte';
   import ItemCard from '@/components/guard/item-card.svelte';
   import {
+    addReputation,
     deleteReputationPreset,
     presetsStore,
     toggleReputationActive
@@ -14,7 +15,6 @@
   // Component props - siguiendo el patrón de resources-section
   export let groupId: string | undefined = undefined; // undefined = global, string = group-specific
   export let title: string = 'Reputación';
-  export let showPresets: boolean = true;
   export let expandedReputationDetails: Record<string, boolean> = {};
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
@@ -26,7 +26,6 @@
 
   // Local state - siguiendo el patrón de resources-section.svelte
   let addingReputation = false;
-  let showPresetsPanel = false;
   let newReputation: any = {
     key: '',
     name: '',
@@ -35,15 +34,17 @@
     details: ''
   };
 
-  // Variables reactivas basadas en el store actualizado
-  $: activeReputations = groupId
+  // Variables reactivas basadas en el store actualizado - con ordenamiento personalizado
+  $: activeReputations = (groupId
     ? currentPresets.reputations.filter(r => r.groupId === groupId && r.active)
-    : currentPresets.reputations.filter(r => !r.groupId && r.active);
+    : currentPresets.reputations.filter(r => !r.groupId && r.active))
+    .sort((a, b) => (a.guardOrder ?? 999) - (b.guardOrder ?? 999));
 
-  // Para presets: todos los disponibles para seleccionar
-  $: availablePresets = groupId
+  // Para presets: todos los disponibles para seleccionar - ordenados por presetOrder
+  $: availablePresets = (groupId
     ? currentPresets.reputations.filter(r => r.groupId === groupId)
-    : currentPresets.reputations.filter(r => !r.groupId);
+    : currentPresets.reputations.filter(r => !r.groupId))
+    .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
   $: displayReputations = inPresetManager ? availablePresets : activeReputations;
@@ -88,10 +89,6 @@
     if (data && data.reputations) {
       currentPresets = data;
     }
-  }
-
-  function togglePresets() {
-    showPresetsPanel = !showPresetsPanel;
   }
 
   function openAddReputation() {
@@ -173,31 +170,6 @@
     console.log('====================================');
   }
 
-  async function handleApplyPreset(presetId: string) {
-    // Toggle: activar/desactivar preset del store
-    await toggleReputationActive(presetId);
-    showPresetsPanel = false;
-    dispatch('updateReputation');
-  }
-
-  async function handleRemovePreset(presetId: string) {
-    // Esta función elimina presets del store completamente
-    if (confirm('¿Eliminar este preset permanentemente?')) {
-      await deleteReputationPreset(presetId);
-      dispatch('updateReputation');
-    }
-  }
-
-  async function handleActivatePreset(presetId: string) {
-    // Toggle: activar/desactivar preset del store
-    await toggleReputationActive(presetId);
-
-    // Forzar actualización del estado local para reactividad inmediata
-    currentPresets = $presetsStore;
-
-    dispatch('updateReputation');
-  }
-
   function handleEditItem(event: CustomEvent) {
     const { item, type } = event.detail;
     if (type === 'reputation') {
@@ -263,7 +235,7 @@
     }
   }
 
-  function handleDrop(event: DragEvent, dropIndex: number) {
+  async function handleDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     event.stopPropagation();
 
@@ -281,11 +253,81 @@
         newIndex = newIndex - 1;
       }
 
-      dispatch('reorderReputations', { dragIndex: draggedIndex, dropIndex: newIndex });
+      // Handle reordering directly in preset store
+      await reorderReputationsInStore(draggedIndex, newIndex, inPresetManager);
+      
+      dispatch('reorderReputations', { 
+        dragIndex: draggedIndex, 
+        dropIndex: newIndex,
+        inPresetManager: inPresetManager 
+      });
     }
 
     draggedIndex = null;
     dropZoneVisible = {};
+  }
+
+  async function reorderReputationsInStore(dragIndex: number, dropIndex: number, inPresetManager: boolean) {
+    const orderProperty = inPresetManager ? 'presetOrder' : 'guardOrder';
+    const currentReputations = displayReputations;
+    
+    if (dragIndex < 0 || dragIndex >= currentReputations.length || 
+        dropIndex < 0 || dropIndex >= currentReputations.length) {
+      return;
+    }
+
+    // Get the dragged item
+    const draggedItem = currentReputations[dragIndex];
+    
+    // Update the preset store with new order values
+    const updatedReputations = [...currentPresets.reputations];
+    
+    // Reassign order values based on new positions
+    currentReputations.forEach((reputation, index) => {
+      const storeIndex = updatedReputations.findIndex(r => r.id === reputation.id);
+      if (storeIndex !== -1) {
+        if (index === dragIndex) {
+          // Set dragged item order to drop position
+          updatedReputations[storeIndex] = {
+            ...updatedReputations[storeIndex],
+            [orderProperty]: dropIndex
+          };
+        } else if (index < dragIndex && index >= dropIndex) {
+          // Items shifting right (increase order)
+          const currentOrder = updatedReputations[storeIndex][orderProperty] ?? index;
+          updatedReputations[storeIndex] = {
+            ...updatedReputations[storeIndex],
+            [orderProperty]: currentOrder + 1
+          };
+        } else if (index > dragIndex && index <= dropIndex) {
+          // Items shifting left (decrease order)
+          const currentOrder = updatedReputations[storeIndex][orderProperty] ?? index;
+          updatedReputations[storeIndex] = {
+            ...updatedReputations[storeIndex],
+            [orderProperty]: Math.max(0, currentOrder - 1)
+          };
+        }
+      }
+    });
+
+    // Update the store
+    presetsStore.set({
+      ...currentPresets,
+      reputations: updatedReputations
+    });
+
+    // Persist changes
+    await savePresetsToFoundry();
+  }
+
+  async function savePresetsToFoundry() {
+    try {
+      if (typeof game !== 'undefined' && game.settings) {
+        await game.settings.set('crow-nest', 'unifiedPresets', $presetsStore);
+      }
+    } catch (error) {
+      console.error('Error saving presets to Foundry:', error);
+    }
   }
 
   function handleDragEnd() {
@@ -311,62 +353,9 @@
       <button class="debug-button standard-button" on:click={debugLogReputations} title="Debug: Mostrar lista en consola">
         🐛 Debug
       </button>
-      {#if showPresets}
-        <button
-          class="edit-button standard-button"
-          class:active={showPresetsPanel}
-          on:click={togglePresets}
-        >
-          📋 Presets ({availablePresets.length})
-        </button>
-      {/if}
       <button class="add-button standard-button" on:click={openAddReputation}>➕ Añadir</button>
     </div>
   </h3>
-
-  <!-- Presets Panel -->
-  {#if showPresetsPanel && showPresets}
-    <div class="presets-panel">
-      <h4>Presets de Reputación</h4>
-      {#if availablePresets.length === 0}
-        <p class="no-presets">No hay presets de reputación guardados</p>
-      {:else}
-        <div class="presets-list">
-          {#each availablePresets as preset}
-            <div class="preset-item">
-              <div class="preset-info">
-                <div class="preset-header">
-                  <span class="preset-name">{preset.name}</span>
-                  <span class="preset-value">{preset.value}</span>
-                </div>
-                <div class="preset-status">
-                  <span class="status-indicator {preset.active ? 'active' : 'inactive'}">
-                    {preset.active ? '✓ Activo' : '○ Inactivo'}
-                  </span>
-                </div>
-              </div>
-              <div class="preset-actions">
-                <button
-                  class="btn btn-xs {preset.active ? 'btn-warning' : 'btn-primary'}"
-                  on:click={() => handleApplyPreset(preset.id)}
-                  title="{preset.active ? 'Retirar del guard' : 'Usar en guard'}"
-                >
-                  {preset.active ? 'Retirar' : 'Usar'}
-                </button>
-                <button
-                  class="btn btn-xs btn-danger"
-                  on:click={() => handleRemovePreset(preset.id)}
-                  title="Eliminar Preset"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  {/if}
 
   {#if addingReputation}
     <AddItemForm
@@ -398,8 +387,6 @@
         on:drop={(e) => handleDrop(e.detail.event, e.detail.index)}
         on:dragEnd={handleDragEnd}
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
-        on:activatePreset={(e) => handleActivatePreset(e.detail.id)}
-        on:removePreset={(e) => handleRemovePreset(e.detail)}
         on:editItem={handleEditItem}
       />
     {/each}
@@ -413,140 +400,6 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin-top: 0.5rem;
-  }
-
-  /* Presets Panel - mantener estos estilos específicos */
-  .presets-panel {
-    background: rgba(230, 243, 255, 0.3);
-    border: 1px dashed #007bff;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 12px;
-  }
-
-  .presets-panel h4 {
-    margin: 0 0 8px 0;
-    color: #007bff;
-    font-size: 0.9em;
-  }
-
-  .presets-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .preset-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid #b3d9ff;
-    border-radius: 4px;
-    padding: 8px;
-  }
-
-  .preset-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .preset-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .preset-status {
-    display: flex;
-    align-items: center;
-  }
-
-  .status-indicator {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.375rem;
-    border-radius: 3px;
-    font-weight: bold;
-  }
-
-  .status-indicator.active {
-    color: #28a745;
-    background-color: rgba(40, 167, 69, 0.1);
-  }
-
-  .status-indicator.inactive {
-    color: #6c757d;
-    background-color: rgba(108, 117, 125, 0.1);
-  }
-
-  .preset-name {
-    font-weight: bold;
-    color: #007bff;
-  }
-
-  .preset-value {
-    font-size: 0.85em;
-    color: #666;
-  }
-
-  .preset-actions {
-    display: flex;
-    gap: 4px;
-  }
-
-  .no-presets {
-    text-align: center;
-    color: #888;
-    font-style: italic;
-    padding: 16px;
-  }
-
-  /* Botones para presets */
-  .btn {
-    padding: 4px 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-    font-size: 0.85em;
-    transition: all 0.2s;
-  }
-
-  .btn:hover {
-    background: #f0f0f0;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-    border-color: #0056b3;
-  }
-
-  .btn-primary:hover {
-    background: #0056b3;
-  }
-
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-    border-color: #c82333;
-  }
-
-  .btn-warning {
-    background: #ffc107;
-    color: #212529;
-    border-color: #d39e00;
-  }
-
-  .btn-warning:hover {
-    background: #d39e00;
-  }
-
-  .btn-xs {
-    padding: 2px 6px;
-    font-size: 0.75em;
   }
 
   /* Responsive design for reputation grid */

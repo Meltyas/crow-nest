@@ -102,7 +102,9 @@ export async function handleResourceSave(updatedResource: any) {
         sourceId: `resource-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         groupId: undefined, // Global preset
         description: updatedResource.description || '',
-        active: true // New resources created via dialog should be active
+        active: true, // New resources created via dialog should be active
+        guardOrder: 0, // Add at the beginning of guard list
+        presetOrder: 0 // Add at the beginning of preset list
       });
 
       console.log("Resource created successfully:", updatedResource);
@@ -154,7 +156,9 @@ export async function handleReputationSave(updatedReputation: any) {
         sourceId: `reputation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         groupId: undefined, // Global preset
         description: updatedReputation.description || '',
-        active: true // New reputations created via dialog should be active
+        active: true, // New reputations created via dialog should be active
+        guardOrder: 0, // Add at the beginning of guard list
+        presetOrder: 0 // Add at the beginning of preset list
       });
 
       console.log("Reputation created successfully:", updatedReputation);

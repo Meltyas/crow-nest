@@ -14,7 +14,6 @@
   // Component props - siguiendo el patrón de unified-reputation
   export let groupId: string | undefined = undefined; // undefined for global resources
   export let title: string = 'Recursos';
-  export let showPresets: boolean = true;
   export let expandedResourceDetails: Record<string, boolean> = {};
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
@@ -24,22 +23,23 @@
   let currentPresets = $presetsStore;
   let syncManager: SyncManager;
 
-  // Variables reactivas basadas en el store actualizado
-  $: activeResources = groupId
+  // Variables reactivas basadas en el store actualizado - con ordenamiento personalizado
+  $: activeResources = (groupId
     ? currentPresets.resources.filter(r => r.groupId === groupId && r.active)
-    : currentPresets.resources.filter(r => !r.groupId && r.active);
+    : currentPresets.resources.filter(r => !r.groupId && r.active))
+    .sort((a, b) => (a.guardOrder ?? 999) - (b.guardOrder ?? 999));
 
-  // Presets disponibles para el panel de selección (todos los presets)
-  $: availablePresets = groupId
+  // Presets disponibles para el panel de selección (todos los presets) - ordenados por presetOrder
+  $: availablePresets = (groupId
     ? currentPresets.resources.filter(r => r.groupId === groupId)
-    : currentPresets.resources.filter(r => !r.groupId);
+    : currentPresets.resources.filter(r => !r.groupId))
+    .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
   $: displayResources = inPresetManager ? availablePresets : activeResources;
 
   // Local state - siguiendo el patrón de unified-reputation
   let addingResource = false;
-  let showPresetsPanel = false;
   let newResource: any = {
     name: '',
     value: 0,
@@ -87,10 +87,6 @@
     if (data && data.resources) {
       currentPresets = data;
     }
-  }
-
-  function togglePresets() {
-    showPresetsPanel = !showPresetsPanel;
   }
 
   function openAddResource() {
@@ -164,31 +160,6 @@
     console.log('================================');
   }
 
-  async function handleApplyPreset(presetId: string) {
-    // Toggle: activar/desactivar preset del store
-    await toggleResourceActive(presetId);
-    showPresetsPanel = false;
-    dispatch('updateResource');
-  }
-
-  async function handleRemovePreset(presetId: string) {
-    // Esta función elimina presets del store completamente
-    if (confirm('¿Eliminar este preset permanentemente?')) {
-      await deleteResourcePreset(presetId);
-      dispatch('updateResource');
-    }
-  }
-
-  async function handleActivatePreset(presetId: string) {
-    // Toggle: activar/desactivar preset del store
-    await toggleResourceActive(presetId);
-
-    // Forzar actualización del estado local para reactividad inmediata
-    currentPresets = $presetsStore;
-
-    dispatch('updateResource');
-  }
-
   function handleEditItem(event: CustomEvent) {
     const { item, type } = event.detail;
     if (type === 'resource') {
@@ -254,7 +225,7 @@
     }
   }
 
-  function handleDrop(event: DragEvent, dropIndex: number) {
+  async function handleDrop(event: DragEvent, dropIndex: number) {
     event.preventDefault();
     event.stopPropagation();
 
@@ -272,11 +243,81 @@
         newIndex = newIndex - 1;
       }
 
-      dispatch('reorderResources', { dragIndex: draggedIndex, dropIndex: newIndex });
+      // Handle reordering directly in preset store
+      await reorderResourcesInStore(draggedIndex, newIndex, inPresetManager);
+      
+      dispatch('reorderResources', { 
+        dragIndex: draggedIndex, 
+        dropIndex: newIndex,
+        inPresetManager: inPresetManager 
+      });
     }
 
     draggedIndex = null;
     dropZoneVisible = {};
+  }
+
+  async function reorderResourcesInStore(dragIndex: number, dropIndex: number, inPresetManager: boolean) {
+    const orderProperty = inPresetManager ? 'presetOrder' : 'guardOrder';
+    const currentResources = displayResources;
+    
+    if (dragIndex < 0 || dragIndex >= currentResources.length || 
+        dropIndex < 0 || dropIndex >= currentResources.length) {
+      return;
+    }
+
+    // Get the dragged item
+    const draggedItem = currentResources[dragIndex];
+    
+    // Update the preset store with new order values
+    const updatedResources = [...currentPresets.resources];
+    
+    // Reassign order values based on new positions
+    currentResources.forEach((resource, index) => {
+      const storeIndex = updatedResources.findIndex(r => r.id === resource.id);
+      if (storeIndex !== -1) {
+        if (index === dragIndex) {
+          // Set dragged item order to drop position
+          updatedResources[storeIndex] = {
+            ...updatedResources[storeIndex],
+            [orderProperty]: dropIndex
+          };
+        } else if (index < dragIndex && index >= dropIndex) {
+          // Items shifting right (increase order)
+          const currentOrder = updatedResources[storeIndex][orderProperty] ?? index;
+          updatedResources[storeIndex] = {
+            ...updatedResources[storeIndex],
+            [orderProperty]: currentOrder + 1
+          };
+        } else if (index > dragIndex && index <= dropIndex) {
+          // Items shifting left (decrease order)
+          const currentOrder = updatedResources[storeIndex][orderProperty] ?? index;
+          updatedResources[storeIndex] = {
+            ...updatedResources[storeIndex],
+            [orderProperty]: Math.max(0, currentOrder - 1)
+          };
+        }
+      }
+    });
+
+    // Update the store
+    presetsStore.set({
+      ...currentPresets,
+      resources: updatedResources
+    });
+
+    // Persist changes
+    await savePresetsToFoundry();
+  }
+
+  async function savePresetsToFoundry() {
+    try {
+      if (typeof game !== 'undefined' && game.settings) {
+        await game.settings.set('crow-nest', 'unifiedPresets', $presetsStore);
+      }
+    } catch (error) {
+      console.error('Error saving presets to Foundry:', error);
+    }
   }
 
   function handleDragEnd() {
@@ -293,62 +334,9 @@
       <button class="debug-button standard-button" on:click={debugLogResources} title="Debug: Mostrar lista en consola">
         🐛 Debug
       </button>
-      {#if showPresets}
-        <button
-          class="edit-button standard-button"
-          class:active={showPresetsPanel}
-          on:click={togglePresets}
-        >
-          📋 Presets ({availablePresets.length})
-        </button>
-      {/if}
       <button class="add-button standard-button" on:click={openAddResource}>➕ Añadir</button>
     </div>
   </h3>
-
-  <!-- Presets Panel -->
-  {#if showPresetsPanel && showPresets}
-    <div class="presets-panel">
-      <h4>Presets de Recursos</h4>
-      {#if availablePresets.length === 0}
-        <p class="no-presets">No hay presets de recursos guardados</p>
-      {:else}
-        <div class="presets-list">
-          {#each availablePresets as preset}
-            <div class="preset-item">
-              <div class="preset-info">
-                <div class="preset-header">
-                  <span class="preset-name">{preset.name}</span>
-                  <span class="preset-value">{preset.value}</span>
-                </div>
-                <div class="preset-status">
-                  <span class="status-indicator {preset.active ? 'active' : 'inactive'}">
-                    {preset.active ? '✓ Activo' : '○ Inactivo'}
-                  </span>
-                </div>
-              </div>
-              <div class="preset-actions">
-                <button
-                  class="btn btn-xs {preset.active ? 'btn-warning' : 'btn-primary'}"
-                  on:click={() => handleApplyPreset(preset.id)}
-                  title="{preset.active ? 'Retirar del guard' : 'Usar en guard'}"
-                >
-                  {preset.active ? 'Retirar' : 'Usar'}
-                </button>
-                <button
-                  class="btn btn-xs btn-danger"
-                  on:click={() => handleRemovePreset(preset.id)}
-                  title="Eliminar Preset"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  {/if}
 
   {#if addingResource}
     <AddItemForm
@@ -380,8 +368,6 @@
         on:drop={(e) => handleDrop(e.detail.event, e.detail.index)}
         on:dragEnd={handleDragEnd}
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
-        on:activatePreset={(e) => handleActivatePreset(e.detail.id)}
-        on:removePreset={(e) => handleRemovePreset(e.detail)}
         on:editItem={handleEditItem}
       />
     {/each}
@@ -397,155 +383,11 @@
     margin-top: 0.5rem;
   }
 
-  /* Presets Panel - mantener estos estilos específicos */
-  .presets-panel {
-    background: rgba(230, 243, 255, 0.3);
-    border: 1px dashed #007bff;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 12px;
-  }
-
-  .presets-panel h4 {
-    margin: 0 0 8px 0;
-    color: #007bff;
-    font-size: 0.9em;
-  }
-
-  .presets-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .preset-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid #b3d9ff;
-    border-radius: 4px;
-    padding: 8px;
-  }
-
-  .preset-info {
-    flex: 1;
-  }
-
-  .preset-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .preset-name {
-    font-weight: bold;
-    color: #007bff;
-  }
-
-  .preset-value {
-    font-size: 0.85em;
-    color: #666;
-  }
-
-  .preset-actions {
-    display: flex;
-    gap: 4px;
-  }
-
-  .no-presets {
-    text-align: center;
-    color: #888;
-    font-style: italic;
-    padding: 16px;
-  }
-
-  /* Botones para presets */
-  .btn {
-    padding: 4px 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-    font-size: 0.85em;
-    transition: all 0.2s;
-  }
-
-  .btn:hover {
-    background: #f0f0f0;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-    border-color: #0056b3;
-  }
-
-  .btn-primary:hover {
-    background: #0056b3;
-  }
-
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-    border-color: #c82333;
-  }
-
-  .btn-warning {
-    background: #ffc107;
-    color: #212529;
-    border-color: #d39e00;
-  }
-
-  .btn-warning:hover {
-    background: #d39e00;
-  }
-
-  .btn-xs {
-    padding: 2px 6px;
-    font-size: 0.75em;
-  }
-
   /* Responsive design for resource grid */
   @media (max-width: 1200px) {
     .resource-container {
       grid-template-columns: repeat(2, 1fr);
     }
-  }
-
-  .preset-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .preset-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .preset-status {
-    display: flex;
-    align-items: center;
-  }
-
-  .status-indicator {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.375rem;
-    border-radius: 3px;
-    font-weight: bold;
-  }
-
-  .status-indicator.active {
-    color: #28a745;
-    background-color: rgba(40, 167, 69, 0.1);
-  }
-
-  .status-indicator.inactive {
-    color: #6c757d;
-    background-color: rgba(108, 117, 125, 0.1);
   }
 
   @media (max-width: 768px) {

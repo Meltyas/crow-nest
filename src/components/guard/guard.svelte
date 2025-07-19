@@ -627,7 +627,6 @@
               {#if activeGuardTab === 'reputation'}
                 <UnifiedReputation
                   title="Reputación"
-                  showPresets={false}
                   editingReputations={editingReputation}
                   expandedReputationDetails={expandedReputationDetails}
                   on:toggleEditingReputations={handleToggleEditingReputation}
@@ -636,14 +635,13 @@
                   on:newRepImageClick={handlers.handleNewRepImageClick}
                   on:repFileChange={handlers.handleRepFileChange}
                   on:showReputationInChat={handlers.handleShowReputationInChat}
-                  on:reorderReputation={(e) => { handlers.reorderReputation(e); }}
+                  on:reorderReputations={(e) => { handlers.reorderReputation(e); }}
                 />
 
               <!-- Resources Tab -->
               {:else if activeGuardTab === 'resources'}
                 <UnifiedResources
                   title="Recursos"
-                  showPresets={false}
                   editingResources={editingResources}
                   expandedResourceDetails={expandedResourceDetails}
                   on:toggleEditingResources={handleToggleEditingResources}
