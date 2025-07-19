@@ -1435,12 +1435,6 @@
                             <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
                             {stat.name}: {value > 0 ? '+' : ''}{value}
                           </span>
-                        {:else if value !== 0}
-                          <!-- Fallback para stats que no se encuentran -->
-                          <span class="stat-effect-preview">
-                            <img src="icons/svg/shield.svg" alt="Unknown stat" />
-                            {statKey}: {value > 0 ? '+' : ''}{value}
-                          </span>
                         {/if}
                       {/each}
                     </div>
@@ -1472,12 +1466,6 @@
                           <span class="stat-effect-preview">
                             <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
                             {stat.name}: {value > 0 ? '+' : ''}{value}
-                          </span>
-                        {:else if value !== 0}
-                          <!-- Fallback para stats que no se encuentran -->
-                          <span class="stat-effect-preview">
-                            <img src="icons/svg/shield.svg" alt="Unknown stat" />
-                            {statKey}: {value > 0 ? '+' : ''}{value}
                           </span>
                         {/if}
                       {/each}
