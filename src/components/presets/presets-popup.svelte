@@ -48,6 +48,34 @@
     }
   }
 
+  // Function to handle create preset button click
+  function handleCreatePreset() {
+    if (activeTab === 'resources') {
+      // Open resource dialog with empty data for creation
+      openResourceEditDialog({
+        id: '',
+        name: '',
+        value: 0,
+        description: '',
+        img: '',
+        sourceId: ''
+      });
+    } else if (activeTab === 'reputations') {
+      // Open reputation dialog with empty data for creation
+      openReputationEditDialog({
+        id: '',
+        name: '',
+        value: 0,
+        description: '',
+        img: '',
+        sourceId: ''
+      });
+    } else {
+      // For other tabs, use the old form behavior
+      showCreateForm = !showCreateForm;
+    }
+  }
+
   // Function to change tab and save to localStorage
   function changeTab(newTab: 'resources' | 'reputations' | 'patrolEffects' | 'situationalModifiers') {
     activeTab = newTab;
@@ -1292,7 +1320,7 @@
       <div class="popup-content">
         <!-- Add button -->
         <div class="add-section">
-          <button class="add-preset-btn" on:click={() => showCreateForm = !showCreateForm}>
+          <button class="add-preset-btn" on:click={handleCreatePreset}>
             + Crear Preset
           </button>
           <button class="cleanup-btn" on:click={cleanupCorruptedPresets} title="Eliminar presets corruptos o undefined">

@@ -95,14 +95,15 @@
   }
 
   function openAddReputation() {
-    newReputation = {
-      key: generateUUID(),
+    // Use global dialog for adding new reputation
+    openReputationEditDialog({
+      id: '',
       name: '',
       value: 0,
-      img: 'icons/svg/aura.svg',
-      details: ''
-    };
-    addingReputation = true;
+      description: '',
+      img: '',
+      sourceId: ''
+    });
   }
 
   function cancelAddReputation() {

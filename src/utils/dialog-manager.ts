@@ -81,39 +81,51 @@ export async function handleResourceSave(updatedResource: any) {
   console.log("Global save resource handler called with:", updatedResource);
 
   // Import the presets store dynamically to avoid circular imports
-  const { updateResource } = await import("@/stores/presets");
+  const { updateResource, addResource } = await import("@/stores/presets");
 
   try {
     // Get the resource ID directly from the updatedResource that contains the original data
     const resourceId = updatedResource.id || updatedResource.sourceId;
 
-    console.log("Attempting to update with ID:", resourceId);
+    console.log("Attempting to save with ID:", resourceId);
     console.log("Full updatedResource:", updatedResource);
 
-    if (!resourceId) {
-      console.error("No resource ID found for update");
-      console.error("Available properties:", Object.keys(updatedResource));
-      ui.notifications?.error("Error: No se pudo identificar el recurso");
-      return;
+    // Check if this is a creation (empty ID) or update
+    if (!resourceId || resourceId === '') {
+      console.log("Creating new resource (no ID provided)");
+      
+      // Create new resource - set active: true so it appears in guard interface
+      await addResource({
+        name: updatedResource.name,
+        value: updatedResource.value || 0,
+        img: updatedResource.img || '',
+        sourceId: `resource-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        groupId: undefined, // Global preset
+        description: updatedResource.description || '',
+        active: true // New resources created via dialog should be active
+      });
+
+      console.log("Resource created successfully:", updatedResource);
+      ui.notifications?.info("Recurso creado correctamente");
+    } else {
+      console.log("Updating existing resource with ID:", resourceId);
+
+      await updateResource(resourceId, {
+        name: updatedResource.name,
+        value: updatedResource.value,
+        description: updatedResource.description,
+        img: updatedResource.img,
+      });
+
+      console.log("Resource updated successfully:", updatedResource);
+      ui.notifications?.info("Recurso actualizado correctamente");
     }
-
-    console.log("Updating resource with ID:", resourceId);
-
-    await updateResource(resourceId, {
-      name: updatedResource.name,
-      value: updatedResource.value,
-      description: updatedResource.description,
-      img: updatedResource.img,
-    });
-
-    console.log("Resource updated successfully:", updatedResource);
-    ui.notifications?.info("Recurso actualizado correctamente");
 
     // Close the dialog
     closeResourceEditDialog();
   } catch (error) {
-    console.error("Error updating resource:", error);
-    ui.notifications?.error("Error al actualizar el recurso");
+    console.error("Error saving resource:", error);
+    ui.notifications?.error("Error al guardar el recurso");
   }
 }
 
@@ -121,38 +133,50 @@ export async function handleReputationSave(updatedReputation: any) {
   console.log("Global save reputation handler called with:", updatedReputation);
 
   // Import the presets store dynamically to avoid circular imports
-  const { updateReputation } = await import("@/stores/presets");
+  const { updateReputation, addReputation } = await import("@/stores/presets");
 
   try {
     // Get the reputation ID directly from the updatedReputation that contains the original data
     const reputationId = updatedReputation.id || updatedReputation.sourceId;
 
-    console.log("Attempting to update with ID:", reputationId);
+    console.log("Attempting to save with ID:", reputationId);
     console.log("Full updatedReputation:", updatedReputation);
 
-    if (!reputationId) {
-      console.error("No reputation ID found for update");
-      console.error("Available properties:", Object.keys(updatedReputation));
-      ui.notifications?.error("Error: No se pudo identificar la reputación");
-      return;
+    // Check if this is a creation (empty ID) or update
+    if (!reputationId || reputationId === '') {
+      console.log("Creating new reputation (no ID provided)");
+      
+      // Create new reputation - set active: true so it appears in guard interface
+      await addReputation({
+        name: updatedReputation.name,
+        value: updatedReputation.value || 0,
+        img: updatedReputation.img || '',
+        sourceId: `reputation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        groupId: undefined, // Global preset
+        description: updatedReputation.description || '',
+        active: true // New reputations created via dialog should be active
+      });
+
+      console.log("Reputation created successfully:", updatedReputation);
+      ui.notifications?.info("Reputación creada correctamente");
+    } else {
+      console.log("Updating existing reputation with ID:", reputationId);
+
+      await updateReputation(reputationId, {
+        name: updatedReputation.name,
+        value: updatedReputation.value,
+        description: updatedReputation.description,
+        img: updatedReputation.img,
+      });
+
+      console.log("Reputation updated successfully:", updatedReputation);
+      ui.notifications?.info("Reputación actualizada correctamente");
     }
-
-    console.log("Updating reputation with ID:", reputationId);
-
-    await updateReputation(reputationId, {
-      name: updatedReputation.name,
-      value: updatedReputation.value,
-      description: updatedReputation.description,
-      img: updatedReputation.img,
-    });
-
-    console.log("Reputation updated successfully:", updatedReputation);
-    ui.notifications?.info("Reputación actualizada correctamente");
 
     // Close the dialog
     closeReputationEditDialog();
   } catch (error) {
-    console.error("Error updating reputation:", error);
-    ui.notifications?.error("Error al actualizar la reputación");
+    console.error("Error saving reputation:", error);
+    ui.notifications?.error("Error al guardar la reputación");
   }
 }

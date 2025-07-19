@@ -244,7 +244,7 @@
     min-width: 400px;
     max-width: 500px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    z-index: 100; /* High enough for popups but not over Foundry UI */
+    z-index: 100; /* Above Foundry FilePicker (102) and other popups */
     user-select: none;
   }
 

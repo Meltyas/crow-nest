@@ -165,7 +165,7 @@
     min-width: 400px;
     max-width: 500px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    z-index: 2000;
+    z-index: 100;
     user-select: none;
   }
 

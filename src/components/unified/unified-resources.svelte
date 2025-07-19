@@ -94,13 +94,15 @@
   }
 
   function openAddResource() {
-    newResource = {
+    // Use global dialog for adding new resource
+    openResourceEditDialog({
+      id: '',
       name: '',
       value: 0,
-      img: 'icons/svg/item-bag.svg',
-      description: ''
-    };
-    addingResource = true;
+      description: '',
+      img: '',
+      sourceId: ''
+    });
   }
 
   function cancelAddResource() {
