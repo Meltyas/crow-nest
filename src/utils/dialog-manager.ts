@@ -116,3 +116,43 @@ export async function handleResourceSave(updatedResource: any) {
     ui.notifications?.error("Error al actualizar el recurso");
   }
 }
+
+export async function handleReputationSave(updatedReputation: any) {
+  console.log("Global save reputation handler called with:", updatedReputation);
+
+  // Import the presets store dynamically to avoid circular imports
+  const { updateReputation } = await import("@/stores/presets");
+
+  try {
+    // Get the reputation ID directly from the updatedReputation that contains the original data
+    const reputationId = updatedReputation.id || updatedReputation.sourceId;
+
+    console.log("Attempting to update with ID:", reputationId);
+    console.log("Full updatedReputation:", updatedReputation);
+
+    if (!reputationId) {
+      console.error("No reputation ID found for update");
+      console.error("Available properties:", Object.keys(updatedReputation));
+      ui.notifications?.error("Error: No se pudo identificar la reputación");
+      return;
+    }
+
+    console.log("Updating reputation with ID:", reputationId);
+
+    await updateReputation(reputationId, {
+      name: updatedReputation.name,
+      value: updatedReputation.value,
+      description: updatedReputation.description,
+      img: updatedReputation.img,
+    });
+
+    console.log("Reputation updated successfully:", updatedReputation);
+    ui.notifications?.info("Reputación actualizada correctamente");
+
+    // Close the dialog
+    closeReputationEditDialog();
+  } catch (error) {
+    console.error("Error updating reputation:", error);
+    ui.notifications?.error("Error al actualizar la reputación");
+  }
+}

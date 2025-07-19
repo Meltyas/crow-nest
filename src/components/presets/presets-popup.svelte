@@ -29,7 +29,7 @@
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { openResourceEditDialog } from '../../utils/dialog-manager';
+  import { openResourceEditDialog, openReputationEditDialog } from '../../utils/dialog-manager';
   import PopupFocusManager from '../../utils/popup-focus';
 
   // Helper function to normalize preset types for legacy compatibility
@@ -743,28 +743,34 @@
       return;
     }
 
+    // For reputations, use the global dialog manager
+    if (normalizedType === 'reputation') {
+      // Convert preset format to Reputation format for the global dialog
+      const reputation = {
+        id: preset.data.sourceId || preset.id,
+        name: preset.data.name,
+        value: preset.data.value,
+        description: preset.data.description,
+        img: preset.data.img,
+        sourceId: preset.data.sourceId
+      };
+      openReputationEditDialog(reputation);
+      return;
+    }
+
     // For other types, use the existing form-based editing
     editingPreset = preset;
     editingPresetType = normalizedType;
 
     // Switch to the correct tab based on normalized type
-    if (normalizedType === 'reputation') {
-      changeTab('reputations');
-    } else if (normalizedType === 'patrolEffect') {
+    if (normalizedType === 'patrolEffect') {
       changeTab('patrolEffects');
     } else if (normalizedType === 'situationalModifier') {
       changeTab('situationalModifiers');
     }
 
-    // Populate form based on preset type (resources handled by global dialog)
-    if (normalizedType === 'reputation') {
-      newReputationForm = {
-        name: preset.data.name,
-        value: preset.data.value,
-        description: preset.data.description || '',
-        img: preset.data.img || ''
-      };
-    } else if (normalizedType === 'patrolEffect') {
+    // Populate form based on preset type (resources and reputations handled by global dialog)
+    if (normalizedType === 'patrolEffect') {
       newPatrolEffectForm = {
         name: preset.data.name,
         description: preset.data.description || '',

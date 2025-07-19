@@ -9,7 +9,7 @@
   import { generateUUID } from '@/utils/log';
   import type { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import ReputationEditDialog from './dialogs/ReputationEditDialog.svelte';
+  import { openReputationEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de resources-section
   export let groupId: string | undefined = undefined; // undefined = global, string = group-specific
@@ -34,10 +34,6 @@
     img: 'icons/svg/aura.svg',
     details: ''
   };
-
-  // Estado del diálogo de edición
-  let editDialogVisible = false;
-  let editingReputation: any = null;
 
   // Variables reactivas basadas en el store actualizado
   $: activeReputations = groupId
@@ -204,35 +200,23 @@
   function handleEditItem(event: CustomEvent) {
     const { item, type } = event.detail;
     if (type === 'reputation') {
-      editingReputation = item;
-      editDialogVisible = true;
+      if (inPresetManager) {
+        // Use global dialog when in preset manager
+        console.log('UnifiedReputation - Opening global dialog for reputation:', item);
+        const reputation = {
+          id: item.sourceId || item.id,
+          name: item.name,
+          value: item.value,
+          description: item.description || item.details,
+          img: item.img,
+          sourceId: item.sourceId || item.id
+        };
+        openReputationEditDialog(reputation);
+      } else {
+        // Dispatch event to parent component for guard.svelte
+        dispatch('editReputation', { reputation: item });
+      }
     }
-  }
-
-  async function handleSaveEdit(event: CustomEvent) {
-    const updatedReputation = event.detail;
-
-    // Use updateReputation function from store
-    const { updateReputation } = await import('@/stores/presets');
-    await updateReputation(updatedReputation.id || updatedReputation.key, {
-      name: updatedReputation.name,
-      value: updatedReputation.value,
-      description: updatedReputation.details
-    });
-
-    // Force local update
-    currentPresets = $presetsStore;
-
-    // Close dialog
-    editDialogVisible = false;
-    editingReputation = null;
-
-    dispatch('updateReputation');
-  }
-
-  function handleCloseEdit() {
-    editDialogVisible = false;
-    editingReputation = null;
   }
 
   // Drag and drop functionality - siguiendo el patrón de resources-section
@@ -420,15 +404,6 @@
     {/each}
   </div>
 </div>
-
-{#if editDialogVisible && editingReputation}
-  <ReputationEditDialog
-    reputation={editingReputation}
-    visible={editDialogVisible}
-    on:save={handleSaveEdit}
-    on:close={handleCloseEdit}
-  />
-{/if}
 
 <style>
   /* Reputation Styles - siguiendo el patrón de resources-section.svelte */

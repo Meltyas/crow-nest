@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { closeResourceEditDialog, dialogStore, handleResourceSave } from '../utils/dialog-manager';
+  import { closeResourceEditDialog, closeReputationEditDialog, dialogStore, handleResourceSave, handleReputationSave } from '../utils/dialog-manager';
   import ResourceEditDialog from './unified/dialogs/ResourceEditDialog.svelte';
+  import ReputationEditDialog from './unified/dialogs/ReputationEditDialog.svelte';
 
   let currentDialogState: any;
 
@@ -23,12 +24,12 @@
   on:close={closeResourceEditDialog}
 />
 
-<!-- Future global dialogs can be added here -->
-<!--
+<!-- Global Reputation Edit Dialog -->
 <ReputationEditDialog
   reputation={currentDialogState?.reputationEditDialog?.reputation}
   visible={currentDialogState?.reputationEditDialog?.visible || false}
   on:save={(event) => handleReputationSave(event.detail)}
   on:close={closeReputationEditDialog}
 />
--->
+
+<!-- Future global dialogs can be added here -->
