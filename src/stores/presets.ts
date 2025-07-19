@@ -144,6 +144,7 @@ export async function toggleResourceActive(resourceId: string): Promise<void> {
       r.id === resourceId ? { ...r, active: !r.active } : r
     ),
   };
+  presetsStore.set(updated); // Actualizar store inmediatamente
   await persistPresets(updated);
 }
 
@@ -157,6 +158,7 @@ export async function toggleReputationActive(
       r.id === reputationId ? { ...r, active: !r.active } : r
     ),
   };
+  presetsStore.set(updated); // Actualizar store inmediatamente
   await persistPresets(updated);
 }
 
@@ -203,6 +205,7 @@ export async function updateResource(
     ),
   };
 
+  presetsStore.set(updated); // Update store immediately for reactivity
   await persistPresets(updated);
 }
 
@@ -245,6 +248,7 @@ export async function updateReputation(
     ),
   };
 
+  presetsStore.set(updated); // Update store immediately for reactivity
   await persistPresets(updated);
 }
 

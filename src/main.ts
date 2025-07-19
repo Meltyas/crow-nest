@@ -1,3 +1,4 @@
+import GlobalDialogs from "@/components/global-dialogs.svelte";
 import Hud from "@/components/hud/hud.svelte";
 import { patrolSheetManager } from "@/components/patrol-sheet/patrol-sheet";
 import {
@@ -383,6 +384,13 @@ Hooks.once("ready", () => {
   container.style.position = "absolute";
   document.body.appendChild(container);
   new Hud({ target: container });
+
+  // Create Global Dialogs container
+  const dialogsContainer = document.createElement("div");
+  dialogsContainer.style.position = "absolute";
+  dialogsContainer.style.zIndex = "10001"; // Higher than dialogs to ensure proper layering
+  document.body.appendChild(dialogsContainer);
+  new GlobalDialogs({ target: dialogsContainer });
 
   // Clean up old button records on startup
   cleanupOldButtonRecords();

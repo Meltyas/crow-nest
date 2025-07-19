@@ -3,27 +3,29 @@
   import ItemCard from '@/components/guard/item-card.svelte';
   import {
     deleteReputationPreset,
-    getActiveGlobalReputations,
-    getActiveGroupReputations,
-    getGlobalReputations,
+    presetsStore,
     toggleReputationActive
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
-  import { createEventDispatcher, onMount } from 'svelte';
+  import type { SyncManager } from '@/utils/sync';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import ReputationEditDialog from './dialogs/ReputationEditDialog.svelte';
 
   // Component props - siguiendo el patrón de resources-section
   export let groupId: string | undefined = undefined; // undefined = global, string = group-specific
   export let title: string = 'Reputación';
   export let showPresets: boolean = true;
-  export let editingReputations = false;
   export let expandedReputationDetails: Record<string, boolean> = {};
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
   const dispatch = createEventDispatcher();
 
+  // Suscripción al store para reactividad completa
+  let currentPresets = $presetsStore;
+  let syncManager: SyncManager;
+
   // Local state - siguiendo el patrón de resources-section.svelte
   let addingReputation = false;
-  let editingQuantity: Record<string, boolean> = {};
   let showPresetsPanel = false;
   let newReputation: any = {
     key: '',
@@ -33,11 +35,19 @@
     details: ''
   };
 
-  // Para presets: todos los disponibles para seleccionar
-  $: availablePresets = getGlobalReputations();
+  // Estado del diálogo de edición
+  let editDialogVisible = false;
+  let editingReputation: any = null;
 
-  // Para guard: solo los activos del grupo o globales
-  $: activeReputations = groupId ? getActiveGroupReputations(groupId) : getActiveGlobalReputations();
+  // Variables reactivas basadas en el store actualizado
+  $: activeReputations = groupId
+    ? currentPresets.reputations.filter(r => r.groupId === groupId && r.active)
+    : currentPresets.reputations.filter(r => !r.groupId && r.active);
+
+  // Para presets: todos los disponibles para seleccionar
+  $: availablePresets = groupId
+    ? currentPresets.reputations.filter(r => r.groupId === groupId)
+    : currentPresets.reputations.filter(r => !r.groupId);
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
   $: displayReputations = inPresetManager ? availablePresets : activeReputations;
@@ -45,6 +55,7 @@
   // Convertir a formato ItemCard
   $: reputationItems = displayReputations.map(rep => ({
     key: rep.id,
+    id: rep.id, // Mantener también el id original para compatibilidad
     name: rep.name,
     value: rep.value,
     img: rep.img || 'icons/svg/aura.svg',
@@ -52,8 +63,35 @@
     active: rep.active || false // Asegurar que active esté disponible para ItemCard
   }));
 
-  function toggleEditingReputations() {
-    dispatch('toggleEditingReputations');
+  // Sincronización y lifecycle
+  onMount(() => {
+    // Suscribirse al store para reactividad
+    const unsubscribe = presetsStore.subscribe(value => {
+      currentPresets = value;
+    });
+
+    // Configurar sincronización bidireccional
+    import('@/utils/sync').then(({ SyncManager }) => {
+      syncManager = SyncManager.getInstance();
+      syncManager.subscribe('unifiedPresets', handleSyncUpdate);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  });
+
+  onDestroy(() => {
+    if (syncManager) {
+      syncManager.unsubscribe('unifiedPresets', handleSyncUpdate);
+    }
+  });
+
+  function handleSyncUpdate(data: any) {
+    // Actualizar cuando lleguen cambios externos
+    if (data && data.reputations) {
+      currentPresets = data;
+    }
   }
 
   function togglePresets() {
@@ -76,7 +114,9 @@
   }
 
   async function confirmAddReputation() {
-    // Crear nuevo preset en el store con active: false por defecto
+    // Crear nuevo preset en el store
+    // En guard: active: true por defecto (elementos van directo al guard)
+    // En preset manager: active: false por defecto (elementos van al preset pool)
     const newId = `reputation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const newRep = {
@@ -87,7 +127,7 @@
       img: newReputation.img,
       description: newReputation.details,
       groupId, // undefined para global, string para grupo específico
-      active: false // Preset inactivo por defecto
+      active: !inPresetManager // En guard activo por defecto, en preset manager inactivo
     };
 
     // Agregar al store de presets
@@ -112,37 +152,13 @@
     }
   }
 
-  async function updateReputationData() {
-    // Los datos ya están en el store, solo dispatchar evento
-    dispatch('updateReputation');
-  }
-
-  function onRepImageClick(rep: any) {
-    dispatch('repImageClick', rep);
-  }
-
   function onNewRepImageClick() {
     dispatch('newRepImageClick', newReputation);
-  }
-
-  function onRepFileChange(rep: any, event: Event) {
-    dispatch('repFileChange', { rep, event });
   }
 
   function toggleReputationDetails(repKey: string) {
     expandedReputationDetails[repKey] = !expandedReputationDetails[repKey];
     expandedReputationDetails = { ...expandedReputationDetails };
-  }
-
-  function toggleQuantityEdit(repKey: string) {
-    editingQuantity[repKey] = !editingQuantity[repKey];
-    editingQuantity = { ...editingQuantity };
-  }
-
-  function finishQuantityEdit(repKey: string) {
-    editingQuantity[repKey] = false;
-    editingQuantity = { ...editingQuantity };
-    updateReputationData();
   }
 
   function showReputationInChat(rep: any) {
@@ -178,7 +194,45 @@
   async function handleActivatePreset(presetId: string) {
     // Toggle: activar/desactivar preset del store
     await toggleReputationActive(presetId);
+
+    // Forzar actualización del estado local para reactividad inmediata
+    currentPresets = $presetsStore;
+
     dispatch('updateReputation');
+  }
+
+  function handleEditItem(event: CustomEvent) {
+    const { item, type } = event.detail;
+    if (type === 'reputation') {
+      editingReputation = item;
+      editDialogVisible = true;
+    }
+  }
+
+  async function handleSaveEdit(event: CustomEvent) {
+    const updatedReputation = event.detail;
+
+    // Use updateReputation function from store
+    const { updateReputation } = await import('@/stores/presets');
+    await updateReputation(updatedReputation.id || updatedReputation.key, {
+      name: updatedReputation.name,
+      value: updatedReputation.value,
+      description: updatedReputation.details
+    });
+
+    // Force local update
+    currentPresets = $presetsStore;
+
+    // Close dialog
+    editDialogVisible = false;
+    editingReputation = null;
+
+    dispatch('updateReputation');
+  }
+
+  function handleCloseEdit() {
+    editDialogVisible = false;
+    editingReputation = null;
   }
 
   // Drag and drop functionality - siguiendo el patrón de resources-section
@@ -281,9 +335,6 @@
           📋 Presets ({availablePresets.length})
         </button>
       {/if}
-      <button class="edit-button standard-button" on:click={toggleEditingReputations}>
-        ✏️ {editingReputations ? 'Finalizar' : 'Editar'}
-      </button>
       <button class="add-button standard-button" on:click={openAddReputation}>➕ Añadir</button>
     </div>
   </h3>
@@ -349,20 +400,13 @@
         item={rep}
         index={i}
         type="reputation"
-        editing={editingReputations}
         expandedDetails={expandedReputationDetails}
-        {editingQuantity}
         {draggedIndex}
         {dropZoneVisible}
         {inPresetManager}
-        on:imageClick={(e) => onRepImageClick(e.detail)}
-        on:fileChange={(e) => onRepFileChange(e.detail.item, e.detail.event)}
-        on:update={updateReputationData}
         on:remove={(e) => removeReputation(e.detail)}
         on:showInChat={(e) => showReputationInChat(e.detail)}
         on:toggleDetails={(e) => toggleReputationDetails(e.detail)}
-        on:toggleQuantityEdit={(e) => toggleQuantityEdit(e.detail)}
-        on:finishQuantityEdit={(e) => finishQuantityEdit(e.detail)}
         on:dragStart={(e) => handleDragStart(e.detail.event, e.detail.index)}
         on:dragOver={(e) => handleDragOver(e.detail.event, e.detail.index)}
         on:dragLeave={(e) => handleDragLeave(e.detail.event, e.detail.index)}
@@ -371,10 +415,20 @@
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
         on:activatePreset={(e) => handleActivatePreset(e.detail.id)}
         on:removePreset={(e) => handleRemovePreset(e.detail)}
+        on:editItem={handleEditItem}
       />
     {/each}
   </div>
 </div>
+
+{#if editDialogVisible && editingReputation}
+  <ReputationEditDialog
+    reputation={editingReputation}
+    visible={editDialogVisible}
+    on:save={handleSaveEdit}
+    on:close={handleCloseEdit}
+  />
+{/if}
 
 <style>
   /* Reputation Styles - siguiendo el patrón de resources-section.svelte */

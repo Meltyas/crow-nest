@@ -7,6 +7,9 @@
 
 <script lang="ts">
   // Access to Foundry objects provided at runtime
+  declare const FilePicker: any;
+  declare const game: any;
+  declare const Dialog: any;
 
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
@@ -25,8 +28,9 @@
     removeSituationalModifier
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
-  import PopupFocusManager from '@/utils/popup-focus';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { openResourceEditDialog } from '../../utils/dialog-manager';
+  import PopupFocusManager from '../../utils/popup-focus';
 
   // Helper function to normalize preset types for legacy compatibility
   function normalizePresetType(type: string): 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier' {
@@ -213,6 +217,9 @@
   export let visible = false;
   export let initialPosition: { x: number; y: number } | undefined = undefined;
 
+  // Focus manager
+  let focusManager: PopupFocusManager;
+
   // Expose function to create preset from existing item
   export function createPresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     createPresetFromItem(item, type);
@@ -242,7 +249,6 @@
   let isResizing = false;
   let resizeOffset = { x: 0, y: 0 };
   let size = { width: 800, height: 600 };
-  let focusManager: PopupFocusManager;
 
   // Formularios para crear nuevos presets
   let newResourceForm = {
@@ -281,11 +287,13 @@
 
   onMount(async () => {
     await initializePresets();
-    focusManager = PopupFocusManager.getInstance();
 
     presetsStore.subscribe(value => {
       presets = sanitizePresets(value);
     });
+
+    // Initialize focus manager
+    focusManager = PopupFocusManager.getInstance();
 
     // Posicionar popup
     if (popupElement && initialPosition) {
@@ -304,11 +312,6 @@
   }
 
   function handleMouseDown(event: MouseEvent) {
-    // Dar focus al popup cuando se hace click
-    if (popupElement && focusManager) {
-      focusManager.setFocus(popupElement);
-    }
-
     // Solo manejar drag del header
     if (event.target === popupElement.querySelector('.popup-header') ||
         popupElement.querySelector('.popup-header')?.contains(event.target as Node)) {
@@ -319,18 +322,6 @@
         y: event.clientY - rect.top
       };
     }
-  }
-
-  function handlePopupFocus() {
-    // Usar el focus manager para manejar el focus
-    if (popupElement && focusManager) {
-      focusManager.setFocus(popupElement);
-    }
-  }
-
-  function handlePopupBlur() {
-    // No removemos el focus automáticamente en blur
-    // El focus manager se encarga de esto cuando otro popup toma el focus
   }
 
   function handleResizeMouseDown(event: MouseEvent) {
@@ -735,14 +726,29 @@
   }
 
   function editPreset(preset: PresetItem) {
+    const normalizedType = normalizePresetType(preset.type);
+
+    // For resources, use the global dialog manager
+    if (normalizedType === 'resource') {
+      // Convert preset format to Resource format for the global dialog
+      const resource = {
+        id: preset.data.sourceId || preset.id,
+        name: preset.data.name,
+        value: preset.data.value,
+        description: preset.data.description,
+        img: preset.data.img,
+        sourceId: preset.data.sourceId
+      };
+      openResourceEditDialog(resource);
+      return;
+    }
+
+    // For other types, use the existing form-based editing
     editingPreset = preset;
-    editingPresetType = normalizePresetType(preset.type);
+    editingPresetType = normalizedType;
 
     // Switch to the correct tab based on normalized type
-    const normalizedType = normalizePresetType(preset.type);
-    if (normalizedType === 'resource') {
-      changeTab('resources');
-    } else if (normalizedType === 'reputation') {
+    if (normalizedType === 'reputation') {
       changeTab('reputations');
     } else if (normalizedType === 'patrolEffect') {
       changeTab('patrolEffects');
@@ -750,15 +756,8 @@
       changeTab('situationalModifiers');
     }
 
-    // Populate form based on preset type
-    if (normalizedType === 'resource') {
-      newResourceForm = {
-        name: preset.data.name,
-        value: preset.data.value,
-        description: preset.data.description || '',
-        img: preset.data.img || ''
-      };
-    } else if (normalizedType === 'reputation') {
+    // Populate form based on preset type (resources handled by global dialog)
+    if (normalizedType === 'reputation') {
       newReputationForm = {
         name: preset.data.name,
         value: preset.data.value,
@@ -1243,9 +1242,9 @@
     class="presets-popup"
     bind:this={popupElement}
     on:mousedown={handleMouseDown}
-    on:focus={handlePopupFocus}
-    on:blur={handlePopupBlur}
     on:click|stopPropagation
+    on:focus={(e) => focusManager?.setFocus(e.currentTarget)}
+    on:mousedown={(e) => focusManager?.setFocus(e.currentTarget)}
     tabindex="-1"
     style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
   >
@@ -1561,6 +1560,7 @@
     z-index: 80;
   }
 
+  /* Focus management - z-index boost when focused */
   .presets-popup.focus {
     z-index: 100 !important;
   }

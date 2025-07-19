@@ -9,7 +9,7 @@
 
 /* Focus management - simple z-index boost */
 .crow-nest-guard .custom-popup.focus {
-  z-index: 100 !important;
+  z-index: 95 !important;
 }
 
 .crow-nest-guard .image-button {

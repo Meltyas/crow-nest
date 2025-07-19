@@ -4,27 +4,41 @@
   import {
     addResource,
     deleteResourcePreset,
-    getActiveGlobalResources,
-    getActiveGroupResources,
-    getGlobalResources,
-    getGroupResources,
+    presetsStore,
     toggleResourceActive
   } from '@/stores/presets';
-  import { createEventDispatcher } from 'svelte';
+  import type { SyncManager } from '@/utils/sync';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { openResourceEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-reputation
-  export const groupId: string | undefined = undefined; // undefined for global resources
+  export let groupId: string | undefined = undefined; // undefined for global resources
   export let title: string = 'Recursos';
   export let showPresets: boolean = true;
-  export let editingResources = false;
   export let expandedResourceDetails: Record<string, boolean> = {};
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
   const dispatch = createEventDispatcher();
 
+  // Suscripción al store para reactividad completa
+  let currentPresets = $presetsStore;
+  let syncManager: SyncManager;
+
+  // Variables reactivas basadas en el store actualizado
+  $: activeResources = groupId
+    ? currentPresets.resources.filter(r => r.groupId === groupId && r.active)
+    : currentPresets.resources.filter(r => !r.groupId && r.active);
+
+  // Presets disponibles para el panel de selección (todos los presets)
+  $: availablePresets = groupId
+    ? currentPresets.resources.filter(r => r.groupId === groupId)
+    : currentPresets.resources.filter(r => !r.groupId);
+
+  // En preset manager, mostrar todos los presets; en guard, solo los activos
+  $: displayResources = inPresetManager ? availablePresets : activeResources;
+
   // Local state - siguiendo el patrón de unified-reputation
   let addingResource = false;
-  let editingQuantity: Record<string, boolean> = {};
   let showPresetsPanel = false;
   let newResource: any = {
     name: '',
@@ -33,31 +47,46 @@
     description: ''
   };
 
-  // Variables reactivas para el contenido activo del guard (solo active: true)
-  $: activeResources = groupId
-    ? getActiveGroupResources(groupId)
-    : getActiveGlobalResources();
-
-  // Presets disponibles para el panel de selección (todos los presets)
-  $: availablePresets = groupId
-    ? getGroupResources(groupId)
-    : getGlobalResources();
-
-  // En preset manager, mostrar todos los presets; en guard, solo los activos
-  $: displayResources = inPresetManager ? availablePresets : activeResources;
-
   // Convertir a formato ItemCard
   $: resourceItems = displayResources.map(res => ({
-    id: res.id,
+    key: res.id,
+    id: res.id, // Mantener también el id original para compatibilidad
     name: res.name,
     value: res.value,
     img: res.img || 'icons/svg/item-bag.svg',
-    description: res.description || '',
+    details: res.description || '', // ItemCard espera 'details', no 'description'
     active: res.active || false // Asegurar que active esté disponible para ItemCard
   }));
 
-  function toggleEditingResources() {
-    dispatch('toggleEditingResources');
+  // Sincronización y lifecycle
+  onMount(() => {
+    // Suscribirse al store para reactividad
+    const unsubscribe = presetsStore.subscribe(value => {
+      currentPresets = value;
+    });
+
+    // Configurar sincronización bidireccional
+    import('@/utils/sync').then(({ SyncManager }) => {
+      syncManager = SyncManager.getInstance();
+      syncManager.subscribe('unifiedPresets', handleSyncUpdate);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  });
+
+  onDestroy(() => {
+    if (syncManager) {
+      syncManager.unsubscribe('unifiedPresets', handleSyncUpdate);
+    }
+  });
+
+  function handleSyncUpdate(data: any) {
+    // Actualizar cuando lleguen cambios externos
+    if (data && data.resources) {
+      currentPresets = data;
+    }
   }
 
   function togglePresets() {
@@ -79,7 +108,9 @@
   }
 
   async function confirmAddResource() {
-    // Crear preset en el store con active: false por defecto
+    // Crear preset en el store
+    // En guard: active: true por defecto (elementos van directo al guard)
+    // En preset manager: active: false por defecto (elementos van al preset pool)
     await addResource({
       name: newResource.name,
       value: newResource.value,
@@ -87,7 +118,7 @@
       description: newResource.description,
       groupId: groupId,
       sourceId: `resource-${Date.now()}`,
-      active: false
+      active: !inPresetManager // En guard activo por defecto, en preset manager inactivo
     });
     addingResource = false;
     dispatch('updateResource');
@@ -107,37 +138,13 @@
     }
   }
 
-  async function updateResourceData() {
-    // Los datos ya están en el store, solo dispatchar evento
-    dispatch('updateResource');
-  }
-
-  function onResImageClick(res: any) {
-    dispatch('resImageClick', res);
-  }
-
   function onNewResImageClick() {
     dispatch('newResImageClick', newResource);
-  }
-
-  function onResFileChange(res: any, event: Event) {
-    dispatch('resFileChange', { res, event });
   }
 
   function toggleResourceDetails(resKey: string) {
     expandedResourceDetails[resKey] = !expandedResourceDetails[resKey];
     expandedResourceDetails = { ...expandedResourceDetails };
-  }
-
-  function toggleQuantityEdit(resKey: string) {
-    editingQuantity[resKey] = !editingQuantity[resKey];
-    editingQuantity = { ...editingQuantity };
-  }
-
-  function finishQuantityEdit(resKey: string) {
-    editingQuantity[resKey] = false;
-    editingQuantity = { ...editingQuantity };
-    updateResourceData();
   }
 
   function showResourceInChat(res: any) {
@@ -173,7 +180,33 @@
   async function handleActivatePreset(presetId: string) {
     // Toggle: activar/desactivar preset del store
     await toggleResourceActive(presetId);
+
+    // Forzar actualización del estado local para reactividad inmediata
+    currentPresets = $presetsStore;
+
     dispatch('updateResource');
+  }
+
+  function handleEditItem(event: CustomEvent) {
+    const { item, type } = event.detail;
+    if (type === 'resource') {
+      if (inPresetManager) {
+        // Use global dialog when in preset manager
+        console.log('UnifiedResources - Opening global dialog for resource:', item);
+        const resource = {
+          id: item.sourceId || item.id,
+          name: item.name,
+          value: item.value,
+          description: item.description || item.details,
+          img: item.img,
+          sourceId: item.sourceId || item.id
+        };
+        openResourceEditDialog(resource);
+      } else {
+        // Dispatch event to parent component for guard.svelte
+        dispatch('editResource', { resource: item });
+      }
+    }
   }
 
   // Drag and drop functionality - siguiendo el patrón de resources-section
@@ -267,9 +300,6 @@
           📋 Presets ({availablePresets.length})
         </button>
       {/if}
-      <button class="edit-button standard-button" on:click={toggleEditingResources}>
-        ✏️ {editingResources ? 'Finalizar' : 'Editar'}
-      </button>
       <button class="add-button standard-button" on:click={openAddResource}>➕ Añadir</button>
     </div>
   </h3>
@@ -335,20 +365,13 @@
         item={res}
         index={i}
         type="resource"
-        editing={editingResources}
         expandedDetails={expandedResourceDetails}
-        {editingQuantity}
         {draggedIndex}
         {dropZoneVisible}
         {inPresetManager}
-        on:imageClick={(e) => onResImageClick(e.detail)}
-        on:fileChange={(e) => onResFileChange(e.detail.item, e.detail.event)}
-        on:update={updateResourceData}
         on:remove={(e) => removeResourceItem(e.detail)}
         on:showInChat={(e) => showResourceInChat(e.detail)}
         on:toggleDetails={(e) => toggleResourceDetails(e.detail)}
-        on:toggleQuantityEdit={(e) => toggleQuantityEdit(e.detail)}
-        on:finishQuantityEdit={(e) => finishQuantityEdit(e.detail)}
         on:dragStart={(e) => handleDragStart(e.detail.event, e.detail.index)}
         on:dragOver={(e) => handleDragOver(e.detail.event, e.detail.index)}
         on:dragLeave={(e) => handleDragLeave(e.detail.event, e.detail.index)}
@@ -357,6 +380,7 @@
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
         on:activatePreset={(e) => handleActivatePreset(e.detail.id)}
         on:removePreset={(e) => handleRemovePreset(e.detail)}
+        on:editItem={handleEditItem}
       />
     {/each}
   </div>

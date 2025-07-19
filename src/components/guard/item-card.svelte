@@ -1,16 +1,16 @@
-<script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
+<script context="module" lang="ts">
   // ChatMessage is provided by Foundry at runtime
   declare const ChatMessage: any;
   declare const FilePicker: any;
+</script>
+
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte';
 
   export let item: any; // GuardReputation | GuardResource
   export let index: number;
   export let type: 'reputation' | 'resource'; // Para determinar el comportamiento
-  export let editing = false;
   export let expandedDetails: Record<string, boolean> = {};
-  export let editingQuantity: Record<string, boolean> = {};
   export let draggedIndex: number | null = null;
   export let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};
   export let inPresetManager = false; // Show activate/deactivate preset buttons when true
@@ -54,7 +54,6 @@
         callback: (path: string) => {
           // Actualizar la imagen del item
           item.img = path;
-          handleUpdate();
 
           // Disparar evento para compatibilidad
           dispatch('imageClick', item);
@@ -67,30 +66,11 @@
     }
   }
 
-  function handleFileChange(event: Event) {
-    dispatch('fileChange', { item, event });
-  }
-
-  function handleUpdate() {
-    dispatch('update');
-    // También actualizar el preset correspondiente si existe
-    updateCorrespondingPreset();
-  }
-
-  function updateCorrespondingPreset() {
-    // Importar el preset manager para actualizar presets
-    import('@/components/presets/preset-manager').then(({ presetManager }) => {
-      presetManager.updatePresetFromItem(item, type);
-    });
-  }
-
   function handleRemove() {
     dispatch('remove', index);
   }
 
   function handleShowInChat() {
-    if (editing) return;
-
     if (type === 'reputation') {
       showReputationInChat();
     } else if (type === 'resource') {
@@ -103,11 +83,17 @@
   }
 
   function handleActivatePreset() {
-    dispatch('activatePreset', { id: item.id, active: !item.active });
+    dispatch('activatePreset', { id: item.key || item.id, active: !item.active });
   }
 
   function handleRemovePreset() {
-    dispatch('removePreset', item.id);
+    if (inPresetManager) {
+      // En preset manager: eliminar completamente
+      dispatch('removePreset', item.key || item.id);
+    } else {
+      // En guard: desactivar (quitar del guard)
+      dispatch('activatePreset', { id: item.key || item.id, active: false });
+    }
   }
 
   function showReputationInChat() {
@@ -312,14 +298,6 @@
     dispatch('toggleDetails', item.key);
   }
 
-  function handleToggleQuantityEdit() {
-    dispatch('toggleQuantityEdit', item.key);
-  }
-
-  function handleFinishQuantityEdit() {
-    dispatch('finishQuantityEdit', item.key);
-  }
-
   // Drag and drop handlers
   function handleDragStart(event: DragEvent) {
     dispatch('dragStart', { event, index });
@@ -340,6 +318,10 @@
   function handleDragEnd() {
     dispatch('dragEnd');
   }
+
+  function handleEditItem() {
+    dispatch('editItem', { item, type });
+  }
 </script>
 
 <div class="item-card {type}-item"
@@ -356,55 +338,52 @@
   <div class="drop-zone drop-zone-left" class:show={dropZoneVisible[index] === 'left'}>
     ⬅️ Insertar antes
   </div>
-  <div class="drop-zone drop-zone-right" class:show={dropZoneVisible[index] === 'right'}>
+    <div class="drop-zone drop-zone-right" class:show={dropZoneVisible[index] === 'right'}>
     Insertar después ➡️
   </div>
 
-  {#if editing}
-    <div class="item-edit">
-      <button type="button" class="image-button item-edit-image-button" on:click={handleImageClick}>
-        <img class="item-image-edit" src={item.img || config.imageDefault} alt={type} />
-      </button>
-      <div class="item-edit-text-container">
-        <input id={`${type}-file-${item.key}`} type="file" accept="image/*" style="display:none" on:change={handleFileChange} />
-        <input class="item-input item-name" placeholder={config.nameLabel} bind:value={item[config.nameProperty]} on:change={handleUpdate} />
-        <textarea class="item-textarea" placeholder={config.placeholder} bind:value={item[config.detailsProperty]} on:change={handleUpdate}></textarea>
-        <div class="item-actions">
-          {#if config.showBar}
-            <input class="item-input number" type="number" min="0" max={config.barMax} bind:value={item[config.valueProperty]} on:change={handleUpdate} />
-          {:else}
-            <input class="item-input number" type="number" min="0" bind:value={item[config.valueProperty]} on:change={handleUpdate} />
-          {/if}
-            {#if inPresetManager}
-              <!-- Preset Manager buttons: activate/deactivate and remove -->
-              <button
-                class="preset-button {item.active ? 'active' : ''}"
-                on:click={handleActivatePreset}
-                title="{item.active ? 'Retirar del guard' : 'Usar en guard'}"
-              >
-                {item.active ? 'Retirar' : 'Usar'}
-              </button>
-              <button
-                class="remove-button preset-remove"
-                on:click={handleRemovePreset}
-                title="Eliminar Preset"
-              >
-                🗑️
-              </button>
-            {:else if typeof game !== 'undefined' && game.user?.isGM}
-              <!-- Guard interface: create preset button -->
-              <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
-            {/if}
-          <button class="remove-button" on:click={handleRemove}>✕</button>
-        </div>
-      </div>
-    </div>
-  {:else}
-    <div class="item-display" role="button" tabindex="0"
-         on:click={handleShowInChat}
-         on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleShowInChat(); } }}>
+  <div class="item-display" role="button" tabindex="0"
+       on:click={handleShowInChat}
+       on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleShowInChat(); } }}>
+    <div class="item-image-holder">
       <div class="drag-handle">🖱️</div>
       <img class="item-image" src={item.img || config.imageDefault} alt={type} />
+      <!-- Edit button (always visible in item-display) -->
+      <button class="edit-floating-button" on:click|stopPropagation={handleEditItem} title="Editar {type === 'resource' ? 'recurso' : 'reputación'}">
+        ✏️
+      </button>
+      <!-- Preset Manager floating buttons -->
+      {#if inPresetManager}
+        <div class="preset-floating-buttons">
+          <button
+            class="preset-floating-button {item.active ? 'active' : ''}"
+            on:click|stopPropagation={handleActivatePreset}
+            title="{item.active ? 'Retirar del guard' : 'Usar en guard'}"
+          >
+            {item.active ? 'Retirar' : 'Usar'}
+          </button>
+          <button
+            class="preset-floating-button remove"
+            on:click|stopPropagation={handleRemovePreset}
+            title="Eliminar Preset"
+          >
+            🗑️
+          </button>
+        </div>
+      {:else}
+        <!-- Guard interface floating buttons - only show remove for active items -->
+        <div class="preset-floating-buttons">
+          <button
+            class="preset-floating-button remove"
+            on:click|stopPropagation={handleRemovePreset}
+            title="Quitar del guard"
+          >
+            ✕
+          </button>
+        </div>
+      {/if}
+      </div>
+
       <div class="item-info">
         <!-- Item name (same for both types) -->
         <div class="item-name">{item[config.nameProperty]}</div>
@@ -433,27 +412,9 @@
         {#if config.showQuantity}
           <!-- Resource quantity at bottom right -->
           <div class="item-quantity-container">
-            {#if editingQuantity[item.key]}
-              <input
-                class="item-quantity-input"
-                type="number"
-                min="0"
-                bind:value={item[config.valueProperty]}
-                on:blur={handleFinishQuantityEdit}
-                on:keydown={(e) => { if (e.key === 'Enter') handleFinishQuantityEdit(); }}
-                autofocus
-              />
-            {:else}
-              <span
-                class="item-quantity"
-                role="button"
-                tabindex="0"
-                on:click|stopPropagation={handleToggleQuantityEdit}
-                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleQuantityEdit(); } }}
-              >
-                {item[config.valueProperty]}
-              </span>
-            {/if}
+            <span class="item-quantity">
+              {item[config.valueProperty]}
+            </span>
           </div>
         {/if}
       </div>
@@ -463,7 +424,6 @@
         </button>
       {/if}
     </div>
-  {/if}
 </div>
 
 <style>
@@ -493,6 +453,12 @@
     cursor: pointer;
     position: relative;
     flex: 1 1 auto;
+  }
+
+  .item-image-holder {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
   }
 
   .item-display:hover {
@@ -639,29 +605,6 @@
     border-color: #9ca3af;
   }
 
-  .item-quantity-input {
-    background: #374151;
-    color: #d1d5db;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.8rem;
-    border: 1px solid #6b7280;
-    min-width: 3rem;
-    text-align: center;
-    font-family: 'Overpass', Arial, sans-serif;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    flex: 0;
-    width: auto;
-    height: 26px;
-  }
-
-  .item-quantity-input:focus {
-    border-color: #1d4ed8;
-    box-shadow: 0 0 0 1px #1d4ed8;
-  }
-
   .item-bar-container {
     position: relative;
     width: 100%;
@@ -743,6 +686,7 @@
   .item-details:not(.expanded) {
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -757,139 +701,74 @@
     min-height: 60px;
   }
 
-  /* Edit Mode Styles */
-  .item-edit {
-    background: white;
+  /* Floating preset buttons for item-display */
+  .preset-floating-buttons {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    border: 1px solid #6b7280;
-    border-radius: 8px;
+    gap: 4px;
+    z-index: 3;
   }
 
-  .item-edit-image-button {
-    align-self: center;
-    width: 100%;
-    aspect-ratio: 2 / 1;
-    flex: 1;
-  }
-
-  .item-image-edit {
-    background: #000000;
-    aspect-ratio: 2 / 1;
-    object-fit: cover;
-    width: 100%;
-    max-height: 150px;
-  }
-
-  .item-edit-text-container {
-    display: flex;
-    flex-direction: column;
-    padding: 0.5rem;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .item-input {
-    background: transparent;
-    border: solid 1px #000000;
-    color: #000000;
-  }
-
-  .item-input.number {
-    width: 32px;
-  }
-
-  .reputation-item .item-input.number {
-    width: 32px;
-  }
-
-  .resource-item .item-input.number {
-    width: 48px;
-  }
-
-  .item-textarea {
-    background: transparent;
-    border: solid 1px #000000;
-    margin-bottom: 0.5rem;
-    font-family: "Overpass", sans-serif;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #000000;
-    width: 100%;
-  }
-
-  .item-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    justify-content: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .item-edit input[type="number"] {
-    width: 80px;
-  }
-
-  .remove-button {
-    background: #ffffff;
-    color: #000000;
-    height: 32px;
-    width: 32px;
-    border: 1px solid #000000;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .resource-item .remove-button {
-    background: #dc2626;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-family: 'Overpass', Arial, sans-serif;
-    font-weight: bold;
-  }
-
-  .preset-button {
+  .preset-floating-button {
     background: #d4af37;
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 0.25rem 0.5rem;
+    padding: 4px 8px;
     font-family: 'Overpass', Arial, sans-serif;
     font-weight: bold;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    opacity: 0.9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
-  .preset-button:hover {
+  .preset-floating-button:hover {
     background: #b8941f;
+    opacity: 1;
+    transform: translateY(-1px);
   }
 
-  .resource-item .remove-button:hover {
-    background: #b91c1c;
-  }
-
-  /* Preset Manager specific styles */
-  .preset-button.active {
+  .preset-floating-button.active {
     background: #f59e0b;
   }
 
-  .preset-button.active:hover {
+  .preset-floating-button.active:hover {
     background: #d97706;
   }
 
-  .preset-remove {
-    background: #dc2626 !important;
-    color: white !important;
-    border: none !important;
+  .preset-floating-button.remove {
+    background: #dc2626;
+    color: white;
   }
 
-  .preset-remove:hover {
-    background: #b91c1c !important;
+  .preset-floating-button.remove:hover {
+    background: #b91c1c;
+  }
+
+  .edit-floating-button {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    z-index: 10;
+  }
+
+  .edit-floating-button:hover {
+    background: rgba(100, 150, 255, 0.8);
   }
 </style>

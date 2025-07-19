@@ -5,6 +5,10 @@
 </script>
 
 <script lang="ts">
+  // FilePicker and game are provided by Foundry at runtime
+  declare const FilePicker: any;
+  declare const game: any;
+
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
@@ -19,6 +23,7 @@
     getStats,
   } from '@/guard/stats';
   import { getPatrols, savePatrols } from '@/patrol/patrols';
+  import { openResourceEditDialog } from '@/utils/dialog-manager';
   import PopupFocusManager from '@/utils/popup-focus';
   import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
@@ -475,6 +480,12 @@
     rollDialogStat = null;
   }
 
+  // Resource edit dialog functions - using global dialog manager
+  function handleEditResource(event: CustomEvent) {
+    const { resource } = event.detail;
+    openResourceEditDialog(resource);
+  }
+
   // Create a mock group for Guard stats (since Guard doesn't have experiences or hope)
   function createGuardGroup() {
     return {
@@ -642,6 +653,7 @@
                   on:resFileChange={handlers.handleResFileChange}
                   on:showResourceInChat={handlers.showResourceInChat}
                   on:reorderResources={(e) => { handlers.reorderResources(e); }}
+                  on:editResource={handleEditResource}
                 />
               {/if}
             </div>
@@ -691,3 +703,5 @@
   guardModifiers={modifiers}
   on:close={closeRollDialog}
 />
+
+<!-- Global dialogs are managed by dialog-manager in main.ts -->
