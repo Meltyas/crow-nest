@@ -10,7 +10,18 @@
 
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
-  import { addPreset, initializePresets, persistPresets, presetsStore, removePreset, updatePresetUsage } from '@/stores/presets';
+  import {
+    addPatrolEffect,
+    addReputation,
+    addResource,
+    addSituationalModifier,
+    initializePresets,
+    presetsStore,
+    removePatrolEffect,
+    removeReputation,
+    removeResource,
+    removeSituationalModifier
+  } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
   import PopupFocusManager from '@/utils/popup-focus';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
@@ -70,7 +81,41 @@
       }
 
       // Ensure preset has required properties
-      if (!preset.id || !preset.type || !preset.name) {
+      if (!preset.id) {
+        console.warn('Preset missing id:', preset);
+        return null;
+      }
+
+      // Handle new format presets (from unified components) - convert to legacy format
+      if (!preset.type && !preset.data) {
+        // This is a new format preset, convert it to legacy format
+        const newPreset = {
+          id: preset.id,
+          name: preset.name || 'Sin nombre',
+          type: 'unknown', // We'll determine this later
+          data: {
+            name: preset.name || 'Sin nombre',
+            value: preset.value || 0,
+            img: preset.img || '',
+            sourceId: preset.sourceId || generateUUID(),
+            ...preset // Copy all other properties
+          }
+        };
+
+        // Determine type based on properties
+        if (preset.sourceId || preset.value !== undefined) {
+          if (preset.max !== undefined) {
+            newPreset.type = 'resource';
+          } else {
+            newPreset.type = 'reputation';
+          }
+        }
+
+        return newPreset;
+      }
+
+      // Handle legacy format presets
+      if (!preset.type || !preset.name) {
         console.warn('Preset missing required properties:', preset);
         return null;
       }
@@ -258,7 +303,7 @@
 
   function handleMouseDown(event: MouseEvent) {
     // Dar focus al popup cuando se hace click
-    if (popupElement) {
+    if (popupElement && focusManager) {
       focusManager.setFocus(popupElement);
     }
 
@@ -326,7 +371,7 @@
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  function saveOrCreatePreset(type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
+  async function saveOrCreatePreset(type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('[saveOrCreatePreset] Called with type:', type);
     console.log('[saveOrCreatePreset] Current presets structure:', presets);
 
@@ -433,9 +478,56 @@
     }
 
     console.log('[saveOrCreatePreset] Created preset:', preset);
-    console.log('[saveOrCreatePreset] About to call addPreset');
-    addPreset(preset);
-    console.log('[saveOrCreatePreset] addPreset completed');
+    console.log('[saveOrCreatePreset] About to call add function for type:', type);
+
+    // Call the appropriate add function based on type
+    if (type === 'resource') {
+      await addResource({
+        name: preset.data.name,
+        value: preset.data.value,
+        max: preset.data.max,
+        color: preset.data.color || '#ffd700',
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        description: preset.data.description || '',
+        order: 0
+      });
+    } else if (type === 'reputation') {
+      await addReputation({
+        name: preset.data.name,
+        value: preset.data.value,
+        max: preset.data.max,
+        color: preset.data.color || '#8b5a3c',
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        description: preset.data.description || '',
+        order: 0
+      });
+    } else if (type === 'patrolEffect') {
+      await addPatrolEffect({
+        name: preset.data.name,
+        description: preset.data.description || '',
+        type: preset.data.type || 'buff',
+        value: preset.data.value || 0,
+        duration: preset.data.duration || '1 turno',
+        statEffects: preset.data.statEffects || {},
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        order: 0
+      });
+    } else if (type === 'situationalModifier') {
+      await addSituationalModifier({
+        name: preset.data.name,
+        description: preset.data.description || '',
+        situation: preset.data.description || '',
+        statEffects: preset.data.statEffects || {},
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        order: 0
+      });
+    }
+
+    console.log('[saveOrCreatePreset] Add function completed');
 
     // Reset form
     if (type === 'resource') {
@@ -488,7 +580,17 @@
             if (preset.type === 'temporaryModifier') {
               normalizedType = 'patrolEffect';
             }
-            removePreset(preset.id, normalizedType);
+
+            // Call the appropriate remove function based on type
+            if (normalizedType === 'resource') {
+              removeResource(preset.id);
+            } else if (normalizedType === 'reputation') {
+              removeReputation(preset.id);
+            } else if (normalizedType === 'patrolEffect') {
+              removePatrolEffect(preset.id);
+            } else if (normalizedType === 'situationalModifier') {
+              removeSituationalModifier(preset.id);
+            }
           }
         },
         no: {
@@ -839,7 +941,7 @@
   }
 
   // Function to create preset from existing item
-  function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
+  async function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('Creating preset from item:', item, 'Type:', type);
     console.log('Item sourceId:', item.sourceId);
     console.log('Item key:', item.key);
@@ -948,7 +1050,53 @@
     console.log('Created preset:', preset);
     console.log('Created preset data:', preset.data);
     console.log('Created preset data.statEffects:', preset.data.statEffects);
-    addPreset(preset);
+
+    // Call the appropriate add function based on type
+    if (type === 'resource') {
+      await addResource({
+        name: preset.data.name,
+        value: preset.data.value,
+        max: preset.data.max,
+        color: preset.data.color || '#ffd700',
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        description: preset.data.description || '',
+        order: 0
+      });
+    } else if (type === 'reputation') {
+      await addReputation({
+        name: preset.data.name,
+        value: preset.data.value,
+        max: preset.data.max,
+        color: preset.data.color || '#8b5a3c',
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        description: preset.data.description || '',
+        order: 0
+      });
+    } else if (type === 'patrolEffect') {
+      await addPatrolEffect({
+        name: preset.data.name,
+        description: preset.data.description || '',
+        type: preset.data.type || 'buff',
+        value: preset.data.value || 0,
+        duration: preset.data.duration || '1 turno',
+        statEffects: preset.data.statEffects || {},
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        order: 0
+      });
+    } else if (type === 'situationalModifier') {
+      await addSituationalModifier({
+        name: preset.data.name,
+        description: preset.data.description || '',
+        situation: preset.data.description || '',
+        statEffects: preset.data.statEffects || {},
+        img: preset.data.img || '',
+        groupId: undefined, // Global preset
+        order: 0
+      });
+    }
 
     // Switch to the correct tab and show the new preset
     activeTab = type === 'resource' ? 'resources' :

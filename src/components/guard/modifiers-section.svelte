@@ -6,7 +6,6 @@
 <script lang="ts">
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
-  import { generateUUID } from '@/utils/log';
   import { createEventDispatcher } from 'svelte';
   import SituationalModifierDialog from './situational-modifier-dialog.svelte';
 
@@ -18,7 +17,7 @@
 
   let dialogOpen = false;
   let dialogModifier: GuardModifier | null = null;
-  
+
   // Safe access to game object
   let isGM = false;
   $: {
@@ -129,9 +128,9 @@
           content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}
           size="42px"
         >
-          <button 
-            type="button" 
-            class="image-button" 
+          <button
+            type="button"
+            class="image-button"
             on:click={() => editingMods ? openEditModifier(mod) : null}
           >
             <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />

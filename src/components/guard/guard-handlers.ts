@@ -10,8 +10,8 @@ import {
   saveResources,
   saveStats,
 } from "@/guard/stats";
-import type { SyncEvent } from "@/utils/sync";
 import { generateUUID } from "@/utils/log";
+import type { SyncEvent } from "@/utils/sync";
 
 // FilePicker is provided by Foundry at runtime
 declare const FilePicker: any;
@@ -181,21 +181,21 @@ export class GuardHandlers {
   // Modifier handlers
   handleAddModifier = (event: CustomEvent) => {
     const newModifier = event.detail;
-    
+
     // Asegurar que el modificador tenga un key único si no lo tiene
     if (!newModifier.key) {
       newModifier.key = generateUUID();
     }
-    
+
     // Asegurar que el modificador tenga un sourceId si no lo tiene
     if (!newModifier.sourceId) {
       newModifier.sourceId = newModifier.key;
     }
-    
+
     newModifier.mods = Object.fromEntries(
       Object.entries(newModifier.mods).filter(([, v]) => Number(v) !== 0)
     );
-    
+
     this.modifiers = [...this.modifiers, { ...newModifier }];
     this.sortModifiersByState();
     this.persistModifiers();
@@ -212,7 +212,7 @@ export class GuardHandlers {
 
   handleUpdateModifier = (event?: CustomEvent) => {
     let modifiedModifier: any = null;
-    
+
     if (event && event.detail) {
       // Handle specific modifier update from dialog
       const { index, modifier } = event.detail;
@@ -237,12 +237,15 @@ export class GuardHandlers {
     }
     this.sortModifiersByState();
     this.persistModifiers();
-    
+
     // Update preset if modifier has sourceId
-    if (modifiedModifier && (modifiedModifier.sourceId || modifiedModifier.key)) {
+    if (
+      modifiedModifier &&
+      (modifiedModifier.sourceId || modifiedModifier.key)
+    ) {
       this.updatePresetFromSpecificModifier(modifiedModifier);
     }
-    
+
     this.updateComponent();
   };
 
@@ -252,18 +255,23 @@ export class GuardHandlers {
       const { presetManager } = await import(
         "@/components/presets/preset-manager"
       );
-      
+
       const item = {
         sourceId: modifier.sourceId || modifier.key,
         name: modifier.name,
-        description: modifier.description || '',
-        situation: modifier.description || 'Situación específica',
-        img: modifier.img || 'icons/svg/upgrade.svg',
-        statEffects: modifier.mods || {}
+        description: modifier.description || "",
+        situation: modifier.description || "Situación específica",
+        img: modifier.img || "icons/svg/upgrade.svg",
+        statEffects: modifier.mods || {},
       };
-      
-      console.log('GuardHandlers - Updating preset for modifier:', modifier.name, 'with item:', item);
-      presetManager.updatePresetFromItem(item, 'situationalModifier');
+
+      console.log(
+        "GuardHandlers - Updating preset for modifier:",
+        modifier.name,
+        "with item:",
+        item
+      );
+      presetManager.updatePresetFromItem(item, "situationalModifier");
     } catch (error) {
       console.warn("Error updating modifier preset:", error);
     }

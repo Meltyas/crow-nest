@@ -14,7 +14,8 @@ export interface SyncEvent {
     | "reputation"
     | "groups"
     | "patrol-sheet"
-    | "presets";
+    | "presets"
+    | "unifiedPresets";
   action: "update" | "create" | "delete" | "command" | "show";
   data: any;
   timestamp: number;

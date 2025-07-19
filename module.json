@@ -4,9 +4,37 @@
   "description": "Persistent guard and patrol management system for Foundry VTT.",
   "version": "0.1.0",
   "author": "Your Name",
+  "authors": [
+    {
+      "name": "Your Name",
+      "email": "",
+      "url": ""
+    }
+  ],
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "license": "",
+  "readme": "",
+  "bugs": "",
+  "changelog": "",
   "minimumCoreVersion": "11",
   "compatibleCoreVersion": "11",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11",
+    "maximum": "11"
+  },
   "type": "module",
   "esmodules": ["dist/main.js"],
-  "styles": ["dist/main.css"]
+  "styles": ["dist/main.css"],
+  "languages": [
+    {
+      "lang": "es",
+      "name": "Español",
+      "path": "static/lang/es.json"
+    }
+  ],
+  "socket": false,
+  "protected": false
 }

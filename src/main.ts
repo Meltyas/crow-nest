@@ -11,6 +11,7 @@ import {
 } from "@/constants";
 import { getPatrols } from "@/patrol/patrols";
 import { initializeGroupsSync } from "@/stores/groups";
+import { loadUnifiedPresets } from "@/stores/presets";
 import { cleanupSync, initializeSync, SyncManager } from "@/utils/sync";
 import "./styles/font.css";
 import "./styles/global.pcss";
@@ -94,6 +95,19 @@ Hooks.once("init", () => {
       reputations: [],
       patrolEffects: [],
       situationalModifiers: [],
+    },
+  });
+
+  // Unified Presets configuration - New unified system
+  game.settings.register(MODULE_ID, "unifiedPresets", {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {
+      resources: [],
+      reputation: [],
+      patrolEffects: [],
+      skills: [],
     },
   });
 
@@ -188,9 +202,11 @@ Hooks.once("ready", () => {
   // Initialize global groups sync (always active)
   initializeGroupsSync();
 
-  // Initialize presets
-  import("@/stores/presets").then(({ initializePresets }) => {
-    initializePresets();
+  // Initialize unified presets system
+  loadUnifiedPresets().then(() => {
+    console.log("[Crow Nest] Unified presets system initialized");
+  }).catch((error) => {
+    console.error("[Crow Nest] Failed to initialize presets:", error);
   });
 
   // Set up settings-based sync listener for real-time updates

@@ -161,24 +161,24 @@
   function updateSituationalModifierFromPreset(preset: any) {
     const sourceId = preset.data.sourceId;
     const existingModifier = modifiers.find(m => m.sourceId === sourceId || m.key === sourceId);
-    
+
     if (existingModifier) {
       console.log('Guard.svelte - Updating existing situational modifier from preset:', existingModifier);
-      
+
       // Update the existing modifier with the preset data
       existingModifier.name = preset.data.name;
       existingModifier.description = preset.data.description || '';
       existingModifier.img = preset.data.img || existingModifier.img;
       existingModifier.mods = preset.data.statEffects || {};
-      
+
       // Determine state based on stat effects
       const totalEffect = Object.values(existingModifier.mods).reduce((sum, value) => sum + (Number(value) || 0), 0);
       existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-      
+
       // Trigger reactivity and persistence
       modifiers = [...modifiers];
       handlers.handleUpdateModifier();
-      
+
       console.log('Guard.svelte - Situational modifier updated:', existingModifier);
     }
   }
@@ -186,18 +186,18 @@
   function updateResourceFromPreset(preset: any) {
     const sourceId = preset.data.sourceId;
     const existingResource = resources.find(r => r.key === sourceId);
-    
+
     if (existingResource) {
       console.log('Guard.svelte - Updating existing resource from preset:', existingResource);
-      
+
       existingResource.name = preset.data.name;
       existingResource.value = preset.data.value;
       existingResource.details = preset.data.description || '';
       existingResource.img = preset.data.img || existingResource.img;
-      
+
       resources = [...resources];
       handlers.handleUpdateResource();
-      
+
       console.log('Guard.svelte - Resource updated:', existingResource);
     }
   }
@@ -205,18 +205,18 @@
   function updateReputationFromPreset(preset: any) {
     const sourceId = preset.data.sourceId;
     const existingReputation = reputation.find(r => r.key === sourceId);
-    
+
     if (existingReputation) {
       console.log('Guard.svelte - Updating existing reputation from preset:', existingReputation);
-      
+
       existingReputation.name = preset.data.name;
       existingReputation.value = preset.data.value;
       existingReputation.details = preset.data.description || '';
       existingReputation.img = preset.data.img || existingReputation.img;
-      
+
       reputation = [...reputation];
       handlers.handleUpdateReputation();
-      
+
       console.log('Guard.svelte - Reputation updated:', existingReputation);
     }
   }
@@ -399,7 +399,7 @@
 
   function updatePresetFromModifier() {
     console.log('Guard.svelte - Updating presets from modified modifiers');
-    
+
     // Update all situational modifiers that have sourceId/key
     modifiers.forEach(modifier => {
       if (modifier.sourceId || modifier.key) {
@@ -411,7 +411,7 @@
           img: modifier.img || 'icons/svg/upgrade.svg',
           statEffects: modifier.mods || {}
         };
-        
+
         console.log('Guard.svelte - Updating preset for modifier:', modifier.name, 'with item:', item);
         presetManager.updatePresetFromItem(item, 'situationalModifier');
       }

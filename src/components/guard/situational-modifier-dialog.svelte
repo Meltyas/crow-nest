@@ -16,7 +16,7 @@
   const dispatch = createEventDispatcher();
 
   let isEditing = false;
-  
+
   // Local modifier data
   let localModifier: GuardModifier = {
     key: '',
@@ -195,12 +195,12 @@
           label: isEditing ? 'Actualizar' : 'Crear',
           callback: (html: any) => {
             const form = html[0].querySelector("form");
-            
+
             // Update localModifier with form values
             localModifier.name = form.name.value.trim();
             localModifier.description = form.description.value.trim();
             localModifier.state = form.state.value;
-            
+
             // Update stat modifiers
             stats.forEach(stat => {
               const input = form[`mod-${stat.key}`];
@@ -227,12 +227,12 @@
           label: 'Crear Preset',
           callback: (html: any) => {
             const form = html[0].querySelector("form");
-            
+
             // Update localModifier with current form values
             localModifier.name = form.name.value.trim();
             localModifier.description = form.description.value.trim();
             localModifier.state = form.state.value;
-            
+
             // Update stat modifiers
             stats.forEach(stat => {
               const input = form[`mod-${stat.key}`];
