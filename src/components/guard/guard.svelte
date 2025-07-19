@@ -377,7 +377,7 @@
 
   function createSituationalModifierPreset(event: CustomEvent) {
     const modifier = event.detail;
-    console.log('Guard.svelte - Recibiendo evento para crear preset:', event.detail);
+    console.log('Guard.svelte - Recibiendo evento para crear preset:', modifier);
     const item = {
       sourceId: modifier.sourceId || modifier.key, // Use sourceId first, fallback to key
       name: modifier.name,
@@ -387,8 +387,14 @@
       statEffects: modifier.statEffects || modifier.mods || {}
     };
     console.log('Guard.svelte - Enviando item al presetManager:', item);
+    console.log('Guard.svelte - statEffects being sent:', item.statEffects);
 
-    presetManager.createPresetFromExistingItem(item, 'situationalModifier');
+    try {
+      presetManager.createPresetFromExistingItem(item, 'situationalModifier');
+      console.log('Guard.svelte - Preset creation successful');
+    } catch (error) {
+      console.error('Guard.svelte - Error creating preset:', error);
+    }
   }
 
   function updatePresetFromModifier() {
@@ -773,6 +779,7 @@
                   on:newModImageClick={handlers.handleNewModImageClick}
                   on:modFileChange={handlers.handleModFileChange}
                   on:createPresetFromSituationalModifier={createSituationalModifierPreset}
+                  on:createPresetFromModifier={createSituationalModifierPreset}
                   on:updatePresetFromModifier={updatePresetFromModifier}
                 />
               </div>

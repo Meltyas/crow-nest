@@ -1,8 +1,14 @@
+<script context="module" lang="ts">
+  // Foundry globals
+  declare const game: any;
+</script>
+
 <script lang="ts">
   import Tooltip from '@/components/tooltip.svelte';
   import type { GuardModifier, GuardStat } from '@/guard/stats';
   import { generateUUID } from '@/utils/log';
   import { createEventDispatcher } from 'svelte';
+  import SituationalModifierDialog from './situational-modifier-dialog.svelte';
 
   export let modifiers: GuardModifier[] = [];
   export let stats: GuardStat[] = [];
@@ -10,60 +16,62 @@
 
   const dispatch = createEventDispatcher();
 
-  let addingModifier = false;
-  let newModifier: GuardModifier = {
-    key: '',
-    name: '',
-    description: '',
-    mods: {},
-    state: 'neutral',
-    img: 'icons/svg/upgrade.svg',
-    sourceId: ''
-  };
+  let dialogOpen = false;
+  let dialogModifier: GuardModifier | null = null;
+  
+  // Safe access to game object
+  let isGM = false;
+  $: {
+    try {
+      isGM = typeof (window as any).game !== 'undefined' && (window as any).game.user?.isGM;
+    } catch {
+      isGM = false;
+    }
+  }
 
   function openAddModifier() {
-    const uniqueId = generateUUID();
-    newModifier = {
-      key: uniqueId,
-      name: '',
-      description: '',
-      mods: {},
-      state: 'neutral',
-      img: 'icons/svg/upgrade.svg',
-      sourceId: uniqueId // Ensure every modifier has a unique sourceId
-    };
-    addingModifier = true;
+    dialogModifier = null;
+    dialogOpen = true;
   }
 
-  function cancelAddModifier() {
-    addingModifier = false;
-  }
-
-  function confirmAddModifier() {
-    dispatch('addModifier', { ...newModifier });
-    addingModifier = false;
+  function openEditModifier(modifier: GuardModifier) {
+    dialogModifier = modifier;
+    dialogOpen = true;
   }
 
   function removeModifier(index: number) {
     dispatch('removeModifier', index);
   }
 
-  function updateModifier() {
-    dispatch('updateModifier');
-    // También actualizar presets relacionados
-    dispatch('updatePresetFromModifier');
+  function handleCreateModifier(event: CustomEvent) {
+    dispatch('addModifier', event.detail);
+    dialogOpen = false;
+    dialogModifier = null;
   }
 
-  function onModImageClick(mod: GuardModifier) {
-    dispatch('modImageClick', mod);
+  function handleUpdateModifier(event: CustomEvent) {
+    const updatedModifier = event.detail;
+    const index = modifiers.findIndex(m => m.key === updatedModifier.key);
+    if (index !== -1) {
+      dispatch('updateModifier', { index, modifier: updatedModifier });
+    }
+    dialogOpen = false;
+    dialogModifier = null;
   }
 
-  function onNewModImageClick() {
-    dispatch('newModImageClick', newModifier);
+  function handleDialogClose() {
+    dialogOpen = false;
+    dialogModifier = null;
   }
 
-  function onModFileChange(mod: GuardModifier, event: Event) {
-    dispatch('modFileChange', { mod, event });
+  function handleCreatePreset(event: CustomEvent) {
+    const modifier = event.detail;
+    console.log('ModifiersSection - Received createPreset event:', modifier);
+    // Dispatch preset creation to parent component
+    dispatch('createPresetFromModifier', modifier);
+    // Dialog will close automatically after preset creation
+    dialogOpen = false;
+    dialogModifier = null;
   }
 
   function toggleEditingMods() {
@@ -114,38 +122,6 @@
   {/if}
   <button on:click={toggleEditingMods}>{editingMods ? 'Stop Edit Mods' : 'Edit Mods'}</button>
 
-  {#if addingModifier}
-    <div class="add-mod-form">
-      <div class="modifier-image-section">
-        <button type="button" class="modifier-image-button" on:click={onNewModImageClick}>
-          <img src={newModifier.img} alt="" />
-        </button>
-      </div>
-      <input placeholder="Nombre" bind:value={newModifier.name} />
-      <textarea placeholder="Descripción" bind:value={newModifier.description}></textarea>
-      <div class="state-selector">
-        <label for="new-modifier-state">Estado:</label>
-        <select id="new-modifier-state" bind:value={newModifier.state}>
-          <option value="positive">Positive</option>
-          <option value="neutral">Neutral</option>
-          <option value="negative">Negative</option>
-        </select>
-      </div>
-      <div class="modifier-stats-container">
-        {#each stats as stat}
-          <div class="modifier-values">
-            <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="32" height="32" />
-            <input type="number" bind:value={newModifier.mods[stat.key]} />
-          </div>
-        {/each}
-      </div>
-      <div class="form-buttons">
-        <button on:click={confirmAddModifier}>Agregar</button>
-        <button on:click={cancelAddModifier}>Cancelar</button>
-      </div>
-    </div>
-  {/if}
-
   <div class="modifier-container">
     {#each modifiers as mod, i}
       <div class="modifier modifier-{mod.state || 'neutral'}">
@@ -153,44 +129,36 @@
           content={editingMods ? `<p><strong>${mod.name}:</strong> ${mod.description ?? ''}</p>` : modTooltip(mod)}
           size="42px"
         >
-          <button type="button" class="image-button" on:click={() => onModImageClick(mod)}>
+          <button 
+            type="button" 
+            class="image-button" 
+            on:click={() => editingMods ? openEditModifier(mod) : null}
+          >
             <img class="standard-image" src={mod.img || 'icons/svg/upgrade.svg'} alt="mod" />
           </button>
         </Tooltip>
-        <input id={`mod-file-${mod.key}`} type="file" accept="image/*" style="display:none" on:change={(e)=>onModFileChange(mod,e)} />
         {#if editingMods}
-          <div class="modifier-edit">
-            <input placeholder="Nombre" bind:value={mod.name} on:input={updateModifier} />
-            <textarea placeholder="Descripción" bind:value={mod.description} on:input={updateModifier} />
-            <div class="state-selector">
-              <label for="edit-modifier-state-{i}">Estado:</label>
-              <select id="edit-modifier-state-{i}" bind:value={mod.state} on:change={updateModifier}>
-                <option value="positive">Positive</option>
-                <option value="neutral">Neutral</option>
-                <option value="negative">Negative</option>
-              </select>
-            </div>
-            <div class="modifier-values-contain">
-              {#each stats as stat}
-                <div class="modifier-values modifier-values-edit">
-                  <img class="standard-image" src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} width="16" height="16" />
-                  <input type="number" bind:value={mod.mods[stat.key]} on:input={updateModifier} />
-                </div>
-              {/each}
-            </div>
-            <div class="modifier-buttons">
-                {#if typeof game !== 'undefined' && game.user?.isGM}
-                <button class="preset-button" on:click={() => createPresetFromSituationalModifier(mod)} title="Crear preset con este modificador">Preset</button>
-                {/if}
-              <button class="remove-button" on:click={() => removeModifier(i)}>X</button>
-            </div>
+          <div class="modifier-buttons">
+            {#if isGM}
+              <button class="preset-button" on:click={() => createPresetFromSituationalModifier(mod)} title="Crear preset con este modificador">Preset</button>
+            {/if}
+            <button class="remove-button" on:click={() => removeModifier(i)}>X</button>
           </div>
-        {:else}
-          <!-- content moved into tooltip -->
         {/if}
       </div>
     {/each}
   </div>
+
+  <!-- Dialog Component -->
+  <SituationalModifierDialog
+    bind:isOpen={dialogOpen}
+    {stats}
+    modifier={dialogModifier}
+    on:create={handleCreateModifier}
+    on:update={handleUpdateModifier}
+    on:createPreset={handleCreatePreset}
+    on:close={handleDialogClose}
+  />
 </div>
 
 <style>
@@ -204,51 +172,6 @@
     margin-bottom: 0.5rem;
   }
 
-  .modifier-image-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .modifier-image-button {
-    background: none;
-    border: 2px solid #666;
-    border-radius: 4px;
-    padding: 0;
-    cursor: pointer;
-    width: 64px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modifier-image-button:hover {
-    border-color: #4a90e2;
-  }
-
-  .modifier-image-button img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 2px;
-  }
-
-  .modifier-stats-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-    margin: 0.5rem 0;
-  }
-
-  .form-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-top: 0.5rem;
-  }
-
   .modifier {
     display: flex;
     flex-direction: column;
@@ -257,6 +180,7 @@
     margin-bottom: 0.5rem;
     border: 2px solid transparent;
     border-radius: 4px;
+    position: relative;
   }
 
   .modifier .standard-image {
@@ -277,59 +201,6 @@
     border: solid 2px #ef4444; /* Red border for negative */
   }
 
-  .state-selector {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-  }
-
-  .state-selector label {
-    font-weight: bold;
-    min-width: 50px;
-  }
-
-  .state-selector select {
-    padding: 0.25rem;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    background: white;
-    font-size: 0.9em;
-  }
-
-  .modifier-values {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .modifier-values input {
-    width: 32px;
-    height: 32px;
-    text-align: center;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-  }
-
-  .modifier-values-edit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .modifier-values-edit input {
-    height: 32px;
-    width: 32px;
-  }
-
-  .modifier-edit {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
   .modifier-container {
     display: flex;
     flex-wrap: wrap;
@@ -337,16 +208,21 @@
     margin-bottom: 0.5rem;
   }
 
-  .modifier-values-contain {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
   .modifier-buttons {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    position: absolute;
+    bottom: -30px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 2px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .modifier:hover .modifier-buttons {
+    opacity: 1;
   }
 
   .preset-button {
@@ -359,6 +235,7 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-size: 0.8em;
   }
 
   .preset-button:hover {
@@ -375,6 +252,7 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-size: 0.8em;
   }
 
   .remove-button:hover {
@@ -384,5 +262,18 @@
   .standard-image {
     width: 32px;
     height: 32px;
+  }
+
+  .image-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+
+  .image-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 </style>

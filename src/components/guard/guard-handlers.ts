@@ -210,17 +210,63 @@ export class GuardHandlers {
     this.updateComponent();
   };
 
-  handleUpdateModifier = () => {
-    this.modifiers = this.modifiers.map((m) => ({
-      ...m,
-      state: m.state || "neutral",
-      mods: Object.fromEntries(
-        Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
-      ),
-    }));
+  handleUpdateModifier = (event?: CustomEvent) => {
+    let modifiedModifier: any = null;
+    
+    if (event && event.detail) {
+      // Handle specific modifier update from dialog
+      const { index, modifier } = event.detail;
+      if (index !== -1 && this.modifiers[index]) {
+        // Clean mods to remove zero values
+        modifier.mods = Object.fromEntries(
+          Object.entries(modifier.mods).filter(([, v]) => Number(v) !== 0)
+        );
+        this.modifiers[index] = { ...modifier };
+        this.modifiers = [...this.modifiers];
+        modifiedModifier = modifier;
+      }
+    } else {
+      // Legacy behavior - update all modifiers in place
+      this.modifiers = this.modifiers.map((m) => ({
+        ...m,
+        state: m.state || "neutral",
+        mods: Object.fromEntries(
+          Object.entries(m.mods).filter(([, v]) => Number(v) !== 0)
+        ),
+      }));
+    }
     this.sortModifiersByState();
     this.persistModifiers();
+    
+    // Update preset if modifier has sourceId
+    if (modifiedModifier && (modifiedModifier.sourceId || modifiedModifier.key)) {
+      this.updatePresetFromSpecificModifier(modifiedModifier);
+    }
+    
     this.updateComponent();
+  };
+
+  updatePresetFromSpecificModifier = async (modifier: GuardModifier) => {
+    // Update preset for a specific modifier that has sourceId
+    try {
+      const { presetManager } = await import(
+        "@/components/presets/preset-manager"
+      );
+      
+      const item = {
+        sourceId: modifier.sourceId || modifier.key,
+        name: modifier.name,
+        description: modifier.description || '',
+        situation: modifier.description || 'Situación específica',
+        img: modifier.img || 'icons/svg/upgrade.svg',
+        statEffects: modifier.mods || {}
+      };
+      
+      console.log('GuardHandlers - Updating preset for modifier:', modifier.name, 'with item:', item);
+      presetManager.updatePresetFromItem(item, 'situationalModifier');
+    } catch (error) {
+      console.warn("Error updating modifier preset:", error);
+    }
   };
 
   handleModImageClick = (event: CustomEvent) => {

@@ -466,6 +466,7 @@
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
     position: relative;
+    flex: 1 1 auto;
   }
 
   .item-display:hover {
@@ -567,6 +568,7 @@
 
   .resource-item .item-info {
     align-items: flex-start;
+    justify-content: space-between;
   }
 
   .item-header {
