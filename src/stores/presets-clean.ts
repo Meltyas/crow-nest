@@ -3,7 +3,6 @@ import type {
   PresetCollection,
   Reputation,
   Resource,
-  SituationalModifier,
 } from "@/shared/preset";
 import { SyncManager, createSyncEvent } from "@/utils/sync";
 import { get, writable } from "svelte/store";
@@ -21,93 +20,48 @@ export const unifiedPresetsStore = presetsStore;
 
 // Utility functions to get presets by scope
 export function getGlobalResources(): Resource[] {
-  try {
-    const data = get(presetsStore);
-    return data?.resources?.filter((r) => !r.groupId) || []; // Global presets have no groupId
-  } catch (error) {
-    console.warn("Error getting global resources:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.resources.filter((r) => !r.groupId); // Global presets have no groupId
 }
 
 export function getGroupResources(groupId: string): Resource[] {
-  try {
-    const data = get(presetsStore);
-    return data?.resources?.filter((r) => r.groupId === groupId) || [];
-  } catch (error) {
-    console.warn("Error getting group resources:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.resources.filter((r) => r.groupId === groupId);
 }
 
 export function getAllResources(): Resource[] {
-  try {
-    const data = get(presetsStore);
-    return data?.resources || [];
-  } catch (error) {
-    console.warn("Error getting all resources:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.resources;
 }
 
 export function getGlobalReputations(): Reputation[] {
-  try {
-    const data = get(presetsStore);
-    return data?.reputations?.filter((r) => !r.groupId) || [];
-  } catch (error) {
-    console.warn("Error getting global reputations:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.reputations.filter((r) => !r.groupId);
 }
 
 export function getGroupReputations(groupId: string): Reputation[] {
-  try {
-    const data = get(presetsStore);
-    return data?.reputations?.filter((r) => r.groupId === groupId) || [];
-  } catch (error) {
-    console.warn("Error getting group reputations:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.reputations.filter((r) => r.groupId === groupId);
 }
 
 export function getAllReputations(): Reputation[] {
-  try {
-    const data = get(presetsStore);
-    return data?.reputations || [];
-  } catch (error) {
-    console.warn("Error getting all reputations:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.reputations;
 }
 
 export function getGlobalPatrolEffects(): PatrolEffect[] {
-  try {
-    const data = get(presetsStore);
-    return data?.patrolEffects?.filter((e) => !e.groupId) || [];
-  } catch (error) {
-    console.warn("Error getting global patrol effects:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.patrolEffects.filter((e) => !e.groupId);
 }
 
 export function getGroupPatrolEffects(groupId: string): PatrolEffect[] {
-  try {
-    const data = get(presetsStore);
-    return data?.patrolEffects?.filter((e) => e.groupId === groupId) || [];
-  } catch (error) {
-    console.warn("Error getting group patrol effects:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.patrolEffects.filter((e) => e.groupId === groupId);
 }
 
 export function getAllPatrolEffects(): PatrolEffect[] {
-  try {
-    const data = get(presetsStore);
-    return data?.patrolEffects || [];
-  } catch (error) {
-    console.warn("Error getting all patrol effects:", error);
-    return [];
-  }
+  const data = get(presetsStore);
+  return data.patrolEffects;
 }
 
 // Active filtering functions for guard
@@ -300,53 +254,6 @@ export async function removePatrolEffect(effectId: string): Promise<void> {
   await persistPresets(updated);
 }
 
-// SituationalModifier CRUD operations
-export async function addSituationalModifier(
-  modifier: Omit<SituationalModifier, "id">
-): Promise<void> {
-  const current = get(presetsStore);
-  const newModifier: SituationalModifier = {
-    ...modifier,
-    id: `modifier-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  };
-
-  const updated = {
-    ...current,
-    situationalModifiers: [...current.situationalModifiers, newModifier],
-  };
-
-  await persistPresets(updated);
-}
-
-export async function updateSituationalModifier(
-  modifierId: string,
-  updates: Partial<SituationalModifier>
-): Promise<void> {
-  const current = get(presetsStore);
-  const updated = {
-    ...current,
-    situationalModifiers: current.situationalModifiers.map((m) =>
-      m.id === modifierId ? { ...m, ...updates } : m
-    ),
-  };
-
-  await persistPresets(updated);
-}
-
-export async function removeSituationalModifier(
-  modifierId: string
-): Promise<void> {
-  const current = get(presetsStore);
-  const updated = {
-    ...current,
-    situationalModifiers: current.situationalModifiers.filter(
-      (m) => m.id !== modifierId
-    ),
-  };
-
-  await persistPresets(updated);
-}
-
 // Delete preset functions
 export async function deleteResourcePreset(resourceId: string): Promise<void> {
   await removeResource(resourceId);
@@ -366,56 +273,43 @@ export async function deletePatrolEffectPreset(
 
 // Persistence and synchronization functions
 async function persistPresets(presets: PresetCollection): Promise<void> {
-  try {
-    const game = (globalThis as any).game;
-    if (!game || !game.settings) {
-      console.warn(
-        "[Presets] Game settings not available yet, skipping persist"
-      );
-      return;
-    }
+  presetsStore.set(presets);
 
-    await game.settings.set("crow-nest", "unifiedPresets", presets);
-    presetsStore.set(presets);
+  // Create sync event
+  const syncEvent = createSyncEvent("presets", "update", {
+    resources: presets.resources,
+    reputations: presets.reputations,
+    patrolEffects: presets.patrolEffects,
+    situationalModifiers: presets.situationalModifiers,
+  });
 
-    const syncManager = SyncManager.getInstance();
-    await syncManager.broadcast(
-      createSyncEvent("unifiedPresets", "update", presets)
-    );
-  } catch (error) {
-    console.error("[Presets] Error persisting presets:", error);
-  }
+  // Persist to Foundry user data
+  await SyncManager.saveUserData("crow-nest.presets", presets);
+
+  // Broadcast the sync event
+  SyncManager.sendSyncEvent(syncEvent);
 }
 
 export async function loadPresets(): Promise<void> {
   try {
-    const game = (globalThis as any).game;
-    if (!game || !game.settings) {
-      console.warn("Game settings not available yet, skipping preset loading");
-      return;
-    }
-
-    const saved = await game.settings.get("crow-nest", "unifiedPresets");
+    const saved = await SyncManager.loadUserData("crow-nest.presets");
     if (saved) {
       const presets = saved as PresetCollection;
 
       // Ensure all preset items have active property
       const normalizedPresets: PresetCollection = {
-        resources:
-          presets.resources?.map((r) => ({
-            ...r,
-            active: r.active ?? false,
-          })) || [],
-        reputations:
-          presets.reputations?.map((r) => ({
-            ...r,
-            active: r.active ?? false,
-          })) || [],
-        patrolEffects:
-          presets.patrolEffects?.map((e) => ({
-            ...e,
-            active: e.active ?? false,
-          })) || [],
+        resources: presets.resources.map((r) => ({
+          ...r,
+          active: r.active ?? true,
+        })),
+        reputations: presets.reputations.map((r) => ({
+          ...r,
+          active: r.active ?? true,
+        })),
+        patrolEffects: presets.patrolEffects.map((e) => ({
+          ...e,
+          active: e.active ?? true,
+        })),
         situationalModifiers: presets.situationalModifiers || [],
       };
 
@@ -426,13 +320,5 @@ export async function loadPresets(): Promise<void> {
   }
 }
 
-// DO NOT auto-initialize store here - let main.ts handle initialization
-// Commented out: loadPresets();
-
-// Initialization function for compatibility
-export async function initializePresets(): Promise<void> {
-  await loadPresets();
-}
-
-// Legacy alias for backwards compatibility
-export const loadUnifiedPresets = loadPresets;
+// Initialize store
+loadPresets();

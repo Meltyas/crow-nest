@@ -8,6 +8,8 @@
 <script lang="ts">
   // Access to Foundry objects provided at runtime
 
+  import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
+  import UnifiedResources from '@/components/unified/unified-resources.svelte';
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import {
@@ -1296,274 +1298,145 @@
           </button>
         </div>
 
-        <!-- Create form -->
-        {#if showCreateForm}
-          <div class="create-form">
-            {#if activeTab === 'resources'}
-              <h3>{editingPreset ? 'Editar Recurso' : 'Crear Recurso'}</h3>
-              <div class="form-group">
-                <label>Nombre:</label>
-                <input bind:value={newResourceForm.name} placeholder="Nombre del recurso" />
-              </div>
-              <div class="form-group">
-                <label>Valor:</label>
-                <input type="number" bind:value={newResourceForm.value} />
-              </div>
-              <div class="form-group">
-                <label>Descripción:</label>
-                <textarea bind:value={newResourceForm.description} placeholder="Descripción opcional"></textarea>
-              </div>
-              <div class="form-group">
-                <label>Imagen:</label>
-                <div class="image-selector">
-                  <button
-                    type="button"
-                    class="image-picker-btn"
-                    on:click={() => openImagePicker('resource')}
-                  >
-                    {#if newResourceForm.img}
-                      <img src={newResourceForm.img} alt="Preview" class="image-preview" />
-                    {:else}
-                      Seleccionar Imagen
-                    {/if}
+        <!-- Unified Components for preset management -->
+        {#if activeTab === 'resources'}
+          <UnifiedResources
+            title="Gestión de Presets de Recursos"
+            showPresets={true}
+            editingResources={false}
+            inPresetManager={true}
+            on:updateResource={() => {}}
+          />
+        {:else if activeTab === 'reputations'}
+          <UnifiedReputation
+            title="Gestión de Presets de Reputación"
+            showPresets={true}
+            editingReputation={false}
+            inPresetManager={true}
+            on:updateReputation={() => {}}
+          />
+        {:else}
+          <!-- Keep original forms for patrolEffects and situationalModifiers -->
+          {#if showCreateForm}
+            <div class="create-form">
+              {#if activeTab === 'patrolEffects'}
+                <h3>{editingPreset ? 'Editar Efecto de Patrulla' : 'Crear Efecto de Patrulla'}</h3>
+                <div class="form-group">
+                  <label>Nombre:</label>
+                  <input bind:value={newPatrolEffectForm.name} placeholder="Nombre del efecto" />
+                </div>
+                <div class="form-group">
+                  <label>Tipo:</label>
+                  <select bind:value={newPatrolEffectForm.type}>
+                    <option value="buff">Buff</option>
+                    <option value="debuff">Debuff</option>
+                    <option value="neutral">Neutral</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Duración:</label>
+                  <input bind:value={newPatrolEffectForm.duration} placeholder="ej: 1 turno, 10 minutos" />
+                </div>
+                <div class="form-group">
+                  <label>Descripción:</label>
+                  <textarea bind:value={newPatrolEffectForm.description} placeholder="Descripción opcional"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Efectos en Stats:</label>
+                  <div class="stat-effects">
+                    {#each stats as stat}
+                      <div class="stat-effect-item">
+                        <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                        <span>{stat.name}</span>
+                        <input
+                          type="number"
+                          value={newPatrolEffectForm.statEffects[stat.key] || 0}
+                          on:input={(e) => {
+                            const value = parseInt(e.currentTarget.value) || 0;
+                            addStatEffect(stat.key, value);
+                          }}
+                        />
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+                <div class="form-buttons">
+                  <button class="create-btn" on:click={createPatrolEffectPreset}>
+                    {editingPreset ? 'Guardar' : 'Crear'}
                   </button>
-                  {#if newResourceForm.img}
+                  <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
+                </div>
+              {:else if activeTab === 'situationalModifiers'}
+                <h3>{editingPreset ? 'Editar Modificador Situacional' : 'Crear Modificador Situacional'}</h3>
+                <div class="form-group">
+                  <label>Nombre:</label>
+                  <input bind:value={newSituationalModifierForm.name} placeholder="Nombre del modificador" />
+                </div>
+                <div class="form-group">
+                  <label>Descripción:</label>
+                  <textarea bind:value={newSituationalModifierForm.description} placeholder="ej: En combate, Durante la noche, etc."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Efectos en Stats:</label>
+                  <div class="stat-effects">
+                    {#each stats as stat}
+                      <div class="stat-effect-item">
+                        <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                        <span>{stat.name}</span>
+                        <input
+                          type="number"
+                          value={newSituationalModifierForm.statEffects[stat.key] || 0}
+                          on:input={(e) => {
+                            const value = parseInt(e.currentTarget.value) || 0;
+                            addSituationalStatEffect(stat.key, value);
+                          }}
+                        />
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Imagen:</label>
+                  <div class="image-selector">
                     <button
                       type="button"
-                      class="clear-image-btn"
-                      on:click={() => { newResourceForm.img = ''; newResourceForm = { ...newResourceForm }; }}
+                      class="image-picker-btn"
+                      on:click={() => openImagePicker('situational')}
                     >
-                      ×
+                      {#if newSituationalModifierForm.img}
+                        <img src={newSituationalModifierForm.img} alt="Preview" class="image-preview" />
+                      {:else}
+                        Seleccionar Imagen
+                      {/if}
                     </button>
-                  {/if}
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button class="create-btn" on:click={createResourcePreset}>
-                  {editingPreset ? 'Guardar' : 'Crear'}
-                </button>
-                <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
-              </div>
-            {:else if activeTab === 'reputations'}
-              <h3>{editingPreset ? 'Editar Reputación' : 'Crear Reputación'}</h3>
-              <div class="form-group">
-                <label>Nombre:</label>
-                <input bind:value={newReputationForm.name} placeholder="Nombre de la reputación" />
-              </div>
-              <div class="form-group">
-                <label>Valor:</label>
-                <input type="number" bind:value={newReputationForm.value} />
-              </div>
-              <div class="form-group">
-                <label>Descripción:</label>
-                <textarea bind:value={newReputationForm.description} placeholder="Descripción opcional"></textarea>
-              </div>
-              <div class="form-group">
-                <label>Imagen:</label>
-                <div class="image-selector">
-                  <button
-                    type="button"
-                    class="image-picker-btn"
-                    on:click={() => openImagePicker('reputation')}
-                  >
-                    {#if newReputationForm.img}
-                      <img src={newReputationForm.img} alt="Preview" class="image-preview" />
-                    {:else}
-                      Seleccionar Imagen
-                    {/if}
-                  </button>
-                  {#if newReputationForm.img}
-                    <button
-                      type="button"
-                      class="clear-image-btn"
-                      on:click={() => { newReputationForm.img = ''; newReputationForm = { ...newReputationForm }; }}
-                    >
-                      ×
-                    </button>
-                  {/if}
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button class="create-btn" on:click={createReputationPreset}>
-                  {editingPreset ? 'Guardar' : 'Crear'}
-                </button>
-                <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
-              </div>
-            {:else if activeTab === 'patrolEffects'}
-              <h3>{editingPreset ? 'Editar Efecto de Patrulla' : 'Crear Efecto de Patrulla'}</h3>
-              <div class="form-group">
-                <label>Nombre:</label>
-                <input bind:value={newPatrolEffectForm.name} placeholder="Nombre del efecto" />
-              </div>
-              <div class="form-group">
-                <label>Tipo:</label>
-                <select bind:value={newPatrolEffectForm.type}>
-                  <option value="buff">Buff</option>
-                  <option value="debuff">Debuff</option>
-                  <option value="neutral">Neutral</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Duración:</label>
-                <input bind:value={newPatrolEffectForm.duration} placeholder="ej: 1 turno, 10 minutos" />
-              </div>
-              <div class="form-group">
-                <label>Descripción:</label>
-                <textarea bind:value={newPatrolEffectForm.description} placeholder="Descripción opcional"></textarea>
-              </div>
-              <div class="form-group">
-                <label>Efectos en Stats:</label>
-                <div class="stat-effects">
-                  {#each stats as stat}
-                    <div class="stat-effect-item">
-                      <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                      <span>{stat.name}</span>
-                      <input
-                        type="number"
-                        value={newPatrolEffectForm.statEffects[stat.key] || 0}
-                        on:input={(e) => {
-                          const value = parseInt(e.currentTarget.value) || 0;
-                          addStatEffect(stat.key, value);
-                        }}
-                      />
-                    </div>
-                  {/each}
-                </div>
-              </div>
-              <div class="form-buttons">
-                <button class="create-btn" on:click={createPatrolEffectPreset}>
-                  {editingPreset ? 'Guardar' : 'Crear'}
-                </button>
-                <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
-              </div>
-            {:else if activeTab === 'situationalModifiers'}
-              <h3>{editingPreset ? 'Editar Modificador Situacional' : 'Crear Modificador Situacional'}</h3>
-              <div class="form-group">
-                <label>Nombre:</label>
-                <input bind:value={newSituationalModifierForm.name} placeholder="Nombre del modificador" />
-              </div>
-              <div class="form-group">
-                <label>Descripción:</label>
-                <textarea bind:value={newSituationalModifierForm.description} placeholder="ej: En combate, Durante la noche, etc."></textarea>
-              </div>
-              <div class="form-group">
-                <label>Efectos en Stats:</label>
-                <div class="stat-effects">
-                  {#each stats as stat}
-                    <div class="stat-effect-item">
-                      <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                      <span>{stat.name}</span>
-                      <input
-                        type="number"
-                        value={newSituationalModifierForm.statEffects[stat.key] || 0}
-                        on:input={(e) => {
-                          const value = parseInt(e.currentTarget.value) || 0;
-                          addSituationalStatEffect(stat.key, value);
-                        }}
-                      />
-                    </div>
-                  {/each}
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Imagen:</label>
-                <div class="image-selector">
-                  <button
-                    type="button"
-                    class="image-picker-btn"
-                    on:click={() => openImagePicker('situational')}
-                  >
                     {#if newSituationalModifierForm.img}
-                      <img src={newSituationalModifierForm.img} alt="Preview" class="image-preview" />
-                    {:else}
-                      Seleccionar Imagen
+                      <button
+                        type="button"
+                        class="clear-image-btn"
+                        on:click={() => { newSituationalModifierForm.img = ''; newSituationalModifierForm = { ...newSituationalModifierForm }; }}
+                      >
+                        ×
+                      </button>
                     {/if}
-                  </button>
-                  {#if newSituationalModifierForm.img}
-                    <button
-                      type="button"
-                      class="clear-image-btn"
-                      on:click={() => { newSituationalModifierForm.img = ''; newSituationalModifierForm = { ...newSituationalModifierForm }; }}
-                    >
-                      ×
-                    </button>
-                  {/if}
+                  </div>
                 </div>
-              </div>
-              <div class="form-buttons">
-                <button class="create-btn" on:click={createSituationalModifierPreset}>
-                  {editingPreset ? 'Guardar' : 'Crear'}
-                </button>
-                <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
-              </div>
-            {/if}
-          </div>
+                <div class="form-buttons">
+                  <button class="create-btn" on:click={createSituationalModifierPreset}>
+                    {editingPreset ? 'Guardar' : 'Crear'}
+                  </button>
+                  <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
         {/if}
 
-        <!-- Presets list -->
-        <div class="presets-list grid-layout">
-          {#if activeTab === 'resources'}
-            {#each presets.resources.filter(p => p && p.data) as preset}
-              <div class="preset-item-card resource-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img', 'icons/svg/item-bag.svg')} alt="resource" />
-                <div class="preset-item-info">
-                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', preset.name || 'Sin nombre')}</div>
-                  {#if safeGetPresetProperty(preset, 'description') && safeGetPresetProperty(preset, 'description').trim()}
-                    <div class="preset-item-details">
-                      <p>{safeGetPresetProperty(preset, 'description')}</p>
-                    </div>
-                  {/if}
-                  {#if game?.user?.isGM}
-                    <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
-                  {/if}
-                  <div class="preset-item-quantity-container">
-                    <span class="preset-item-quantity">{safeGetPresetProperty(preset, 'value', 0)}</span>
-                  </div>
-                </div>
-                <div class="preset-actions">
-                  {#if game?.user?.isGM}
-                    <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
-                  {/if}
-                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
-                </div>
-              </div>
-            {/each}
-          {:else if activeTab === 'reputations'}
-            {#each presets.reputations.filter(p => p && p.data) as preset}
-              <div class="preset-item-card reputation-item" on:dblclick={() => editPreset(preset)}>
-                <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img', 'icons/svg/aura.svg')} alt="reputation" />
-                <div class="preset-item-info">
-                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', preset.name || 'Sin nombre')}</div>
-                  {#if safeGetPresetProperty(preset, 'description') && safeGetPresetProperty(preset, 'description').trim()}
-                    <div class="preset-item-details">
-                      <p>{safeGetPresetProperty(preset, 'description')}</p>
-                    </div>
-                  {/if}
-                  {#if game?.user?.isGM}
-                    <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
-                  {/if}
-                  <div class="preset-item-bar-container">
-                    <div class="preset-item-bar">
-                      <div class="preset-item-fill" style="width: {(safeGetPresetProperty(preset, 'value', 0) * 10)}%; background: linear-gradient(90deg,
-                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 70%, 40%) 0%,
-                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 80%, 50%) 50%,
-                        hsl({(safeGetPresetProperty(preset, 'value', 0) / 10) * 120}, 70%, 60%) 100%);">
-                      </div>
-                      {#each Array(11) as _, j}
-                        <div class="preset-item-tick" style="left: {j * 10}%;"></div>
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-                <div class="preset-actions">
-                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
-                </div>
-              </div>
-            {/each}
-          {:else if activeTab === 'patrolEffects'}
-            <!-- Debug: Log patrol effects -->
-            {#each presets.patrolEffects.filter(p => p && p.data) as preset}
+        <!-- Only show presets list for patrolEffects and situationalModifiers -->
+        {#if activeTab !== 'resources' && activeTab !== 'reputations'}
+          <div class="presets-list grid-layout">
+            {#if activeTab === 'patrolEffects'}
+              <!-- Debug: Log patrol effects -->
+              {#each presets.patrolEffects.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 <div class="preset-item-info">
                   <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
@@ -1626,8 +1499,43 @@
                 </div>
               </div>
             {/each}
-          {/if}
-        </div>
+            {:else if activeTab === 'situationalModifiers'}
+              {#each presets.situationalModifiers.filter(p => p && p.data) as preset}
+                <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
+                  {#if safeGetPresetProperty(preset, 'img')}
+                    <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img')} alt="situational modifier" />
+                  {/if}
+                  <div class="preset-item-info">
+                    <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
+                    <div class="preset-item-details">
+                      {#if safeGetPresetProperty(preset, 'description')}
+                        <p class="description">{safeGetPresetProperty(preset, 'description')}</p>
+                      {/if}
+                      {#if game?.user?.isGM}
+                        <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
+                      {/if}
+                      <div class="stat-effects-preview">
+                        {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
+                          {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
+                          {#if stat && value !== 0}
+                            <span class="stat-effect-preview">
+                              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
+                              {stat.name}: {value > 0 ? '+' : ''}{value}
+                            </span>
+                          {/if}
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="preset-actions">
+                    <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
+                    <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
+                  </div>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <!-- Resize handle -->

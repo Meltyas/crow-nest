@@ -7,8 +7,9 @@
 <script lang="ts">
   import { getAdmins, saveAdmins } from '@/admin/admins';
   import Groups from '@/components/groups/groups.svelte';
-  import { presetManager } from '@/components/presets/preset-manager';
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
+  import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
+  import UnifiedResources from '@/components/unified/unified-resources.svelte';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
@@ -24,8 +25,6 @@
   import { GuardHandlers } from './guard-handlers';
   import './guard.css';
   import ModifiersSection from './modifiers-section.svelte';
-  import ReputationSection from './reputation-section.svelte';
-  import ResourcesSection from './resources-section.svelte';
   import StatsSection from './stats-section.svelte';
 
   // Props for controlling the popup
@@ -103,7 +102,9 @@
     dispatch('close');
   }
 
-  function openPresets() {
+  async function openPresets() {
+    // Import and use preset manager dynamically to open preset popup
+    const { presetManager } = await import('@/components/presets/preset-manager');
     presetManager.showPresetPopup();
   }
 
@@ -126,98 +127,6 @@
         break;
       default:
         console.warn('Unknown preset type:', preset.type);
-    }
-  }
-
-  function handlePresetUpdated(event: CustomEvent) {
-    const { preset } = event.detail;
-    console.log('Guard.svelte - Recibiendo evento presetUpdated:', preset);
-
-    if (!preset || !preset.data || !preset.data.sourceId) {
-      console.warn('Guard.svelte - Invalid preset in presetUpdated event:', preset);
-      return;
-    }
-
-    // Update the corresponding item based on preset type
-    switch (preset.type) {
-      case 'situationalModifier':
-        updateSituationalModifierFromPreset(preset);
-        break;
-      case 'resource':
-        updateResourceFromPreset(preset);
-        break;
-      case 'reputation':
-        updateReputationFromPreset(preset);
-        break;
-      case 'patrolEffect':
-        // PatrolEffects are temporary and don't have persistent items to update
-        console.log('PatrolEffect preset updated - no persistent item to update');
-        break;
-      default:
-        console.warn('Unknown preset type in presetUpdated:', preset.type);
-    }
-  }
-
-  function updateSituationalModifierFromPreset(preset: any) {
-    const sourceId = preset.data.sourceId;
-    const existingModifier = modifiers.find(m => m.sourceId === sourceId || m.key === sourceId);
-
-    if (existingModifier) {
-      console.log('Guard.svelte - Updating existing situational modifier from preset:', existingModifier);
-
-      // Update the existing modifier with the preset data
-      existingModifier.name = preset.data.name;
-      existingModifier.description = preset.data.description || '';
-      existingModifier.img = preset.data.img || existingModifier.img;
-      existingModifier.mods = preset.data.statEffects || {};
-
-      // Determine state based on stat effects
-      const totalEffect = Object.values(existingModifier.mods).reduce((sum, value) => sum + (Number(value) || 0), 0);
-      existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-
-      // Trigger reactivity and persistence
-      modifiers = [...modifiers];
-      handlers.handleUpdateModifier();
-
-      console.log('Guard.svelte - Situational modifier updated:', existingModifier);
-    }
-  }
-
-  function updateResourceFromPreset(preset: any) {
-    const sourceId = preset.data.sourceId;
-    const existingResource = resources.find(r => r.key === sourceId);
-
-    if (existingResource) {
-      console.log('Guard.svelte - Updating existing resource from preset:', existingResource);
-
-      existingResource.name = preset.data.name;
-      existingResource.value = preset.data.value;
-      existingResource.details = preset.data.description || '';
-      existingResource.img = preset.data.img || existingResource.img;
-
-      resources = [...resources];
-      handlers.handleUpdateResource();
-
-      console.log('Guard.svelte - Resource updated:', existingResource);
-    }
-  }
-
-  function updateReputationFromPreset(preset: any) {
-    const sourceId = preset.data.sourceId;
-    const existingReputation = reputation.find(r => r.key === sourceId);
-
-    if (existingReputation) {
-      console.log('Guard.svelte - Updating existing reputation from preset:', existingReputation);
-
-      existingReputation.name = preset.data.name;
-      existingReputation.value = preset.data.value;
-      existingReputation.details = preset.data.description || '';
-      existingReputation.img = preset.data.img || existingReputation.img;
-
-      reputation = [...reputation];
-      handlers.handleUpdateReputation();
-
-      console.log('Guard.svelte - Reputation updated:', existingReputation);
     }
   }
 
@@ -323,99 +232,6 @@
 
     modifiers = [...modifiers, newModifier];
     handlers.handleUpdateModifier();
-  }
-
-  // Functions to create presets from existing items
-  function createResourcePreset(event: CustomEvent) {
-    const resource = event.detail;
-    const item = {
-      sourceId: resource.key, // Usar la key del resource como identificador único
-      name: resource.name,
-      value: resource.value,
-      description: resource.details || '',
-      img: resource.img || ''
-    };
-
-    presetManager.createPresetFromExistingItem(item, 'resource');
-  }
-
-  function createReputationPreset(event: CustomEvent) {
-    const reputation = event.detail;
-    const item = {
-      sourceId: reputation.key, // Usar la key de la reputación como identificador único
-      name: reputation.name,
-      value: reputation.value,
-      description: reputation.details || '',
-      img: reputation.img || ''
-    };
-
-    presetManager.createPresetFromExistingItem(item, 'reputation');
-  }
-
-  function createPatrolEffectPreset(modifier: any) {
-    // Create a stable identifier based on the modifier's content
-    const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
-    const stableSourceId = `temp-${nameKey}-${effectsKey}`;
-
-    const item = {
-      sourceId: stableSourceId, // Use stable sourceId instead of timestamp-based one
-      key: stableSourceId, // Also use as key for consistency
-      name: modifier.name,
-      description: modifier.description || '',
-      type: 'neutral',
-      duration: modifier.duration || '',
-      statEffects: modifier.statEffects || {}
-    };
-
-    presetManager.createPresetFromExistingItem(item, 'patrolEffect');
-  }
-
-
-
-
-
-  function createSituationalModifierPreset(event: CustomEvent) {
-    const modifier = event.detail;
-    console.log('Guard.svelte - Recibiendo evento para crear preset:', modifier);
-    const item = {
-      sourceId: modifier.sourceId || modifier.key, // Use sourceId first, fallback to key
-      name: modifier.name,
-      description: modifier.description || '',
-      situation: modifier.situation || modifier.description || 'Situación específica',
-      img: modifier.img || 'icons/svg/upgrade.svg',
-      statEffects: modifier.statEffects || modifier.mods || {}
-    };
-    console.log('Guard.svelte - Enviando item al presetManager:', item);
-    console.log('Guard.svelte - statEffects being sent:', item.statEffects);
-
-    try {
-      presetManager.createPresetFromExistingItem(item, 'situationalModifier');
-      console.log('Guard.svelte - Preset creation successful');
-    } catch (error) {
-      console.error('Guard.svelte - Error creating preset:', error);
-    }
-  }
-
-  function updatePresetFromModifier() {
-    console.log('Guard.svelte - Updating presets from modified modifiers');
-
-    // Update all situational modifiers that have sourceId/key
-    modifiers.forEach(modifier => {
-      if (modifier.sourceId || modifier.key) {
-        const item = {
-          sourceId: modifier.sourceId || modifier.key,
-          name: modifier.name,
-          description: modifier.description || '',
-          situation: modifier.description || 'Situación específica',
-          img: modifier.img || 'icons/svg/upgrade.svg',
-          statEffects: modifier.mods || {}
-        };
-
-        console.log('Guard.svelte - Updating preset for modifier:', modifier.name, 'with item:', item);
-        presetManager.updatePresetFromItem(item, 'situationalModifier');
-      }
-    });
   }
 
   function onDragStart(event: MouseEvent) {
@@ -539,8 +355,7 @@
     // Listen for preset usage events
     window.addEventListener('crow-nest-use-preset', handleUsePreset);
 
-    // Listen for preset update events from PresetManager
-    presetManager.addEventListener('presetUpdated', handlePresetUpdated);
+    // Preset manager integration removed - now handled by unified components
   });
 
   onDestroy(() => {
@@ -555,7 +370,7 @@
 
     // Remove preset listeners
     window.removeEventListener('crow-nest-use-preset', handleUsePreset);
-    presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
+    // Preset manager integration removed - now handled by unified components
   });
 
   function getTotalStatValue(stat: Stat): number {
@@ -778,9 +593,6 @@
                   on:modImageClick={handlers.handleModImageClick}
                   on:newModImageClick={handlers.handleNewModImageClick}
                   on:modFileChange={handlers.handleModFileChange}
-                  on:createPresetFromSituationalModifier={createSituationalModifierPreset}
-                  on:createPresetFromModifier={createSituationalModifierPreset}
-                  on:updatePresetFromModifier={updatePresetFromModifier}
                 />
               </div>
 
@@ -802,39 +614,34 @@
 
               <!-- Reputation Tab -->
               {#if activeGuardTab === 'reputation'}
-                <ReputationSection
-                  {reputation}
-                  {editingReputation}
-                  {expandedReputationDetails}
-                  on:toggleEditingReputation={handleToggleEditingReputation}
-                  on:addReputation={handlers.handleAddReputation}
-                  on:removeReputation={handlers.handleRemoveReputation}
+                <UnifiedReputation
+                  title="Reputación"
+                  showPresets={false}
+                  editingReputations={editingReputation}
+                  expandedReputationDetails={expandedReputationDetails}
+                  on:toggleEditingReputations={handleToggleEditingReputation}
                   on:updateReputation={handlers.handleUpdateReputation}
                   on:repImageClick={handlers.handleRepImageClick}
                   on:newRepImageClick={handlers.handleNewRepImageClick}
                   on:repFileChange={handlers.handleRepFileChange}
                   on:showReputationInChat={handlers.handleShowReputationInChat}
-                  on:toggleReputationDetails={handlers.handleToggleReputationDetails}
                   on:reorderReputation={(e) => { handlers.reorderReputation(e); }}
-                  on:createPreset={createReputationPreset}
                 />
 
               <!-- Resources Tab -->
               {:else if activeGuardTab === 'resources'}
-                <ResourcesSection
-                  {resources}
-                  {editingResources}
-                  {expandedResourceDetails}
+                <UnifiedResources
+                  title="Recursos"
+                  showPresets={false}
+                  editingResources={editingResources}
+                  expandedResourceDetails={expandedResourceDetails}
                   on:toggleEditingResources={handleToggleEditingResources}
-                  on:addResource={handlers.handleAddResource}
-                  on:removeResource={handlers.handleRemoveResource}
                   on:updateResource={handlers.handleUpdateResource}
                   on:resImageClick={handlers.handleResImageClick}
                   on:newResImageClick={handlers.handleNewResImageClick}
                   on:resFileChange={handlers.handleResFileChange}
                   on:showResourceInChat={handlers.showResourceInChat}
                   on:reorderResources={(e) => { handlers.reorderResources(e); }}
-                  on:createPreset={createResourcePreset}
                 />
               {/if}
             </div>

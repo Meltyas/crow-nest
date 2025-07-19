@@ -203,11 +203,13 @@ Hooks.once("ready", () => {
   initializeGroupsSync();
 
   // Initialize unified presets system
-  loadUnifiedPresets().then(() => {
-    console.log("[Crow Nest] Unified presets system initialized");
-  }).catch((error) => {
-    console.error("[Crow Nest] Failed to initialize presets:", error);
-  });
+  loadUnifiedPresets()
+    .then(() => {
+      console.log("[Crow Nest] Unified presets system initialized");
+    })
+    .catch((error) => {
+      console.error("[Crow Nest] Failed to initialize presets:", error);
+    });
 
   // Set up settings-based sync listener for real-time updates
   const groupsSyncManager = SyncManager.getInstance();
@@ -373,10 +375,8 @@ Hooks.once("ready", () => {
       patrolSheetManager.debugActiveSheetsSetting(),
   };
 
-  // Initialize preset manager to ensure it's available for all users
-  import("@/components/presets/preset-manager").then(({ presetManager }) => {
-    // No need to do anything with it, just importing it will initialize it
-  });
+  // Preset manager functionality now integrated in unified components
+  console.log("[Crow Nest] Unified presets system initialized");
 
   // Create HUD
   const container = document.createElement("div");

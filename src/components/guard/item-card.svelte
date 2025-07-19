@@ -13,6 +13,7 @@
   export let editingQuantity: Record<string, boolean> = {};
   export let draggedIndex: number | null = null;
   export let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};
+  export let inPresetManager = false; // Show activate/deactivate preset buttons when true
 
   const dispatch = createEventDispatcher();
 
@@ -99,6 +100,14 @@
 
   function handleCreatePreset() {
     dispatch('createPreset', item);
+  }
+
+  function handleActivatePreset() {
+    dispatch('activatePreset', { id: item.id, active: !item.active });
+  }
+
+  function handleRemovePreset() {
+    dispatch('removePreset', item.id);
   }
 
   function showReputationInChat() {
@@ -366,8 +375,25 @@
           {:else}
             <input class="item-input number" type="number" min="0" bind:value={item[config.valueProperty]} on:change={handleUpdate} />
           {/if}
-            {#if typeof game !== 'undefined' && game.user?.isGM}
-            <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
+            {#if inPresetManager}
+              <!-- Preset Manager buttons: activate/deactivate and remove -->
+              <button
+                class="preset-button {item.active ? 'active' : ''}"
+                on:click={handleActivatePreset}
+                title="{item.active ? 'Retirar del guard' : 'Usar en guard'}"
+              >
+                {item.active ? 'Retirar' : 'Usar'}
+              </button>
+              <button
+                class="remove-button preset-remove"
+                on:click={handleRemovePreset}
+                title="Eliminar Preset"
+              >
+                🗑️
+              </button>
+            {:else if typeof game !== 'undefined' && game.user?.isGM}
+              <!-- Guard interface: create preset button -->
+              <button class="preset-button" on:click={handleCreatePreset} title="Crear preset con este elemento">Preset</button>
             {/if}
           <button class="remove-button" on:click={handleRemove}>✕</button>
         </div>
@@ -846,5 +872,24 @@
 
   .resource-item .remove-button:hover {
     background: #b91c1c;
+  }
+
+  /* Preset Manager specific styles */
+  .preset-button.active {
+    background: #f59e0b;
+  }
+
+  .preset-button.active:hover {
+    background: #d97706;
+  }
+
+  .preset-remove {
+    background: #dc2626 !important;
+    color: white !important;
+    border: none !important;
+  }
+
+  .preset-remove:hover {
+    background: #b91c1c !important;
   }
 </style>
