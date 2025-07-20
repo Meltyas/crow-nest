@@ -14,10 +14,10 @@
   import RollDialogStandalone from '@/components/roll-dialog/roll-dialog-standalone.svelte';
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
+  import UnifiedSituationalModifiers from '@/components/unified/unified-situational-modifiers.svelte';
   import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
   import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
-    getModifiers,
     getReputation,
     getResources,
     getStats,
@@ -27,10 +27,11 @@
   import PopupFocusManager from '@/utils/popup-focus';
   import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { Subject } from 'rxjs';
   import { GuardHandlers } from './guard-handlers';
   import './guard.css';
-  import ModifiersSection from './modifiers-section.svelte';
   import StatsSection from './stats-section.svelte';
+  import { presetsStore } from '@/stores/presets';
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -42,9 +43,6 @@
   let stats: Stat[] = [];
   let editing = false;
 
-  let modifiers: GuardModifier[] = [];
-  let editingMods = false;
-
   let resources: GuardResource[] = [];
   let editingResources = false;
 
@@ -52,6 +50,7 @@
   let editingReputation = false;
   let expandedReputationDetails: Record<string, boolean> = {};
   let expandedResourceDetails: Record<string, boolean> = {};
+  let expandedSituationalModifierDetails: Record<string, boolean> = {};
 
   // Roll dialog state
   let rollDialogOpen = false;
@@ -84,6 +83,10 @@
 
   // Sync manager
   let syncManager: SyncManager;
+
+  // RxJS cleanup subject
+  const destroy$ = new Subject<void>();
+  const componentId = 'guard-' + Math.random().toString(36).substr(2, 9);
 
   // Focus manager
   let focusManager: PopupFocusManager;
@@ -128,11 +131,51 @@
         applyPatrolEffectPreset(preset);
         break;
       case 'situationalModifier':
-        applySituationalModifierPreset(preset);
+        // Situational modifiers are now handled by the unified system
+        console.log('Guard - Situational modifier preset applied via unified system:', preset.data.name);
+        ui.notifications?.info(`Modificador situacional "${preset.data.name}" aplicado.`);
         break;
       default:
         console.warn('Unknown preset type:', preset.type);
     }
+  }
+
+  function handleApplySituationalModifier(event: Event) {
+    const customEvent = event as CustomEvent;
+    const { situationalModifier } = customEvent.detail;
+
+    console.log('Guard - Situational modifier applied from preset manager:', situationalModifier);
+
+    // The situational modifier is already active in the presets system,
+    // so it should automatically appear in the UnifiedSituationalModifiers component
+    // and affect the getTotalStatValue calculation
+
+    // Show success notification
+    if (typeof ui !== 'undefined' && ui.notifications) {
+      ui.notifications.info(`Modificador situacional "${situationalModifier.name}" añadido al guard.`);
+    }
+  }
+
+  function handleEditSituationalModifier(event: Event) {
+    const customEvent = event as CustomEvent;
+    const situationalModifier = customEvent.detail;
+
+    console.log('Guard - Editing situational modifier:', situationalModifier);
+
+    // Use the global dialog system for editing
+    const modifierForDialog = {
+      id: situationalModifier.id,
+      name: situationalModifier.name || '',
+      description: situationalModifier.description || '',
+      statEffects: situationalModifier.statEffects || {},
+      img: situationalModifier.img || 'icons/svg/upgrade.svg',
+      sourceId: situationalModifier.sourceId || situationalModifier.id
+    };
+
+    // Import and open the global dialog
+    import('@/utils/dialog-manager').then(({ openSituationalModifierEditDialog }) => {
+      openSituationalModifierEditDialog(modifierForDialog, false); // Pass false for guard context
+    });
   }
 
   function applyResourcePreset(preset: any) {
@@ -199,46 +242,6 @@
     ui.notifications?.info(`Modificador temporal "${preset.data.name}" listo. Haz clic en un grupo para aplicarlo.`);
   }
 
-  function applySituationalModifierPreset(preset: any) {
-    const presetKey = preset.data.sourceId; // Use the sourceId from the preset
-
-    // Check if a modifier with this preset ID already exists
-    const existingModifier = modifiers.find(m => m.key === presetKey || m.sourceId === presetKey);
-    if (existingModifier) {
-      // Update existing modifier instead of creating duplicate
-      existingModifier.name = preset.data.name;
-      existingModifier.description = preset.data.description || '';
-      existingModifier.img = preset.data.img || 'icons/svg/upgrade.svg';
-      existingModifier.mods = preset.data.statEffects || {};
-      existingModifier.sourceId = preset.data.sourceId; // Preserve sourceId
-
-      // Determine state based on stat effects
-      const totalEffect = Object.values(existingModifier.mods).reduce((sum: number, value: number) => sum + value, 0);
-      existingModifier.state = totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-
-      modifiers = [...modifiers]; // Trigger reactivity
-      handlers.handleUpdateModifier();
-      return;
-    }
-
-    // Create new modifier
-    const newModifier = {
-      key: presetKey, // Use the sourceId from the preset for consistency
-      name: preset.data.name,
-      description: preset.data.description || '',
-      img: preset.data.img || 'icons/svg/upgrade.svg',
-      mods: preset.data.statEffects || {},
-      sourceId: preset.data.sourceId, // Preserve sourceId
-      state: (() => {
-        const totalEffect = Object.values(preset.data.statEffects || {}).reduce((sum: number, value) => sum + (Number(value) || 0), 0);
-        return totalEffect > 0 ? 'positive' : totalEffect < 0 ? 'negative' : 'neutral';
-      })() as 'positive' | 'neutral' | 'negative'
-    };
-
-    modifiers = [...modifiers, newModifier];
-    handlers.handleUpdateModifier();
-  }
-
   function onDragStart(event: MouseEvent) {
     isDragging = true;
     dragOffset = {
@@ -296,8 +299,6 @@
 
   onMount(() => {
     stats = getStats() as Stat[];
-    modifiers = getModifiers();
-    sortModifiersByState(); // Sort modifiers on initial load
     resources = getResources();
     reputation = getReputation();
     patrols = getPatrols();
@@ -306,19 +307,41 @@
     // Initialize handlers
     handlers = new GuardHandlers(updateComponentData);
 
-    // Setup real-time synchronization
+    // Setup real-time synchronization with RxJS
     syncManager = SyncManager.getInstance();
 
     // Initialize focus manager
     focusManager = PopupFocusManager.getInstance();
 
-    // Listen for different types of updates
-    syncManager.subscribe('stats', handlers.handleStatsSync);
-    syncManager.subscribe('modifiers', handlers.handleModifiersSync);
-    syncManager.subscribe('resources', handlers.handleResourcesSync);
-    syncManager.subscribe('reputation', handlers.handleReputationSync);
-    syncManager.subscribe('patrols', handlers.handlePatrolsSync);
-    syncManager.subscribe('admins', handlers.handleAdminsSync);
+    // RxJS SUBSCRIPTIONS - Optimized subscription management
+    console.log('Guard - Setting up RxJS subscriptions for componentId:', componentId);
+
+    // Helper function to create sync handlers - DRY principle
+    const createSyncHandler = (type: string, handlerMethod: Function) => (data: any) => {
+      if (data && handlers) {
+        handlerMethod.call(handlers, { 
+          type, 
+          action: 'update', 
+          data, 
+          timestamp: Date.now(), 
+          user: 'rxjs-sync' 
+        });
+      }
+    };
+
+    // Batch subscription setup - more maintainable
+    const subscriptions = [
+      { type: 'stats', handler: handlers.handleStatsSync },
+      { type: 'resources', handler: handlers.handleResourcesSync },
+      { type: 'reputation', handler: handlers.handleReputationSync },
+      { type: 'groups', handler: handlers.handlePatrolsSync },
+      { type: 'adminData', handler: handlers.handleAdminsSync }
+    ];
+
+    // Note: 'modifiers' intentionally excluded - not in SyncManager dataType union
+    subscriptions.forEach(({ type, handler }) => {
+      syncManager.subscribeToDataType(type as any, componentId, createSyncHandler(type, handler));
+    });
 
     // Update handlers with initial data
     updateHandlersData();
@@ -327,12 +350,6 @@
     Hooks.on('updateSetting', (setting: any) => {
       if (setting.key === `${MODULE_ID}.${SETTING_STATS}`) {
         stats = setting.value || [];
-        updateHandlersData();
-      }
-
-      if (setting.key === `${MODULE_ID}.${SETTING_MODIFIERS}`) {
-        modifiers = setting.value || [];
-        sortModifiersByState(); // Sort modifiers when loaded from settings
         updateHandlersData();
       }
 
@@ -360,37 +377,38 @@
     // Listen for preset usage events
     window.addEventListener('crow-nest-use-preset', handleUsePreset);
 
+    // Listen for situational modifier application from preset manager
+    window.addEventListener('crow-nest-apply-situational-modifier', handleApplySituationalModifier);
+
     // Preset manager integration removed - now handled by unified components
   });
 
   onDestroy(() => {
-    if (syncManager && handlers) {
-      syncManager.unsubscribe('stats', handlers.handleStatsSync);
-      syncManager.unsubscribe('modifiers', handlers.handleModifiersSync);
-      syncManager.unsubscribe('resources', handlers.handleResourcesSync);
-      syncManager.unsubscribe('reputation', handlers.handleReputationSync);
-      syncManager.unsubscribe('patrols', handlers.handlePatrolsSync);
-      syncManager.unsubscribe('admins', handlers.handleAdminsSync);
-    }
+    // RxJS CLEANUP - Single cleanup call
+    console.log('Guard - Cleaning up RxJS subscriptions for componentId:', componentId);
+    
+    syncManager?.cleanupComponent(componentId);
+
+    // Complete the destroy subject
+    destroy$.next();
+    destroy$.complete();
 
     // Remove preset listeners
     window.removeEventListener('crow-nest-use-preset', handleUsePreset);
-    // Preset manager integration removed - now handled by unified components
+    window.removeEventListener('crow-nest-apply-situational-modifier', handleApplySituationalModifier);
   });
 
   function getTotalStatValue(stat: Stat): number {
-    const modifierBonus = modifiers.reduce((acc, m) => acc + (m.mods[stat.key] || 0), 0);
+    // Get active situational modifiers for guard (global ones without groupId)
+    const activeSituationalModifiers = $presetsStore.situationalModifiers.filter(m => !m.groupId && m.active);
+    
+    // Calculate bonus from active situational modifiers
+    const modifierBonus = activeSituationalModifiers.reduce((acc, m) => {
+      const statEffect = m.statEffects[stat.key];
+      return acc + (statEffect ? Number(statEffect) : 0);
+    }, 0);
+    
     return stat.value + modifierBonus;
-  }
-
-  function sortModifiersByState() {
-    // Sort modifiers by state: positive -> neutral -> negative
-    const stateOrder = { 'positive': 0, 'neutral': 1, 'negative': 2 };
-    modifiers.sort((a, b) => {
-      const stateA = stateOrder[a.state || 'neutral'] ?? 1; // Default to neutral if state is undefined
-      const stateB = stateOrder[b.state || 'neutral'] ?? 1;
-      return stateA - stateB;
-    });
   }
 
   // Update handlers with current component data
@@ -398,17 +416,16 @@
     if (handlers) {
       handlers.updateData({
         stats,
-        modifiers,
         resources,
         reputation,
         patrols,
         admins,
         editing,
-        editingMods,
         editingResources,
         editingReputation,
         expandedReputationDetails,
         expandedResourceDetails,
+        expandedSituationalModifierDetails,
       });
     }
   }
@@ -418,27 +435,19 @@
     if (handlers) {
       const data = handlers.getData();
       stats = data.stats;
-      modifiers = data.modifiers;
       resources = data.resources;
       reputation = data.reputation;
       patrols = data.patrols;
       admins = data.admins;
       expandedReputationDetails = data.expandedReputationDetails;
       expandedResourceDetails = data.expandedResourceDetails;
+      expandedSituationalModifierDetails = data.expandedSituationalModifierDetails;
     }
   }
 
   // Toggle state handlers (these stay local as they're simple state changes)
   function handleToggleEditing() {
     editing = !editing;
-    updateHandlersData();
-  }
-
-  function handleToggleEditingMods() {
-    editingMods = !editingMods;
-    if (!editingMods) {
-      sortModifiersByState();
-    }
     updateHandlersData();
   }
 
@@ -593,17 +602,14 @@
                   on:rollStat={(e) => openRollDialog(e.detail)}
                 />
 
-                <ModifiersSection
-                  {modifiers}
-                  {stats}
-                  {editingMods}
-                  on:addModifier={handlers.handleAddModifier}
-                  on:removeModifier={handlers.handleRemoveModifier}
-                  on:updateModifier={handlers.handleUpdateModifier}
-                  on:toggleEditingMods={handleToggleEditingMods}
-                  on:modImageClick={handlers.handleModImageClick}
-                  on:newModImageClick={handlers.handleNewModImageClick}
-                  on:modFileChange={handlers.handleModFileChange}
+                <UnifiedSituationalModifiers
+                  title="Modificadores Situacionales"
+                  groupId={undefined}
+                  expandedSituationalModifierDetails={expandedSituationalModifierDetails}
+                  inPresetManager={false}
+                  displayMode="groups"
+                  on:crow-nest-apply-situational-modifier={handleApplySituationalModifier}
+                  on:editSituationalModifier={handleEditSituationalModifier}
                 />
               </div>
 
@@ -698,7 +704,7 @@
   group={createGuardGroup()}
   baseValue={rollDialogBaseValue}
   totalModifier={rollDialogTotalModifier}
-  guardModifiers={modifiers}
+  guardModifiers={$presetsStore.situationalModifiers.filter(m => !m.groupId && m.active)}
   on:close={closeRollDialog}
 />
 

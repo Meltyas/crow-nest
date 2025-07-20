@@ -1,5 +1,5 @@
-import type { Reputation, Resource, PatrolEffect } from "@/shared/preset";
-import { writable } from "svelte/store";
+import type { Reputation, Resource, PatrolEffect, SituationalModifier } from "@/shared/preset";
+import { writable, get } from "svelte/store";
 
 // Store for managing global dialogs
 interface DialogState {
@@ -15,6 +15,11 @@ interface DialogState {
     visible: boolean;
     patrolEffect: PatrolEffect | null;
   };
+  situationalModifierEditDialog: {
+    visible: boolean;
+    situationalModifier: SituationalModifier | null;
+    fromPresetManager: boolean;
+  };
 }
 
 const initialState: DialogState = {
@@ -29,6 +34,11 @@ const initialState: DialogState = {
   patrolEffectEditDialog: {
     visible: false,
     patrolEffect: null,
+  },
+  situationalModifierEditDialog: {
+    visible: false,
+    situationalModifier: null,
+    fromPresetManager: false,
   },
 };
 
@@ -101,6 +111,29 @@ export function closePatrolEffectEditDialog() {
     patrolEffectEditDialog: {
       visible: false,
       patrolEffect: null,
+    },
+  }));
+}
+
+// Situational Modifier Edit Dialog functions
+export function openSituationalModifierEditDialog(situationalModifier: SituationalModifier, fromPresetManager: boolean = false) {
+  dialogStore.update((state) => ({
+    ...state,
+    situationalModifierEditDialog: {
+      visible: true,
+      situationalModifier,
+      fromPresetManager, // Add context information
+    },
+  }));
+}
+
+export function closeSituationalModifierEditDialog() {
+  dialogStore.update((state) => ({
+    ...state,
+    situationalModifierEditDialog: {
+      visible: false,
+      situationalModifier: null,
+      fromPresetManager: false,
     },
   }));
 }
@@ -293,5 +326,100 @@ export async function handlePatrolEffectSave(updatedPatrolEffect: any) {
   } catch (error) {
     console.error("Error saving patrol effect:", error);
     ui.notifications?.error("Error al guardar el efecto de patrulla");
+  }
+}
+
+// Situational Modifier save handler
+export async function handleSituationalModifierSave(updatedSituationalModifier: any) {
+  console.log("Dialog manager - Handling situational modifier save:", updatedSituationalModifier);
+  
+  // Import the presets store dynamically to avoid circular imports
+  const { updateSituationalModifier, addSituationalModifier } = await import("@/stores/presets");
+
+  try {
+    // Get the context information from the dialog store
+    const dialogState = get(dialogStore);
+    const fromPresetManager = dialogState.situationalModifierEditDialog.fromPresetManager;
+    
+    // Get the situational modifier ID directly from the updatedSituationalModifier that contains the original data
+    const modifierId = updatedSituationalModifier.id || updatedSituationalModifier.sourceId;
+
+    console.log("Attempting to save with ID:", modifierId);
+    console.log("Full updatedSituationalModifier:", updatedSituationalModifier);
+    console.log("fromPresetManager:", fromPresetManager);
+
+    // Check if this is a creation (empty ID) or update
+    if (!modifierId || modifierId === '') {
+      console.log("Creating new situational modifier (no ID provided)");
+      
+      // Generate a consistent sourceId
+      const sourceId = `situational-modifier-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Create new situational modifier
+      // If from preset manager: active: false (goes to preset pool)
+      // If from guard: active: true (goes directly to guard)
+      await addSituationalModifier({
+        name: updatedSituationalModifier.name,
+        statEffects: updatedSituationalModifier.statEffects || {},
+        img: updatedSituationalModifier.img || 'icons/svg/upgrade.svg',
+        sourceId: sourceId,
+        groupId: undefined, // Global preset
+        description: updatedSituationalModifier.description || '',
+        active: !fromPresetManager, // Active only if NOT from preset manager
+        presetOrder: 0 // Add at the beginning of preset list
+      });
+
+      console.log("Situational modifier created successfully:", updatedSituationalModifier);
+      ui.notifications?.info("Modificador situacional creado correctamente");
+      
+      // Emit event for auto-application to pending group
+      const newModifierEvent = new CustomEvent('situational-modifier-created', {
+        detail: {
+          name: updatedSituationalModifier.name,
+          description: updatedSituationalModifier.description,
+          statEffects: updatedSituationalModifier.statEffects,
+          img: updatedSituationalModifier.img,
+          sourceId: sourceId
+        }
+      });
+      window.dispatchEvent(newModifierEvent);
+    } else {
+      console.log("Updating existing situational modifier with ID:", modifierId);
+      console.log("Updates to apply:", {
+        name: updatedSituationalModifier.name,
+        statEffects: updatedSituationalModifier.statEffects,
+        description: updatedSituationalModifier.description,
+        img: updatedSituationalModifier.img,
+      });
+
+      await updateSituationalModifier(modifierId, {
+        name: updatedSituationalModifier.name,
+        statEffects: updatedSituationalModifier.statEffects,
+        description: updatedSituationalModifier.description,
+        img: updatedSituationalModifier.img,
+      });
+
+      console.log("Situational modifier updated successfully:", updatedSituationalModifier);
+      ui.notifications?.info("Modificador situacional actualizado correctamente");
+      
+      // Emit event for situational modifier updates (for groups to update existing modifiers)
+      const updatedModifierEvent = new CustomEvent('situational-modifier-updated', {
+        detail: {
+          id: modifierId,
+          name: updatedSituationalModifier.name,
+          description: updatedSituationalModifier.description,
+          statEffects: updatedSituationalModifier.statEffects,
+          img: updatedSituationalModifier.img,
+          sourceId: updatedSituationalModifier.sourceId
+        }
+      });
+      window.dispatchEvent(updatedModifierEvent);
+    }
+
+    // Close the dialog
+    closeSituationalModifierEditDialog();
+  } catch (error) {
+    console.error("Error saving situational modifier:", error);
+    ui.notifications?.error("Error al guardar el modificador situacional");
   }
 }

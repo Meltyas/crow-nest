@@ -7,9 +7,9 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
 
-  export let item: any; // GuardReputation | GuardResource
+  export let item: any; // GuardReputation | GuardResource | SituationalModifier
   export let index: number;
-  export let type: 'reputation' | 'resource' | 'patrol-effect'; // Para determinar el comportamiento
+  export let type: 'reputation' | 'resource' | 'patrol-effect' | 'situational-modifier'; // Para determinar el comportamiento
   export let expandedDetails: Record<string, boolean> = {};
   export let draggedIndex: number | null = null;
   export let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};
@@ -42,6 +42,18 @@
       valueLabel: 'Cantidad',
       placeholder: 'Descripción del recurso...',
       nameLabel: 'Nombre del recurso'
+    },
+    'situational-modifier': {
+      imageDefault: 'icons/svg/upgrade.svg',
+      detailsProperty: 'description',
+      valueProperty: null, // No single value property
+      nameProperty: 'name',
+      showQuantity: false,
+      showBar: false,
+      barMax: null,
+      valueLabel: null,
+      placeholder: 'Descripción del modificador situacional...',
+      nameLabel: 'Nombre del modificador'
     }
   }[type];
 
@@ -75,6 +87,8 @@
       showReputationInChat();
     } else if (type === 'resource') {
       showResourceInChat();
+    } else if (type === 'situational-modifier') {
+      showSituationalModifierInChat();
     }
   }
 
@@ -83,16 +97,16 @@
   }
 
   function handleActivatePreset() {
-    dispatch('activatePreset', { id: item.key || item.id, active: !item.active });
+    dispatch('activatePreset', { id: item.id, active: !item.active });
   }
 
   function handleRemovePreset() {
     if (inPresetManager) {
       // En preset manager: eliminar completamente
-      dispatch('removePreset', item.key || item.id);
+      dispatch('removePreset', item.id);
     } else {
       // En guard: desactivar (quitar del guard)
-      dispatch('activatePreset', { id: item.key || item.id, active: false });
+      dispatch('activatePreset', { id: item.id, active: false });
     }
   }
 
@@ -289,6 +303,124 @@
         </div>
       `,
       speaker: { alias: "Recursos del Guardia" }
+    };
+
+    ChatMessage.create(chatData);
+  }
+
+  async function showSituationalModifierInChat() {
+    // Get stats for display
+    const { getStats } = await import('@/guard/stats');
+    const stats = getStats();
+
+    const detailsSection = item[config.detailsProperty] && item[config.detailsProperty].trim()
+      ? `<div style="
+          margin-bottom: 0.5rem;
+          font-family: 'Overpass', sans-serif;
+          font-size: 14px;
+          line-height: 1.4;
+          color: #000000;
+          width: 100%;
+        ">
+          <p style="margin: 0;">${item[config.detailsProperty]}</p>
+        </div>`
+      : "";
+
+    // Generate stat effects display
+    const statEffectsSection = item.statEffects && Object.keys(item.statEffects).length > 0
+      ? `<div style="
+          margin-top: 0.5rem;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+          gap: 0.25rem;
+          width: 100%;
+        ">
+          ${Object.entries(item.statEffects).map(([statKey, value]) => {
+            const stat = stats.find(s => s.key === statKey);
+            const statName = stat ? stat.name : statKey;
+            const statImg = stat ? stat.img : 'icons/svg/shield.svg';
+            const displayValue = Number(value) >= 0 ? `+${value}` : `${value}`;
+            const valueColor = Number(value) >= 0 ? '#10b981' : '#ef4444';
+            
+            return `<div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 0.25rem;
+              padding: 0.25rem;
+              border: 1px solid #d1d5db;
+              border-radius: 4px;
+              background: #f9fafb;
+            ">
+              <img src="${statImg}" alt="${statName}" style="
+                width: 20px;
+                height: 20px;
+                object-fit: cover;
+              " />
+              <span style="
+                font-size: 0.7rem;
+                color: #374151;
+                text-align: center;
+                line-height: 1;
+              ">${statName}</span>
+              <span style="
+                font-weight: bold;
+                font-size: 0.8rem;
+                color: ${valueColor};
+              ">${displayValue}</span>
+            </div>`;
+          }).join('')}
+        </div>`
+      : "";
+
+    const chatData = {
+      content: `
+        <div style="
+          background: #ffffff;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          width: 100%;
+          border: 1px solid #d4af37;
+          border-radius: 8px;
+          position: relative;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        ">
+          <img src="${item.img || config.imageDefault}" alt="${item[config.nameProperty]}" style="
+            background: #000000;
+            width: 100%;
+            aspect-ratio: 2 / 1;
+            object-fit: cover;
+            border-radius: 8px 8px 0 0;
+            flex-shrink: 0;
+            border-bottom: 2px solid #d4af37;
+          " />
+          <div style="
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem;
+            position: relative;
+            align-items: flex-start;
+          ">
+            <div style="
+              font-family: 'Eveleth';
+              font-size: 1rem;
+              color: #000000;
+              line-height: 1.4;
+            ">${item[config.nameProperty]}</div>
+
+            ${detailsSection}
+
+            ${statEffectsSection}
+          </div>
+        </div>
+      `,
+      speaker: { alias: "Modificadores Situacionales" }
     };
 
     ChatMessage.create(chatData);

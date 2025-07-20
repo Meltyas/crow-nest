@@ -1,58 +1,59 @@
 <script lang="ts">
   import AddItemForm from '@/components/guard/add-item-form.svelte';
-  import PatrolCard from '@/components/guard/patrol-card.svelte';
+  import SituationalModifierCard from '@/components/guard/situational-modifier-card.svelte';
   import {
-    addPatrolEffect,
-    deletePatrolEffectPreset,
+    addSituationalModifier,
+    deleteSituationalModifierPreset,
     presetsStore,
-    togglePatrolEffectActive
+    toggleSituationalModifierActive
   } from '@/stores/presets';
   import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
   import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
-  import { openPatrolEffectEditDialog } from '../../utils/dialog-manager';
+  import { openSituationalModifierEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-resources
-  export let groupId: string | undefined = undefined; // undefined for global patrol effects
-  export let title: string = 'Efectos de Patrulla';
-  export let expandedPatrolEffectDetails: Record<string, boolean> = {};
+  export let groupId: string | undefined = undefined; // undefined for global situational modifiers
+  export let title: string = 'Modificadores Situacionales';
+  export let expandedSituationalModifierDetails: Record<string, boolean> = {};
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
+  export let displayMode: string = 'guard'; // 'groups' for simple view, 'guard' for full view
 
   const dispatch = createEventDispatcher();
 
   // RxJS cleanup and component management
   const destroy$ = new Subject<void>();
-  const componentId = `unified-patrol-effects-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
+  const componentId = `unified-situational-modifiers-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
 
   // Suscripción al store para reactividad completa
   let currentPresets = $presetsStore;
   let syncManager: SyncManager;
 
   // Local state - siguiendo el patrón de resources-section.svelte
-  let addingPatrolEffect = false;
-  let newPatrolEffect: any = {
+  let addingSituationalModifier = false;
+  let newSituationalModifier: any = {
     key: '',
     name: '',
     statEffects: {},
-    img: 'icons/svg/aura.svg',
+    img: 'icons/svg/upgrade.svg',
     details: ''
   };
 
   // Variables reactivas basadas en el store actualizado - con ordenamiento personalizado
-  $: activePatrolEffects = (groupId
-    ? currentPresets.patrolEffects.filter(e => e.groupId === groupId && e.active)
-    : currentPresets.patrolEffects.filter(e => !e.groupId && e.active))
+  $: activeSituationalModifiers = (groupId
+    ? currentPresets.situationalModifiers.filter(m => m.groupId === groupId && m.active)
+    : currentPresets.situationalModifiers.filter(m => !m.groupId && m.active))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // Para presets: todos los disponibles para seleccionar - ordenados por presetOrder
   $: availablePresets = (groupId
-    ? currentPresets.patrolEffects.filter(e => e.groupId === groupId)
-    : currentPresets.patrolEffects.filter(e => !e.groupId))
+    ? currentPresets.situationalModifiers.filter(m => m.groupId === groupId)
+    : currentPresets.situationalModifiers.filter(m => !m.groupId))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
-  $: displayPatrolEffects = inPresetManager ? availablePresets : activePatrolEffects;
+  $: displaySituationalModifiers = inPresetManager ? availablePresets : activeSituationalModifiers;
 
   // Drag and drop state
   let draggedIndex: number | null = null;
@@ -60,7 +61,7 @@
 
   // Sincronización y lifecycle con RxJS
   onMount(() => {
-    console.log('UnifiedPatrolEffects - Setting up RxJS subscriptions for componentId:', componentId, 'groupId:', groupId);
+    console.log('UnifiedSituationalModifiers - Setting up RxJS subscriptions for componentId:', componentId, 'groupId:', groupId);
 
     // Initialize SyncManager (no longer needs dynamic import)
     syncManager = SyncManager.getInstance();
@@ -75,7 +76,7 @@
     presetsStoreSubject.pipe(
       distinctUntilChanged(),
       debounceTime(30),
-      tap(presets => console.log('UnifiedPatrolEffects - Store updated for groupId:', groupId, !!presets)),
+      tap(presets => console.log('UnifiedSituationalModifiers - Store updated for groupId:', groupId, !!presets)),
       takeUntil(destroy$)
     ).subscribe(storePresets => {
       if (storePresets && storePresets !== currentPresets) {
@@ -85,9 +86,9 @@
 
     // Secondary stream: Remote sync updates (for bidirectional sync)
     syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
-      console.log('UnifiedPatrolEffects - Sync update for groupId:', groupId, !!syncPresets);
+      console.log('UnifiedSituationalModifiers - Sync update for groupId:', groupId, !!syncPresets);
       if (syncPresets && syncPresets !== currentPresets) {
-        console.log('UnifiedPatrolEffects - Applying sync presets for groupId:', groupId);
+        console.log('UnifiedSituationalModifiers - Applying sync presets for groupId:', groupId);
         currentPresets = syncPresets;
       }
     });
@@ -100,7 +101,7 @@
 
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
-    console.log('UnifiedPatrolEffects - Cleaning up RxJS subscriptions for componentId:', componentId);
+    console.log('UnifiedSituationalModifiers - Cleaning up RxJS subscriptions for componentId:', componentId);
     
     destroy$.next();
     destroy$.complete();
@@ -110,97 +111,93 @@
     }
   });
 
-  function openAddPatrolEffect() {
-    // Use global dialog for adding new patrol effect
-    openPatrolEffectEditDialog({
+  function openAddSituationalModifier() {
+    // Use global dialog for adding new situational modifier
+    openSituationalModifierEditDialog({
       id: '',
       name: '',
-      value: 0,
-      type: 'permanent',
-      statEffects: {},
       description: '',
+      statEffects: {},
       img: '',
       sourceId: ''
-    });
+    }, inPresetManager); // Pass the current context
   }
 
-  function cancelAddPatrolEffect() {
-    addingPatrolEffect = false;
+  function cancelAddSituationalModifier() {
+    addingSituationalModifier = false;
   }
 
-  async function confirmAddPatrolEffect() {
+  async function confirmAddSituationalModifier() {
     // Crear nuevo preset en el store
     // En guard: active: true por defecto (elementos van directo al guard)
     // En preset manager: active: false por defecto (elementos van al preset pool)
-    await addPatrolEffect({
-      name: newPatrolEffect.name,
-      value: newPatrolEffect.value,
-      type: newPatrolEffect.type,
-      statEffects: newPatrolEffect.statEffects,
-      img: newPatrolEffect.img,
-      description: newPatrolEffect.description,
+    await addSituationalModifier({
+      name: newSituationalModifier.name,
+      statEffects: newSituationalModifier.statEffects,
+      img: newSituationalModifier.img,
+      description: newSituationalModifier.description,
       groupId: groupId,
-      sourceId: `patrol-effect-${Date.now()}`,
+      sourceId: `situational-modifier-${Date.now()}`,
       active: !inPresetManager // En guard activo por defecto, en preset manager inactivo
     });
-    addingPatrolEffect = false;
-    dispatch('updatePatrolEffect');
+    addingSituationalModifier = false;
+    dispatch('updateSituationalModifier');
   }
 
-  async function removePatrolEffectItem(index: number) {
-    const patrolEffect = displayPatrolEffects[index];
-    if (patrolEffect && confirm('¿Eliminar este efecto de patrulla?')) {
+  async function removeSituationalModifierItem(index: number) {
+    const situationalModifier = displaySituationalModifiers[index];
+    if (situationalModifier && confirm('¿Eliminar este modificador situacional?')) {
       if (inPresetManager) {
         // En preset manager, eliminar completamente
-        await deletePatrolEffectPreset(patrolEffect.id);
+        await deleteSituationalModifierPreset(situationalModifier.id);
       } else {
         // En guard, solo desactivar
-        await togglePatrolEffectActive(patrolEffect.id);
+        await toggleSituationalModifierActive(situationalModifier.id);
       }
-      dispatch('updatePatrolEffect');
+      dispatch('updateSituationalModifier');
     }
   }
 
-  function onNewPatrolEffectImageClick() {
-    dispatch('newPatrolEffectImageClick', newPatrolEffect);
+  function onNewSituationalModifierImageClick() {
+    dispatch('newSituationalModifierImageClick', newSituationalModifier);
   }
 
-  function togglePatrolEffectDetails(effectKey: string) {
-    expandedPatrolEffectDetails[effectKey] = !expandedPatrolEffectDetails[effectKey];
-    expandedPatrolEffectDetails = { ...expandedPatrolEffectDetails };
+  function toggleSituationalModifierDetails(modifierKey: string) {
+    expandedSituationalModifierDetails[modifierKey] = !expandedSituationalModifierDetails[modifierKey];
+    expandedSituationalModifierDetails = { ...expandedSituationalModifierDetails };
   }
 
-  function showPatrolEffectInChat(effect: any) {
-    dispatch('showPatrolEffectInChat', effect);
+  function showSituationalModifierInChat(modifier: any) {
+    dispatch('showSituationalModifierInChat', modifier);
   }
 
-  function debugLogPatrolEffects() {
-    console.log('UnifiedPatrolEffects Debug:', {
+  function debugLogSituationalModifiers() {
+    console.log('UnifiedSituationalModifiers Debug:', {
       groupId,
       inPresetManager,
-      activeCount: activePatrolEffects.length,
+      activeCount: activeSituationalModifiers.length,
       presetCount: availablePresets.length,
-      displayCount: displayPatrolEffects.length
+      displayCount: displaySituationalModifiers.length
     });
   }
 
-  // New handler function for PatrolCard edit events
-  function handleEditPatrolEffect(patrolEffect: any) {
+  // New handler function for SituationalModifierCard edit events
+  function handleEditSituationalModifier(situationalModifier: any) {
     if (inPresetManager) {
       // Use global dialog when in preset manager
-      openPatrolEffectEditDialog(patrolEffect);
+      openSituationalModifierEditDialog(situationalModifier, true); // Pass true for preset manager
     } else {
       // Dispatch event to parent component for guard.svelte
-      dispatch('editPatrolEffect', patrolEffect);
+      dispatch('editSituationalModifier', situationalModifier);
     }
   }
 
-  // Handler for PatrolCard use events
-  function handleUsePatrolEffect(patrolEffect: any) {
+  // Handler for SituationalModifierCard use events
+  function handleUseSituationalModifier(situationalModifier: any) {
     if (inPresetManager) {
       // Emit a window event that groups.svelte can listen to
-      const event = new CustomEvent('crow-nest-apply-patrol-effect', {
-        detail: { patrolEffect }
+      const event = new CustomEvent('crow-nest-apply-situational-modifier', {
+        detail: { situationalModifier }
       });
       window.dispatchEvent(event);
     }
@@ -209,23 +206,21 @@
 
   function handleEditItem(event: CustomEvent) {
     const { item, type } = event.detail;
-    if (type === 'patrol-effect') {
+    if (type === 'situational-modifier') {
       if (inPresetManager) {
         // Use global dialog when in preset manager
-        const patrolEffect = {
+        const situationalModifier = {
           id: item.sourceId || item.id,
           name: item.name,
-          value: item.value,
-          type: item.type,
-          statEffects: item.statEffects,
           description: item.description || item.details,
+          statEffects: item.statEffects,
           img: item.img,
           sourceId: item.sourceId || item.id
         };
-        openPatrolEffectEditDialog(patrolEffect);
+        openSituationalModifierEditDialog(situationalModifier, true); // Pass true for preset manager
       } else {
         // Dispatch event to parent component for guard.svelte
-        dispatch('editPatrolEffect', item);
+        dispatch('editSituationalModifier', item);
       }
     }
   }
@@ -256,8 +251,8 @@
       return;
     }
 
-    // Reorder the patrol effects
-    await reorderPatrolEffects(dropData.draggedIndex, dropData.targetIndex);
+    // Reorder the situational modifiers
+    await reorderSituationalModifiers(dropData.draggedIndex, dropData.targetIndex);
     draggedIndex = null;
   }
 
@@ -267,51 +262,51 @@
   }
 
   // Preset management functions
-  function createPatrolEffectPreset(patrolEffect: any) {
-    dispatch('createPreset', patrolEffect);
+  function createSituationalModifierPreset(situationalModifier: any) {
+    dispatch('createPreset', situationalModifier);
   }
 
-  async function togglePatrolEffectActiveState(data: { id: string, active: boolean }) {
-    console.log('UnifiedPatrolEffects - togglePatrolEffectActiveState called with:', data);
-    await togglePatrolEffectActive(data.id);
-    dispatch('updatePatrolEffect'); // Notify parent component if needed
+  async function toggleSituationalModifierActiveState(data: { id: string, active: boolean }) {
+    console.log('UnifiedSituationalModifiers - toggleSituationalModifierActiveState called with:', data);
+    await toggleSituationalModifierActive(data.id);
+    dispatch('updateSituationalModifier'); // Notify parent component if needed
   }
 
-  function removePatrolEffectPreset(id: string) {
+  function removeSituationalModifierPreset(id: string) {
     dispatch('removePreset', id);
   }
 
-  async function reorderPatrolEffects(dragIndex: number, dropIndex: number) {
-    // Create a copy of the current patrol effects to modify
-    const updatedPatrolEffects = [...currentPresets.patrolEffects];
+  async function reorderSituationalModifiers(dragIndex: number, dropIndex: number) {
+    // Create a copy of the current situational modifiers to modify
+    const updatedSituationalModifiers = [...currentPresets.situationalModifiers];
     
     // Get the items being reordered - only using presetOrder since guardOrder was removed
-    const draggedItem = displayPatrolEffects[dragIndex];
+    const draggedItem = displaySituationalModifiers[dragIndex];
     const orderProperty = 'presetOrder';
 
     // Find the indices in the main array
-    displayPatrolEffects.forEach((item, index) => {
-      const storeIndex = updatedPatrolEffects.findIndex(e => e.id === item.id);
+    displaySituationalModifiers.forEach((item, index) => {
+      const storeIndex = updatedSituationalModifiers.findIndex(m => m.id === item.id);
       if (storeIndex === -1) return;
 
       if (index === dragIndex) {
         // Set the dragged item to the drop position
-        updatedPatrolEffects[storeIndex] = {
-          ...updatedPatrolEffects[storeIndex],
+        updatedSituationalModifiers[storeIndex] = {
+          ...updatedSituationalModifiers[storeIndex],
           [orderProperty]: dropIndex
         };
       } else if (dragIndex < dropIndex && index > dragIndex && index <= dropIndex) {
         // Items shifting left (decrease order)
-        const currentOrder = updatedPatrolEffects[storeIndex][orderProperty] ?? index;
-        updatedPatrolEffects[storeIndex] = {
-          ...updatedPatrolEffects[storeIndex],
+        const currentOrder = updatedSituationalModifiers[storeIndex][orderProperty] ?? index;
+        updatedSituationalModifiers[storeIndex] = {
+          ...updatedSituationalModifiers[storeIndex],
           [orderProperty]: Math.max(0, currentOrder - 1)
         };
       } else if (dragIndex > dropIndex && index < dragIndex && index >= dropIndex) {
         // Items shifting right (increase order)
-        const currentOrder = updatedPatrolEffects[storeIndex][orderProperty] ?? index;
-        updatedPatrolEffects[storeIndex] = {
-          ...updatedPatrolEffects[storeIndex],
+        const currentOrder = updatedSituationalModifiers[storeIndex][orderProperty] ?? index;
+        updatedSituationalModifiers[storeIndex] = {
+          ...updatedSituationalModifiers[storeIndex],
           [orderProperty]: currentOrder + 1
         };
       }
@@ -320,7 +315,7 @@
     // Update the store
     presetsStore.set({
       ...currentPresets,
-      patrolEffects: updatedPatrolEffects
+      situationalModifiers: updatedSituationalModifiers
     });
 
     // Persist changes
@@ -338,60 +333,60 @@
   }
 </script>
 
-<div class="patrol-effects-section">
+<div class="situational-modifiers-section">
   <h3 style="display: flex; justify-content: space-between; align-items: center; font-family: 'Eveleth', 'Overpass', Arial, sans-serif; font-size: 1.5rem; color: #f9fafb; font-weight: bold;">
     {title}
     <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <button class="debug-button standard-button" on:click={debugLogPatrolEffects} title="Debug: Mostrar lista en consola">
+      <button class="debug-button standard-button" on:click={debugLogSituationalModifiers} title="Debug: Mostrar lista en consola">
         🐛 Debug
       </button>
-      <button class="add-button standard-button" on:click={openAddPatrolEffect}>➕ Añadir</button>
+      <button class="add-button standard-button" on:click={openAddSituationalModifier}>➕ Añadir</button>
     </div>
   </h3>
 
-  {#if addingPatrolEffect}
+  {#if addingSituationalModifier}
     <AddItemForm
-      type="patrol-effect"
-      item={newPatrolEffect}
-      visible={addingPatrolEffect}
-      on:imageClick={onNewPatrolEffectImageClick}
-      on:confirm={confirmAddPatrolEffect}
-      on:cancel={cancelAddPatrolEffect}
+      type="situational-modifier"
+      item={newSituationalModifier}
+      visible={addingSituationalModifier}
+      on:imageClick={onNewSituationalModifierImageClick}
+      on:confirm={confirmAddSituationalModifier}
+      on:cancel={cancelAddSituationalModifier}
     />
   {/if}
 
-  <div class="patrol-effects-container {inPresetManager ? '' : 'guard-mode'}">
-    {#each displayPatrolEffects as effect, i}
-      <PatrolCard
-        patrolEffect={effect}
+  <div class="situational-modifiers-container {inPresetManager ? '' : 'guard-mode'}">
+    {#each displaySituationalModifiers as modifier, i}
+      <SituationalModifierCard
+        situationalModifier={modifier}
         index={i}
-        expandedDetails={expandedPatrolEffectDetails}
+        expandedDetails={expandedSituationalModifierDetails}
         {draggedIndex}
         {dropZoneVisible}
         {inPresetManager}
-        on:remove={(e) => removePatrolEffectItem(e.detail)}
-        on:showInChat={(e) => showPatrolEffectInChat(e.detail)}
-        on:edit={(e) => handleEditPatrolEffect(e.detail)}
-        on:use={(e) => handleUsePatrolEffect(e.detail)}
+        simpleView={!inPresetManager && displayMode === 'groups'}
+        on:remove={(e) => removeSituationalModifierItem(e.detail)}
+        on:edit={(e) => handleEditSituationalModifier(e.detail)}
+        on:use={(e) => handleUseSituationalModifier(e.detail)}
         on:dragStart={(e) => handleDragStart(e.detail)}
         on:dragEnter={(e) => handleDragEnter(e.detail)}
         on:dragLeave={(e) => handleDragLeave(e.detail)}
         on:drop={(e) => handleDrop(e.detail)}
         on:dragEnd={handleDragEnd}
-        on:createPreset={(e) => createPatrolEffectPreset(e.detail)}
-        on:activatePreset={(e) => togglePatrolEffectActiveState(e.detail)}
-        on:removePreset={(e) => removePatrolEffectPreset(e.detail)}
+        on:createPreset={(e) => createSituationalModifierPreset(e.detail)}
+        on:activatePreset={(e) => toggleSituationalModifierActiveState(e.detail)}
+        on:removePreset={(e) => removeSituationalModifierPreset(e.detail)}
       />
     {/each}
   </div>
 </div>
 
 <style>
-  .patrol-effects-section {
+  .situational-modifiers-section {
     margin-bottom: 1rem;
   }
 
-  .patrol-effects-container {
+  .situational-modifiers-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 0.75rem;
@@ -399,7 +394,7 @@
   }
 
   /* For guard mode (not preset manager), use single column layout */
-  .patrol-effects-container.guard-mode {
+  .situational-modifiers-container.guard-mode {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;

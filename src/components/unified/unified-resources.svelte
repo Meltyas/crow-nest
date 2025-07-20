@@ -7,8 +7,10 @@
     presetsStore,
     toggleResourceActive
   } from '@/stores/presets';
-  import type { SyncManager } from '@/utils/sync';
+  import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { Subject, combineLatest } from 'rxjs';
+  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
   import { openResourceEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-reputation
@@ -18,6 +20,10 @@
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
   const dispatch = createEventDispatcher();
+
+  // RxJS cleanup and component management
+  const destroy$ = new Subject<void>();
+  const componentId = `unified-resources-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
 
   // Suscripción al store para reactividad completa
   let currentPresets = $presetsStore;
@@ -58,36 +64,43 @@
     active: res.active || false // Asegurar que active esté disponible para ItemCard
   }));
 
-  // Sincronización y lifecycle
+  // Sincronización y lifecycle con RxJS - Optimizado
   onMount(() => {
-    // Suscribirse al store para reactividad
-    const unsubscribe = presetsStore.subscribe(value => {
-      currentPresets = value;
+    // Initialize SyncManager
+    syncManager = SyncManager.getInstance();
+
+    // Simplified reactive pipeline
+    const presetsStoreSubject = new Subject();
+    const presetsStoreUnsubscribe = presetsStore.subscribe(presetsStoreSubject.next.bind(presetsStoreSubject));
+
+    // Primary stream: Local store updates with intelligent debouncing
+    presetsStoreSubject.pipe(
+      distinctUntilChanged(),
+      debounceTime(30),
+      takeUntil(destroy$)
+    ).subscribe(storePresets => {
+      if (storePresets && storePresets !== currentPresets) {
+        currentPresets = storePresets;
+      }
     });
 
-    // Configurar sincronización bidireccional
-    import('@/utils/sync').then(({ SyncManager }) => {
-      syncManager = SyncManager.getInstance();
-      syncManager.subscribe('unifiedPresets', handleSyncUpdate);
+    // Secondary stream: Remote sync updates for bidirectional sync
+    syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
+      if (syncPresets && syncPresets !== currentPresets) {
+        currentPresets = syncPresets;
+      }
     });
 
-    return () => {
-      unsubscribe();
-    };
+    // Cleanup function for the Svelte store subscription
+    return () => presetsStoreUnsubscribe();
   });
 
   onDestroy(() => {
-    if (syncManager) {
-      syncManager.unsubscribe('unifiedPresets', handleSyncUpdate);
-    }
+    // RxJS CLEANUP - Optimized cleanup
+    syncManager?.cleanupComponent(componentId);
+    destroy$.next();
+    destroy$.complete();
   });
-
-  function handleSyncUpdate(data: any) {
-    // Actualizar cuando lleguen cambios externos
-    if (data && data.resources) {
-      currentPresets = data;
-    }
-  }
 
   function openAddResource() {
     // Use global dialog for adding new resource
@@ -150,14 +163,14 @@
   }
 
   function debugLogResources() {
-    console.log('=== DEBUG: Lista de Recursos ===');
-    console.log('Active Resources (guard content):', activeResources);
-    console.log('Available Presets (all presets):', availablePresets);
-    console.log('Display Resources (current context):', displayResources);
-    console.log('Resource Items (ItemCard format):', resourceItems);
-    console.log('Group ID:', groupId);
-    console.log('In Preset Manager:', inPresetManager);
-    console.log('================================');
+    console.log('UnifiedResources Debug:', {
+      groupId,
+      inPresetManager,
+      activeCount: activeResources.length,
+      presetCount: availablePresets.length,
+      displayCount: displayResources.length,
+      itemCount: resourceItems.length
+    });
   }
 
   function handleEditItem(event: CustomEvent) {
@@ -165,7 +178,6 @@
     if (type === 'resource') {
       if (inPresetManager) {
         // Use global dialog when in preset manager
-        console.log('UnifiedResources - Opening global dialog for resource:', item);
         const resource = {
           id: item.sourceId || item.id,
           name: item.name,
@@ -180,6 +192,19 @@
         dispatch('editResource', { resource: item });
       }
     }
+  }
+
+  // Preset management functions
+  async function toggleResourceActiveState(data: { id: string, active: boolean }) {
+    console.log('UnifiedResources - toggleResourceActiveState called with:', data);
+    await toggleResourceActive(data.id);
+    dispatch('updateResource'); // Notify parent component if needed
+  }
+
+  async function removeResourcePreset(id: string) {
+    console.log('UnifiedResources - removeResourcePreset called with:', id);
+    await deleteResourcePreset(id);
+    dispatch('updateResource'); // Notify parent component if needed
   }
 
   // Drag and drop functionality - siguiendo el patrón de resources-section
@@ -368,6 +393,8 @@
         on:drop={(e) => handleDrop(e.detail.event, e.detail.index)}
         on:dragEnd={handleDragEnd}
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
+        on:activatePreset={(e) => toggleResourceActiveState(e.detail)}
+        on:removePreset={(e) => removeResourcePreset(e.detail)}
         on:editItem={handleEditItem}
       />
     {/each}

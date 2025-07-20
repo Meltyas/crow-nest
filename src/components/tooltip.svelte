@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, onDestroy } from 'svelte';
   export let content = '';
   export let size: string | number = ''; // New prop for size control
 
@@ -53,6 +53,13 @@
   function onLeave() {
     show = false;
   }
+
+  // Cleanup tooltip from DOM when component is destroyed
+  onDestroy(() => {
+    if (tooltipEl && containerEl && tooltipEl.parentElement === containerEl) {
+      containerEl.removeChild(tooltipEl);
+    }
+  });
 </script>
 
 <div class="tooltip-wrapper" role="tooltip" bind:this={wrapperEl} on:mouseenter={onEnter} on:mouseleave={onLeave}>

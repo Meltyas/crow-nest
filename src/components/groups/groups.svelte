@@ -7,6 +7,7 @@
 <script lang="ts">
   import { getAdmins } from '@/admin/admins';
   import PatrolCard from '@/components/guard/patrol-card.svelte';
+  import SituationalModifierCard from '@/components/guard/situational-modifier-card.svelte';
   import PatrolLayout from '@/components/patrol-layout/patrol-layout.svelte';
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
   import { presetManager } from '@/components/presets/preset-manager';
@@ -19,9 +20,12 @@
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { presetsStore } from '@/stores/presets';
   import { openPatrolEffectEditDialog } from '@/utils/dialog-manager';
+  import { openSituationalModifierEditDialog } from '@/utils/dialog-manager';
   import { generateUUID } from '@/utils/log';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
+  import { Subject } from 'rxjs';
+  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
 
   // Access game through global window object to avoid declaration issues
   const game = (globalThis as any).game;
@@ -82,6 +86,10 @@
 
   // Sync manager
   let syncManager: SyncManager;
+
+  // RxJS cleanup and component management
+  const destroy$ = new Subject<void>();
+  const componentId = `groups-component-${Math.random().toString(36).substr(2, 9)}`;
 
   // Handler for preset updates to sync temporary modifiers
   function handlePresetUpdated(event: CustomEvent) {
@@ -203,6 +211,26 @@
     // The PatrolCard component handles this internally
   }
 
+  // SituationalModifierCard event handlers
+  function handleSituationalModifierCardEdit(event: CustomEvent, group: Group, modifierId: string) {
+    console.log('Groups.svelte - handleSituationalModifierCardEdit called with:', { event, group: group.id, modifierId });
+    editSituationalModifier(group, modifierId);
+  }
+
+  function handleSituationalModifierCardRemove(event: CustomEvent, group: Group, modifierId: string) {
+    console.log('Groups.svelte - handleSituationalModifierCardRemove called with:', { event, group: group.id, modifierId });
+    removeSituationalModifier(group, modifierId);
+  }
+
+  function handleSituationalModifierCardCreatePreset(event: CustomEvent) {
+    const modifier = event.detail;
+    createSituationalModifierPreset(modifier);
+  }
+
+  function handleSituationalModifierCardShowInChat(event: CustomEvent) {
+    // The SituationalModifierCard component handles this internally
+  }
+
   function openPatrolEffectDialog(group: Group) {
     // Store the target group for later use
     pendingPatrolEffectGroup = group;
@@ -277,6 +305,10 @@
         group.patrolEffects = {};
         needsUpdate = true;
       }
+      if (group.situationalModifiers === undefined) {
+        group.situationalModifiers = {};
+        needsUpdate = true;
+      }
 
       // Ensure patrolEffects structure is correct
       if (group.patrolEffects) {
@@ -339,14 +371,33 @@
       console.log('Groups.svelte - No migration needed');
     }
 
-    // Setup real-time synchronization only for stats and modifiers
+    // Setup real-time synchronization with RxJS
+    console.log('Groups - Setting up RxJS subscriptions for componentId:', componentId);
     syncManager = SyncManager.getInstance();
 
-    // Listen for stats and modifiers updates (for UI updates)
-    syncManager.subscribe('stats', handleStatsSync);
-    syncManager.subscribe('modifiers', handleModifiersSync);
-    // Listen for preset store updates (for patrol effect synchronization)
-    syncManager.subscribe('unifiedPresets', handlePatrolEffectStoreUpdate);
+    // RxJS REACTIVE PIPELINE for stats
+    syncManager.subscribeToDataType('stats', componentId, (syncStats) => {
+      console.log('Groups - Stats sync update received:', !!syncStats);
+      if (syncStats) {
+        handleStatsSync({ type: 'stats', data: syncStats });
+      }
+    });
+
+    // RxJS REACTIVE PIPELINE for modifiers  
+    syncManager.subscribeToDataType('modifiers', componentId, (syncModifiers) => {
+      console.log('Groups - Modifiers sync update received:', !!syncModifiers);
+      if (syncModifiers) {
+        handleModifiersSync({ type: 'modifiers', data: syncModifiers });
+      }
+    });
+
+    // RxJS REACTIVE PIPELINE for presets (patrol effects)
+    syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
+      console.log('Groups - Presets sync update received:', !!syncPresets);
+      if (syncPresets) {
+        handlePatrolEffectStoreUpdate({ type: 'unifiedPresets', data: syncPresets });
+      }
+    });
 
     // Add global click listener to close floating containers
     const handleGlobalClick = (event: MouseEvent) => {
@@ -471,11 +522,14 @@
   });
 
   onDestroy(() => {
+    // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
+    console.log('Groups - Cleaning up RxJS subscriptions for componentId:', componentId);
+    
+    destroy$.next();
+    destroy$.complete();
+    
     if (syncManager) {
-      syncManager.unsubscribe('stats', handleStatsSync);
-      syncManager.unsubscribe('modifiers', handleModifiersSync);
-      syncManager.unsubscribe('unifiedPresets', handlePatrolEffectStoreUpdate);
-      // No need to unsubscribe from groups - it's global
+      syncManager.cleanupComponent(componentId);
     }
 
     // Remove preset manager listener if still available
@@ -1466,6 +1520,7 @@
       name: pendingPatrolEffect.name,
       description: pendingPatrolEffect.description,
       statEffects: pendingPatrolEffect.statEffects,
+      img: pendingPatrolEffect.img || 'icons/svg/aura.svg', // ADD MISSING IMAGE
       sourceId: stableSourceId, // Use the stable sourceId for consistency
       key: stableSourceId // Also store as key for consistency with other items
     };
@@ -1525,6 +1580,137 @@
     if (applyingPatrolEffect && pendingPatrolEffect) {
       applyPatrolEffectToGroup(group);
     }
+  }
+
+  // DEBUG FUNCTION: Test bidirectional patrol effect sync
+  function debugPatrolEffectSync() {
+    console.log('=== PATROL EFFECT SYNC DEBUG ===');
+    console.log('Groups with patrol effects:');
+    groups.forEach((group, i) => {
+      if (group.patrolEffects && Object.keys(group.patrolEffects).length > 0) {
+        console.log(`Group ${i} (${group.name || 'Unnamed'}):`, {
+          id: group.id,
+          effects: Object.entries(group.patrolEffects).map(([id, effect]) => ({
+            id,
+            name: effect.name,
+            sourceId: effect.sourceId,
+            img: effect.img,
+            hasImage: !!effect.img
+          }))
+        });
+      }
+    });
+    
+    // Also log current presets
+    console.log('Current presets in presetsStore:');
+    import('@/stores/presets').then(({ presetsStore }) => {
+      let currentPresets = null;
+      const unsubscribe = presetsStore.subscribe(presets => {
+        currentPresets = presets;
+      });
+      unsubscribe();
+      
+      if (currentPresets && currentPresets.patrolEffects) {
+        console.log('Patrol Effects in presets:', currentPresets.patrolEffects.map(effect => ({
+          id: effect.id,
+          name: effect.name,
+          sourceId: effect.sourceId,
+          img: effect.img,
+          hasImage: !!effect.img
+        })));
+      }
+    });
+    
+    console.log('=== END DEBUG ===');
+  }
+
+  // Situational Modifier functions
+  function editSituationalModifier(group: Group, modifierId: string) {
+    console.log('Groups.svelte - editSituationalModifier called with:', { groupId: group.id, modifierId });
+    
+    const existingModifier = group.situationalModifiers?.[modifierId];
+    if (!existingModifier) {
+      console.error("Situational modifier not found");
+      return;
+    }
+
+    console.log('Groups.svelte - Existing modifier:', existingModifier);
+
+    // Use the global dialog system for editing
+    const modifierForDialog = {
+      id: modifierId,
+      name: existingModifier.name || '',
+      description: existingModifier.description || '',
+      statEffects: existingModifier.statEffects || {},
+      img: existingModifier.img || 'icons/svg/upgrade.svg',
+      sourceId: existingModifier.sourceId || ''
+    };
+
+    console.log('Groups.svelte - Opening dialog for situational modifier:', modifierForDialog);
+    
+    // Store group context for after edit
+    editingGroupContext = group;
+    editingEffectId = modifierId;
+    
+    // Open global dialog
+    openSituationalModifierEditDialog(modifierForDialog, false); // Pass false for groups context
+  }
+
+  function removeSituationalModifier(group: Group, modifierId: string) {
+    console.log('Groups.svelte - removeSituationalModifier called with:', { groupId: group.id, modifierId });
+    if (group.situationalModifiers && group.situationalModifiers[modifierId]) {
+      delete group.situationalModifiers[modifierId];
+      console.log('Groups.svelte - Modifier deleted, calling updateGroups');
+      updateGroups([...groups]);
+    } else {
+      console.warn('Groups.svelte - Modifier not found:', modifierId);
+    }
+  }
+
+  function clearAllSituationalModifiers(group: Group) {
+    group.situationalModifiers = {};
+    updateGroups([...groups]);
+  }
+
+  function createSituationalModifierPreset(modifier) {
+    if (!modifier?.name || typeof modifier.name !== 'string') {
+      console.warn('Cannot create situational modifier preset: modifier name is missing');
+      return;
+    }
+
+    console.log('Groups.svelte - Creating situational modifier preset from:', modifier);
+
+    // Check if preset already exists (by sourceId if available, otherwise by name)
+    const existingPresets = $presetsStore.situationalModifiers || [];
+    const nameKey = modifier.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
+    const sourceId = modifier.sourceId || `situational-${nameKey}-${effectsKey}`;
+
+    const existingPreset = existingPresets.find(p => 
+      p.data.sourceId === sourceId || 
+      (p.data.name === modifier.name && JSON.stringify(p.data.statEffects) === JSON.stringify(modifier.statEffects))
+    );
+
+    if (!existingPreset) {
+      createPresetFromItem({
+        ...modifier,
+        sourceId: sourceId
+      }, 'situationalModifier');
+    } else {
+      console.log('Groups.svelte - Preset already exists for sourceId:', sourceId);
+    }
+  }
+
+  function openSituationalModifierDialog(group: Group) {
+    // Open dialog for creating new situational modifier
+    openSituationalModifierEditDialog({
+      id: '',
+      name: '',
+      description: '',
+      statEffects: {},
+      img: 'icons/svg/upgrade.svg',
+      sourceId: ''
+    }, false); // Pass false for groups context
   }
 </script>
 
@@ -2177,6 +2363,14 @@
     padding: 0.5rem;
     align-items: flex-start;
   }
+
+  .situational-modifiers-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
 </style>
 
 <div class="groups-container">
@@ -2186,6 +2380,10 @@
       <h3 class="title-display">{sectionTitle}</h3>
       <button class="add-button" on:click={addGroup} title="{labels.addGroup}">
         + Add
+      </button>
+      <!-- DEBUG BUTTON -->
+      <button class="debug-button" on:click={debugPatrolEffectSync} title="Debug Patrol Effect Sync" style="background: #dc3545; margin-left: 0.5rem; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">
+        🔍 Debug Sync
       </button>
     </div>
   {/if}
@@ -2521,6 +2719,59 @@
                     class="patrol-add-button"
                     on:click={() => openPatrolEffectDialog(group)}
                     title="Añadir efecto de patrulla"
+                  >
+                    +
+                  </button>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Situational Modifiers Section -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ff8c00;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="color: #ff8c00; font-weight: bold; font-size: 1rem;">Modificadores Situacionales</span>
+                <span style="color: #ff8c00; font-size: 0.9rem;">
+                  {Object.keys(group.situationalModifiers || {}).length}
+                </span>
+              </div>
+              
+              {#if Object.keys(group.situationalModifiers || {}).length === 0}
+                <div style="text-align: center; padding: 1rem; color: #999; font-style: italic;">
+                  Sin modificadores situacionales
+                  <button
+                    class="patrol-add-button"
+                    style="display: block; margin: 0.5rem auto 0;"
+                    on:click={() => openSituationalModifierDialog(group)}
+                    title="Añadir modificador situacional"
+                  >
+                    +
+                  </button>
+                </div>
+              {:else}
+                <div class="situational-modifiers-container">
+                  {#each Object.entries(group.situationalModifiers || {}) as [modifierId, modifier], i}
+                    <SituationalModifierCard
+                      situationalModifier={{
+                        ...modifier,
+                        id: modifierId,
+                        key: modifierId
+                      }}
+                      index={i}
+                      expandedDetails={{}}
+                      draggedIndex={null}
+                      dropZoneVisible={{}}
+                      inPresetManager={false}
+                      simpleView={true}
+                      on:edit={(e) => handleSituationalModifierCardEdit(e, group, modifierId)}
+                      on:remove={(e) => handleSituationalModifierCardRemove(e, group, modifierId)}
+                      on:createPreset={handleSituationalModifierCardCreatePreset}
+                      on:showInChat={handleSituationalModifierCardShowInChat}
+                    />
+                  {/each}
+                  <button
+                    class="patrol-add-button"
+                    on:click={() => openSituationalModifierDialog(group)}
+                    title="Añadir modificador situacional"
                   >
                     +
                   </button>

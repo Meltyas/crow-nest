@@ -38,6 +38,7 @@ export interface Group {
   experiences: GroupExperience[];
   patrolEffects: GroupPatrolEffects;
   patrolOrder: { [effectId: string]: number }; // Order for patrol effects within this group
+  situationalModifiers?: { [modifierId: string]: any }; // Situational modifiers applied to this group
   maxUnits: number;
   maxSoldiers: number; // Maximum number of soldiers for formation layout
   hope: number; // 0-6 hope level

@@ -14,6 +14,7 @@
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
   import UnifiedPatrolEffects from '@/components/unified/unified-patrol-effects.svelte';
+  import UnifiedSituationalModifiers from '@/components/unified/unified-situational-modifiers.svelte';
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import {
@@ -1386,11 +1387,19 @@
             inPresetManager={true}
             on:updatePatrolEffect={() => {}}
           />
+        {:else if activeTab === 'situationalModifiers'}
+          <UnifiedSituationalModifiers
+            title="Gestión de Presets de Modificadores Situacionales"
+            showPresets={true}
+            editingSituationalModifiers={false}
+            inPresetManager={true}
+            on:updateSituationalModifier={() => {}}
+          />
         {:else}
           <!-- Keep original forms for situationalModifiers only -->
           {#if showCreateForm}
             <div class="create-form">
-              {#if activeTab === 'situationalModifiers'}
+              {#if false}
                 <h3>{editingPreset ? 'Editar Modificador Situacional' : 'Crear Modificador Situacional'}</h3>
                 <div class="form-group">
                   <label>Nombre:</label>
@@ -1453,45 +1462,6 @@
               {/if}
             </div>
           {/if}
-        {/if}
-
-        <!-- Only show presets list for situationalModifiers -->
-        {#if activeTab !== 'resources' && activeTab !== 'reputations' && activeTab !== 'patrolEffects'}
-          <div class="presets-list grid-layout">
-            {#if activeTab === 'situationalModifiers'}
-            {#each presets.situationalModifiers.filter(p => p && p.data) as preset}
-              <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
-                {#if safeGetPresetProperty(preset, 'img')}
-                  <img class="preset-item-image-modifier" src={safeGetPresetProperty(preset, 'img')} alt="situational modifier" />
-                {/if}
-                <div class="preset-item-info">
-                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
-                  <div class="preset-item-details">
-                    <p><strong>Descripción:</strong> {safeGetPresetProperty(preset, 'description') || safeGetPresetProperty(preset, 'situation') || 'Sin descripción'}</p>
-                    {#if game?.user?.isGM}
-                      <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
-                    {/if}
-                    <div class="stat-effects-preview">
-                      {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
-                        {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
-                        {#if stat && value !== 0}
-                          <span class="stat-effect-preview">
-                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                            {stat.name}: {value > 0 ? '+' : ''}{value}
-                          </span>
-                        {/if}
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-                <div class="preset-actions">
-                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
-                </div>
-              </div>
-            {/each}
-            {/if}
-          </div>
         {/if}
       </div>
 
@@ -1760,266 +1730,6 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-  }
-
-  /* Estilos para presets de recursos y reputaciones (estilo ItemCard) */
-  .preset-item-card {
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    border: 1px solid #d4af37;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-    min-height: 200px;
-  }
-
-  .preset-item-card:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
-  }
-
-  /* Estilos específicos para modificadores */
-  .preset-item-card.modifier-item {
-    background: #1a1a1a;
-    border: 1px solid #444;
-    color: #fff;
-    padding: 1rem;
-    min-height: 150px;
-  }
-
-  .preset-item-card.modifier-item:hover {
-    background: #2a2a2a;
-    border-color: #555;
-  }
-
-  .preset-item-card.modifier-item .preset-item-name {
-    color: #d4af37;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .preset-item-card.modifier-item .preset-item-details {
-    color: #ccc;
-    font-size: 0.9rem;
-  }
-
-  .preset-item-card.modifier-item .preset-item-details p {
-    margin: 0.25rem 0;
-    color: #ccc;
-  }
-
-  .preset-item-card.modifier-item .preset-item-details .description {
-    color: #999;
-    font-style: italic;
-  }
-
-  /* Imagen para modificadores situacionales */
-  .preset-item-image-modifier {
-    width: 100%;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    border: 1px solid #444;
-  }
-
-  /* Ajuste para el nombre cuando hay imagen */
-  .preset-item-card.modifier-item:has(.preset-item-image-modifier) .preset-item-name {
-    margin-top: 0;
-  }
-
-  /* Botones de acción para tarjetas de modificadores */
-  .preset-item-card.modifier-item .preset-actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    gap: 0.25rem;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 4px;
-    padding: 0.25rem;
-  }
-
-  .preset-item-card.modifier-item .preset-actions .use-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-
-  .preset-item-card.modifier-item .preset-actions .use-btn:hover {
-    background: #218838;
-  }
-
-  .preset-item-card.modifier-item .preset-actions .delete-btn {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-
-  .preset-item-card.modifier-item .preset-actions .delete-btn:hover {
-    background: #c82333;
-  }
-
-  .preset-item-image {
-    background: #000000;
-    width: 100%;
-    aspect-ratio: 2 / 1;
-    object-fit: cover;
-    border-radius: 8px 8px 0 0;
-    flex-shrink: 0;
-    border-bottom: 2px solid #d4af37;
-  }
-
-  .preset-item-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem;
-    position: relative;
-    align-items: flex-start;
-  }
-
-  .preset-item-name {
-    font-family: 'Eveleth', 'Overpass', Arial, sans-serif;
-    font-size: 1rem;
-    color: #000000;
-    line-height: 1.4;
-    font-weight: bold;
-    margin: 0;
-  }
-
-  .preset-item-details {
-    font-family: 'Overpass', sans-serif;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #000000;
-    width: 100%;
-    margin: 0;
-  }
-
-  .preset-item-details p {
-    margin: 0;
-    color: #333;
-  }
-
-  /* Estilos para cantidad de recursos */
-  .preset-item-quantity-container {
-    display: flex;
-    justify-content: flex-end;
-    width: 100%;
-    margin-top: auto;
-  }
-
-  .preset-item-quantity {
-    background: #374151;
-    color: #d1d5db;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.8rem;
-    border: 1px solid #6b7280;
-    min-width: 3rem;
-    text-align: center;
-    font-family: 'Overpass', Arial, sans-serif;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Estilos para barra de reputación */
-  .preset-item-bar-container {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    margin-top: auto;
-  }
-
-  .preset-item-bar {
-    width: 100%;
-    height: 20px;
-    background: #374151;
-    border-radius: 10px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #6b7280;
-  }
-
-  .preset-item-fill {
-    height: 100%;
-    border-radius: 10px;
-    transition: width 0.3s ease;
-    position: relative;
-  }
-
-  .preset-item-tick {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  /* Botones de acción para tarjetas */
-  .preset-item-card .preset-actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    gap: 0.25rem;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 4px;
-    padding: 0.25rem;
-  }
-
-  .preset-item-card .preset-actions .use-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-
-  .preset-item-card .preset-actions .use-btn:hover {
-    background: #218838;
-  }
-
-  .preset-item-card .preset-actions .delete-btn {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-
-  .preset-item-card .preset-actions .delete-btn:hover {
-    background: #c82333;
   }
 
   .stat-effects-preview {

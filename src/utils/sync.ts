@@ -2,6 +2,8 @@
 // This handles broadcasting changes to all connected players
 
 import { MODULE_ID } from "@/constants";
+import { BehaviorSubject, Subject, combineLatest, merge, EMPTY, Observable } from 'rxjs';
+import { distinctUntilChanged, debounceTime, takeUntil, filter, map, tap, shareReplay } from 'rxjs/operators';
 
 export interface SyncEvent {
   type:
@@ -15,7 +17,8 @@ export interface SyncEvent {
     | "groups"
     | "patrol-sheet"
     | "presets"
-    | "unifiedPresets";
+    | "unifiedPresets"
+    | "patrol-effects";
   action: "update" | "create" | "delete" | "command" | "show";
   data: any;
   timestamp: number;
@@ -28,11 +31,145 @@ export class SyncManager {
   private listeners: Map<string, ((event: SyncEvent) => void)[]> = new Map();
   private eventHandlers: Map<string, (event: SyncEvent) => void> = new Map();
 
+  // RxJS subjects for reactive state management
+  private groupsSubject = new BehaviorSubject<any>(null);
+  private presetsSubject = new BehaviorSubject<any>(null);
+  private patrolEffectsSubject = new BehaviorSubject<any>(null);
+  private statsSubject = new BehaviorSubject<any>(null);
+  private resourcesSubject = new BehaviorSubject<any>(null);
+  private reputationSubject = new BehaviorSubject<any>(null);
+  private adminDataSubject = new BehaviorSubject<any>(null);
+  private tokensSubject = new BehaviorSubject<any>(null);
+  private modifiersSubject = new BehaviorSubject<any>(null);
+  
+  // Destroy subjects for component cleanup
+  private destroySubjects = new Map<string, Subject<void>>();
+
+  // Individual streams for specific data types - declared before use
+  public groups$: Observable<any>;
+  public presets$: Observable<any>;
+  public patrolEffects$: Observable<any>;
+  public stats$: Observable<any>;
+  public resources$: Observable<any>;
+  public reputation$: Observable<any>;
+  public adminData$: Observable<any>;
+  public tokens$: Observable<any>;
+  public modifiers$: Observable<any>;
+
+  // Combined state stream with intelligent debouncing
+  public readonly state$ = combineLatest([
+    this.groupsSubject.pipe(distinctUntilChanged()),
+    this.presetsSubject.pipe(distinctUntilChanged()),
+    this.patrolEffectsSubject.pipe(distinctUntilChanged()),
+    this.statsSubject.pipe(distinctUntilChanged()),
+    this.resourcesSubject.pipe(distinctUntilChanged()),
+    this.reputationSubject.pipe(distinctUntilChanged()),
+    this.adminDataSubject.pipe(distinctUntilChanged()),
+    this.tokensSubject.pipe(distinctUntilChanged()),
+    this.modifiersSubject.pipe(distinctUntilChanged())
+  ]).pipe(
+    debounceTime(50), // Prevent excessive updates
+    filter(([groups, presets, effects, stats, resources, reputation, admin, tokens, modifiers]) => 
+      groups || presets || effects || stats || resources || reputation || admin || tokens || modifiers),
+    tap(([groups, presets, effects, stats, resources, reputation, admin, tokens, modifiers]) => {
+      console.log('SyncManager - State updated:', { 
+        groups: !!groups, presets: !!presets, effects: !!effects, 
+        stats: !!stats, resources: !!resources, reputation: !!reputation, admin: !!admin,
+        tokens: !!tokens, modifiers: !!modifiers 
+      });
+    }),
+    shareReplay(1)
+  );
+
+  // Helper function to create standardized streams
+  private createDataStream(subject: BehaviorSubject<any>) {
+    return subject.pipe(
+      filter(data => data !== null),
+      distinctUntilChanged(),
+      debounceTime(30),
+      shareReplay(1)
+    );
+  }
+
+  constructor() {
+    // Initialize streams after subjects are created
+    this.groups$ = this.createDataStream(this.groupsSubject);
+    this.presets$ = this.createDataStream(this.presetsSubject);
+    this.patrolEffects$ = this.createDataStream(this.patrolEffectsSubject);
+    this.stats$ = this.createDataStream(this.statsSubject);
+    this.resources$ = this.createDataStream(this.resourcesSubject);
+    this.reputation$ = this.createDataStream(this.reputationSubject);
+    this.adminData$ = this.createDataStream(this.adminDataSubject);
+    this.tokens$ = this.createDataStream(this.tokensSubject);
+    this.modifiers$ = this.createDataStream(this.modifiersSubject);
+  }
+
   static getInstance(): SyncManager {
     if (!SyncManager.instance) {
       SyncManager.instance = new SyncManager();
     }
     return SyncManager.instance;
+  }
+
+  // NEW: Subscribe to specific data type with auto-cleanup
+  subscribeToDataType<T>(
+    dataType: 'groups' | 'presets' | 'patrolEffects' | 'stats' | 'resources' | 'reputation' | 'adminData' | 'tokens' | 'modifiers',
+    componentId: string,
+    callback: (data: T) => void
+  ) {
+    const destroy$ = this.getOrCreateDestroySubject(componentId);
+    
+    const streamMap = {
+      groups: this.groups$,
+      presets: this.presets$,
+      patrolEffects: this.patrolEffects$,
+      stats: this.stats$,
+      resources: this.resources$,
+      reputation: this.reputation$,
+      adminData: this.adminData$,
+      tokens: this.tokens$,
+      modifiers: this.modifiers$
+    };
+
+    const stream$ = streamMap[dataType];
+
+    if (!stream$) {
+      console.error(`SyncManager: Stream for dataType '${dataType}' is not initialized`);
+      return EMPTY.subscribe();
+    }
+
+    return stream$.pipe(
+      takeUntil(destroy$)
+    ).subscribe(callback);
+  }
+
+  // NEW: Subscribe to combined state with auto-cleanup
+  subscribeToSync(componentId: string, callback: (state: any) => void) {
+    const destroy$ = this.getOrCreateDestroySubject(componentId);
+    
+    return this.state$.pipe(
+      takeUntil(destroy$)
+    ).subscribe(([groups, presets, effects, stats, resources, reputation, admin, tokens, modifiers]) => {
+      callback({ groups, presets, effects, stats, resources, reputation, admin, tokens, modifiers });
+    });
+  }
+
+  // NEW: Helper method for component cleanup
+  private getOrCreateDestroySubject(componentId: string): Subject<void> {
+    if (!this.destroySubjects.has(componentId)) {
+      this.destroySubjects.set(componentId, new Subject<void>());
+    }
+    return this.destroySubjects.get(componentId)!;
+  }
+
+  // NEW: Component cleanup
+  cleanupComponent(componentId: string) {
+    const destroy$ = this.destroySubjects.get(componentId);
+    if (destroy$) {
+      destroy$.next();
+      destroy$.complete();
+      this.destroySubjects.delete(componentId);
+    }
   }
 
   // Register a handler for specific event types
@@ -71,6 +208,9 @@ export class SyncManager {
 
   // Broadcast a change to all connected players
   async broadcast(event: SyncEvent) {
+    // NEW: Update RxJS subjects based on event type
+    this.updateSubjectsFromEvent(event);
+
     // For groups/patrols data, save directly to the main setting
     // This will trigger updateSetting hook on all clients
     if (event.type === "groups" || event.type === "patrols") {
@@ -86,6 +226,43 @@ export class SyncManager {
 
     // Don't trigger local listeners here to avoid double processing
     // The updateSetting hook will handle the sync
+  }
+
+  // NEW: Update RxJS subjects when data changes
+  private updateSubjectsFromEvent(event: SyncEvent) {
+    console.log('SyncManager - Updating subjects from event:', event.type, event.action);
+    
+    switch (event.type) {
+      case 'groups':
+      case 'patrols':
+        this.groupsSubject.next(event.data);
+        break;
+      case 'presets':
+      case 'unifiedPresets':
+        this.presetsSubject.next(event.data);
+        break;
+      case 'patrol-effects':
+        this.patrolEffectsSubject.next(event.data);
+        break;
+      case 'stats':
+        this.statsSubject.next(event.data);
+        break;
+      case 'resources':
+        this.resourcesSubject.next(event.data);
+        break;
+      case 'reputation':
+        this.reputationSubject.next(event.data);
+        break;
+      case 'admins':
+        this.adminDataSubject.next(event.data);
+        break;
+      case 'tokens':
+        this.tokensSubject.next(event.data);
+        break;
+      case 'modifiers':
+        this.modifiersSubject.next(event.data);
+        break;
+    }
   }
 
   // Save sync event for any type that's not groups/patrols
@@ -106,6 +283,8 @@ export class SyncManager {
 
   // Handle incoming sync events from other players
   handleRemoteEvent(event: SyncEvent) {
+    // NEW: Update RxJS subjects for remote events too
+    this.updateSubjectsFromEvent(event);
     this.notifyLocalListeners(event);
   }
 

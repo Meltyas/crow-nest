@@ -4,6 +4,8 @@
   import type { Group } from "@/shared/group";
   import { groupsStore } from '@/stores/groups';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { Subject } from 'rxjs';
+  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
   import { PatrolHandlers } from './patrol-handlers';
   import './patrol-sheet.css';
 
@@ -73,14 +75,28 @@
     }
   }
 
-  let unsubscribeFromStore: (() => void) | null = null;
+  // RxJS cleanup and component management
+  const destroy$ = new Subject<void>();
+  const componentId = `patrol-sheet-popup-${group.id}-${Math.random().toString(36).substr(2, 9)}`;
 
   onMount(() => {
+    console.log('PatrolSheetPopup - Setting up RxJS subscriptions for componentId:', componentId, 'groupId:', group.id);
     handlers = new PatrolHandlers(group, labels, updateComponentData, openRollDialog);
     updateComponentData();
 
-    // Subscribe to store changes to keep the group data in sync
-    unsubscribeFromStore = groupsStore.subscribe(groups => {
+    // RxJS REACTIVE PIPELINE - Convert Svelte store to observable
+    const groupsStoreSubject = new Subject();
+    const groupsStoreUnsubscribe = groupsStore.subscribe(value => {
+      groupsStoreSubject.next(value);
+    });
+
+    // Subscribe to store changes to keep the group data in sync with RxJS
+    groupsStoreSubject.pipe(
+      distinctUntilChanged(),
+      debounceTime(30),
+      tap(groups => console.log('PatrolSheetPopup - Groups store updated for group:', group.id, !!groups)),
+      takeUntil(destroy$)
+    ).subscribe(groups => {
       // Validate that groups is an array
       if (!Array.isArray(groups)) {
         console.warn('[PatrolSheet] Received invalid groups data:', groups);
@@ -100,13 +116,19 @@
         }
       }
     });
+
+    // Cleanup function for the Svelte store subscription
+    return () => {
+      groupsStoreUnsubscribe();
+    };
   });
 
   onDestroy(() => {
-    // Cleanup store subscription
-    if (unsubscribeFromStore) {
-      unsubscribeFromStore();
-    }
+    // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
+    console.log('PatrolSheetPopup - Cleaning up RxJS subscriptions for componentId:', componentId);
+    
+    destroy$.next();
+    destroy$.complete();
   });
 
   // Update handlers when props change

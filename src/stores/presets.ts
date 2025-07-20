@@ -172,6 +172,21 @@ export async function togglePatrolEffectActive(
       e.id === effectId ? { ...e, active: !e.active } : e
     ),
   };
+  presetsStore.set(updated); // Actualizar store inmediatamente
+  await persistPresets(updated);
+}
+
+export async function toggleSituationalModifierActive(
+  modifierId: string
+): Promise<void> {
+  const current = get(presetsStore);
+  const updated = {
+    ...current,
+    situationalModifiers: current.situationalModifiers.map((m) =>
+      m.id === modifierId ? { ...m, active: !m.active } : m
+    ),
+  };
+  presetsStore.set(updated); // Actualizar store inmediatamente
   await persistPresets(updated);
 }
 
@@ -326,7 +341,10 @@ export async function updateSituationalModifier(
   modifierId: string,
   updates: Partial<SituationalModifier>
 ): Promise<void> {
+  console.log("[Presets Store] updateSituationalModifier called with:", { modifierId, updates });
   const current = get(presetsStore);
+  console.log("[Presets Store] Current situational modifiers:", current.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
+  
   const updated = {
     ...current,
     situationalModifiers: current.situationalModifiers.map((m) =>
@@ -334,6 +352,7 @@ export async function updateSituationalModifier(
     ),
   };
 
+  console.log("[Presets Store] Updated situational modifiers:", updated.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
   await persistPresets(updated);
 }
 
@@ -368,9 +387,16 @@ export async function deletePatrolEffectPreset(
   await removePatrolEffect(effectId);
 }
 
+export async function deleteSituationalModifierPreset(
+  modifierId: string
+): Promise<void> {
+  await removeSituationalModifier(modifierId);
+}
+
 // Persistence and synchronization functions
 async function persistPresets(presets: PresetCollection): Promise<void> {
   try {
+    console.log("[Presets] persistPresets called with situational modifiers:", presets.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
     const game = (globalThis as any).game;
     if (!game || !game.settings) {
       console.warn(
@@ -381,11 +407,13 @@ async function persistPresets(presets: PresetCollection): Promise<void> {
 
     await game.settings.set("crow-nest", "unifiedPresets", presets);
     presetsStore.set(presets);
+    console.log("[Presets] Store updated and settings saved");
 
     const syncManager = SyncManager.getInstance();
     await syncManager.broadcast(
       createSyncEvent("unifiedPresets", "update", presets)
     );
+    console.log("[Presets] Sync broadcast completed");
   } catch (error) {
     console.error("[Presets] Error persisting presets:", error);
   }

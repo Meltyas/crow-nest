@@ -18,12 +18,17 @@ import "./styles/font.css";
 import "./styles/global.pcss";
 
 Hooks.once("init", () => {
-  game.settings.register(MODULE_ID, SETTING_STATS, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
+  console.log("🦅 Crow Nest | Init hook started");
+  console.log("🦅 Crow Nest | Module ID:", MODULE_ID);
+  console.log("🦅 Crow Nest | Game object available:", !!game);
+  
+  try {
+    game.settings.register(MODULE_ID, SETTING_STATS, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
   game.settings.register(MODULE_ID, SETTING_MODIFIERS, {
     scope: "world",
     config: false,
@@ -119,6 +124,14 @@ Hooks.once("init", () => {
     type: Object,
     default: null,
   });
+  
+  console.log("🦅 Crow Nest | All settings registered successfully");
+  console.log("🦅 Crow Nest | Module initialization completed successfully");
+  
+  } catch (error) {
+    console.error("🦅 Crow Nest | Error during initialization:", error);
+    console.error("🦅 Crow Nest | Stack trace:", error.stack);
+  }
 });
 
 // Function to handle patrol sheet setting changes directly
@@ -197,11 +210,31 @@ function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
 }
 
 Hooks.once("ready", () => {
-  // Initialize real-time synchronization
-  initializeSync();
+  console.log("🦅 Crow Nest | Ready hook started");
+  
+  try {
+    // Verify game object availability
+    if (!game) {
+      console.error("🦅 Crow Nest | Game object not available");
+      return;
+    }
+    
+    if (!game.user) {
+      console.error("🦅 Crow Nest | Game user not available");
+      return;
+    }
+    
+    console.log("🦅 Crow Nest | Game objects verified");
+    console.log("🦅 Crow Nest | Current user:", game.user.name, "| ID:", game.user.id);
+    console.log("🦅 Crow Nest | Is GM:", game.user.isGM);
+    
+    // Initialize real-time synchronization
+    console.log("🦅 Crow Nest | Initializing sync...");
+    initializeSync();
 
-  // Initialize global groups sync (always active)
-  initializeGroupsSync();
+    // Initialize global groups sync (always active)
+    console.log("🦅 Crow Nest | Initializing groups sync...");
+    initializeGroupsSync();
 
   // Initialize unified presets system
   loadUnifiedPresets()
@@ -393,6 +426,13 @@ Hooks.once("ready", () => {
 
   // Clean up old button records on startup
   cleanupOldButtonRecords();
+  
+  console.log("🦅 Crow Nest | Ready hook completed successfully");
+  
+  } catch (error) {
+    console.error("🦅 Crow Nest | Error in ready hook:", error);
+    console.error("🦅 Crow Nest | Stack trace:", error.stack);
+  }
 });
 
 Hooks.on("getActorSheetHeaderButtons", (sheet: any, buttons: any[]) => {
@@ -677,3 +717,8 @@ async function handleAddFear() {
     });
   }
 }
+
+// Module loaded successfully indicator
+console.log("🦅 Crow Nest | Module file loaded successfully - waiting for Foundry hooks");
+console.log("🦅 Crow Nest | Module version: 0.1.0");
+console.log("🦅 Crow Nest | Build timestamp:", new Date().toISOString());

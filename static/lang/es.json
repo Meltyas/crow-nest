@@ -1,0 +1,9 @@
+{
+  "CROW_NEST": {
+    "MODULE_TITLE": "Crow Nest",
+    "MODULE_DESCRIPTION": "Sistema de gestión de guardias y patrullas persistente",
+    "SETTINGS": {
+      "TITLE": "Configuración del Módulo"
+    }
+  }
+}

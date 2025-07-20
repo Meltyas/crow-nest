@@ -8,8 +8,10 @@
     toggleReputationActive
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
-  import type { SyncManager } from '@/utils/sync';
+  import { SyncManager } from '@/utils/sync';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { Subject } from 'rxjs';
+  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
   import { openReputationEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de resources-section
@@ -19,6 +21,10 @@
   export let inPresetManager: boolean = false; // Show preset activation buttons when true
 
   const dispatch = createEventDispatcher();
+
+  // RxJS cleanup and component management
+  const destroy$ = new Subject<void>();
+  const componentId = `unified-reputation-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
 
   // Suscripción al store para reactividad completa
   let currentPresets = $presetsStore;
@@ -60,36 +66,58 @@
     active: rep.active || false // Asegurar que active esté disponible para ItemCard
   }));
 
-  // Sincronización y lifecycle
+  // Sincronización y lifecycle con RxJS
   onMount(() => {
-    // Suscribirse al store para reactividad
-    const unsubscribe = presetsStore.subscribe(value => {
-      currentPresets = value;
+    console.log('UnifiedReputation - Setting up RxJS subscriptions for componentId:', componentId, 'groupId:', groupId);
+
+    // Initialize SyncManager (no longer needs dynamic import)
+    syncManager = SyncManager.getInstance();
+
+    // RxJS REACTIVE PIPELINE - Convert Svelte store to observable
+    const presetsStoreSubject = new Subject();
+    const presetsStoreUnsubscribe = presetsStore.subscribe(value => {
+      presetsStoreSubject.next(value);
     });
 
-    // Configurar sincronización bidireccional
-    import('@/utils/sync').then(({ SyncManager }) => {
-      syncManager = SyncManager.getInstance();
-      syncManager.subscribe('unifiedPresets', handleSyncUpdate);
+    // Primary stream: Local store updates with debouncing
+    presetsStoreSubject.pipe(
+      distinctUntilChanged(),
+      debounceTime(30),
+      tap(presets => console.log('UnifiedReputation - Store updated for groupId:', groupId, !!presets)),
+      takeUntil(destroy$)
+    ).subscribe(storePresets => {
+      if (storePresets && storePresets !== currentPresets) {
+        currentPresets = storePresets;
+      }
     });
 
+    // Secondary stream: Remote sync updates (for bidirectional sync)
+    syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
+      console.log('UnifiedReputation - Sync update for groupId:', groupId, !!syncPresets);
+      if (syncPresets && syncPresets !== currentPresets) {
+        console.log('UnifiedReputation - Applying sync presets for groupId:', groupId);
+        currentPresets = syncPresets;
+      }
+    });
+
+    // Cleanup function for the Svelte store subscription
     return () => {
-      unsubscribe();
+      presetsStoreUnsubscribe();
     };
   });
 
   onDestroy(() => {
+    // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
+    console.log('UnifiedReputation - Cleaning up RxJS subscriptions for componentId:', componentId);
+    
     if (syncManager) {
-      syncManager.unsubscribe('unifiedPresets', handleSyncUpdate);
+      syncManager.cleanupComponent(componentId);
     }
-  });
 
-  function handleSyncUpdate(data: any) {
-    // Actualizar cuando lleguen cambios externos
-    if (data && data.reputations) {
-      currentPresets = data;
-    }
-  }
+    // Complete the destroy subject to clean up all RxJS subscriptions
+    destroy$.next();
+    destroy$.complete();
+  });
 
   function openAddReputation() {
     // Use global dialog for adding new reputation
@@ -160,14 +188,14 @@
   }
 
   function debugLogReputations() {
-    console.log('=== DEBUG: Lista de Reputaciones ===');
-    console.log('Active Reputations (guard content):', activeReputations);
-    console.log('Available Presets (all presets):', availablePresets);
-    console.log('Display Reputations (current context):', displayReputations);
-    console.log('Reputation Items (ItemCard format):', reputationItems);
-    console.log('Group ID:', groupId);
-    console.log('In Preset Manager:', inPresetManager);
-    console.log('====================================');
+    console.log('UnifiedReputation Debug:', {
+      groupId,
+      inPresetManager,
+      activeCount: activeReputations.length,
+      presetCount: availablePresets.length,
+      displayCount: displayReputations.length,
+      itemCount: reputationItems.length
+    });
   }
 
   function handleEditItem(event: CustomEvent) {
@@ -175,7 +203,6 @@
     if (type === 'reputation') {
       if (inPresetManager) {
         // Use global dialog when in preset manager
-        console.log('UnifiedReputation - Opening global dialog for reputation:', item);
         const reputation = {
           id: item.sourceId || item.id,
           name: item.name,
@@ -190,6 +217,19 @@
         dispatch('editReputation', { reputation: item });
       }
     }
+  }
+
+  // Preset management functions
+  async function toggleReputationActiveState(data: { id: string, active: boolean }) {
+    console.log('UnifiedReputation - toggleReputationActiveState called with:', data);
+    await toggleReputationActive(data.id);
+    dispatch('updateReputation'); // Notify parent component if needed
+  }
+
+  async function removeReputationPreset(id: string) {
+    console.log('UnifiedReputation - removeReputationPreset called with:', id);
+    await deleteReputationPreset(id);
+    dispatch('updateReputation'); // Notify parent component if needed
   }
 
   // Drag and drop functionality - siguiendo el patrón de resources-section
@@ -387,6 +427,8 @@
         on:drop={(e) => handleDrop(e.detail.event, e.detail.index)}
         on:dragEnd={handleDragEnd}
         on:createPreset={(e) => dispatch('createPreset', e.detail)}
+        on:activatePreset={(e) => toggleReputationActiveState(e.detail)}
+        on:removePreset={(e) => removeReputationPreset(e.detail)}
         on:editItem={handleEditItem}
       />
     {/each}

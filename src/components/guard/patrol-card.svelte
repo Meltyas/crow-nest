@@ -147,16 +147,16 @@
   }
 
   function handleActivatePreset() {
-    dispatch('activatePreset', { id: patrolEffect.key || patrolEffect.id, active: !patrolEffect.active });
+    dispatch('activatePreset', { id: patrolEffect.id, active: !patrolEffect.active });
   }
 
   function handleRemovePreset() {
     if (inPresetManager) {
       // En preset manager: eliminar completamente
-      dispatch('removePreset', patrolEffect.key || patrolEffect.id);
+      dispatch('removePreset', patrolEffect.id);
     } else {
       // En guard: desactivar (quitar del guard)
-      dispatch('activatePreset', { id: patrolEffect.key || patrolEffect.id, active: false });
+      dispatch('activatePreset', { id: patrolEffect.id, active: false });
     }
   }
 

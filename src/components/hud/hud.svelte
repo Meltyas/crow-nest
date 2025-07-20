@@ -4,6 +4,8 @@
   import { adjustCheers, adjustDespair, getTokens, isGM, type GameTokens } from '@/data/tokens';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from "svelte";
+  import { Subject } from 'rxjs';
+  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
 
   let pos = { x: 0, y: 0 };
   let isDragging = false;
@@ -15,6 +17,10 @@
 
   // Sync manager
   let syncManager: SyncManager;
+
+  // RxJS cleanup and component management
+  const destroy$ = new Subject<void>();
+  const componentId = `hud-component-${Math.random().toString(36).substr(2, 9)}`;
 
   onMount(() => {
     const saved = localStorage.getItem("crowHudPos");
@@ -36,13 +42,25 @@
     // Load game tokens
     gameTokens = getTokens();
 
-    // Setup real-time synchronization
+    // Setup real-time synchronization with RxJS
+    console.log('HUD - Setting up RxJS subscriptions for componentId:', componentId);
     syncManager = SyncManager.getInstance();
 
-    // Listen for token updates
-    syncManager.subscribe('tokens', handleTokenSync);
-    // Listen for all sync events to refresh UI
-    syncManager.subscribe('all', handleAllSync);
+    // RxJS REACTIVE PIPELINE for tokens
+    syncManager.subscribeToDataType('tokens', componentId, (syncTokens) => {
+      console.log('HUD - Tokens sync update received:', !!syncTokens);
+      if (syncTokens) {
+        handleTokenSync({ type: 'tokens', data: syncTokens });
+      }
+    });
+
+    // RxJS REACTIVE PIPELINE for all sync events (backup/fallback)
+    syncManager.subscribeToDataType('groups', componentId, (syncData) => {
+      console.log('HUD - All sync update received:', !!syncData);
+      if (syncData) {
+        handleAllSync({ type: 'all', data: syncData });
+      }
+    });
 
 
     // Also listen for direct game settings changes as backup
@@ -54,9 +72,14 @@
   });
 
   onDestroy(() => {
+    // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
+    console.log('HUD - Cleaning up RxJS subscriptions for componentId:', componentId);
+    
+    destroy$.next();
+    destroy$.complete();
+    
     if (syncManager) {
-      syncManager.unsubscribe('tokens', handleTokenSync);
-      syncManager.unsubscribe('all', handleAllSync);
+      syncManager.cleanupComponent(componentId);
     }
   });
 

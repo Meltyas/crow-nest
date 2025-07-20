@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { closeResourceEditDialog, closeReputationEditDialog, closePatrolEffectEditDialog, dialogStore, handleResourceSave, handleReputationSave, handlePatrolEffectSave } from '../utils/dialog-manager';
+  import { closeResourceEditDialog, closeReputationEditDialog, closePatrolEffectEditDialog, closeSituationalModifierEditDialog, dialogStore, handleResourceSave, handleReputationSave, handlePatrolEffectSave, handleSituationalModifierSave } from '../utils/dialog-manager';
   import ResourceEditDialog from './unified/dialogs/ResourceEditDialog.svelte';
   import ReputationEditDialog from './unified/dialogs/ReputationEditDialog.svelte';
   import PatrolEffectEditDialog from './unified/dialogs/PatrolEffectEditDialog.svelte';
+  import SituationalModifierEditDialog from './unified/dialogs/SituationalModifierEditDialog.svelte';
 
   let currentDialogState: any;
 
@@ -39,6 +40,14 @@
   visible={currentDialogState?.patrolEffectEditDialog?.visible || false}
   on:save={(event) => handlePatrolEffectSave(event.detail)}
   on:close={closePatrolEffectEditDialog}
+/>
+
+<!-- Global Situational Modifier Edit Dialog -->
+<SituationalModifierEditDialog
+  situationalModifier={currentDialogState?.situationalModifierEditDialog?.situationalModifier}
+  visible={currentDialogState?.situationalModifierEditDialog?.visible || false}
+  on:save={(event) => handleSituationalModifierSave(event.detail)}
+  on:close={closeSituationalModifierEditDialog}
 />
 
 <!-- Future global dialogs can be added here -->

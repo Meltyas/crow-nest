@@ -30,5 +30,8 @@
   "browserslist": [
     "defaults",
     "not IE 11"
-  ]
+  ],
+  "dependencies": {
+    "rxjs": "^7.8.2"
+  }
 }
