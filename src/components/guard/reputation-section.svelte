@@ -60,10 +60,8 @@
 <UnifiedReputation
   {groupId}
   title="Reputación"
-  showPresets={true}
-  editingReputations={editingReputation}
-  {expandedReputationDetails}
-  on:toggleEditingReputations={handleToggleEditingReputation}
+  expandedReputationDetails={expandedReputationDetails}
+  inPresetManager={false}
   on:updateReputation={handleUpdateReputation}
   on:repImageClick={handleRepImageClick}
   on:newRepImageClick={handleNewRepImageClick}

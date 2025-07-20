@@ -6,11 +6,6 @@
 </script>
 
 <script lang="ts">
-  // Access to Foundry objects provided at runtime
-  declare const FilePicker: any;
-  declare const game: any;
-  declare const Dialog: any;
-
   import UnifiedPatrolEffects from '@/components/unified/unified-patrol-effects.svelte';
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
@@ -600,7 +595,6 @@
 
   function usePreset(preset: PresetItem) {
     const normalizedType = normalizePresetType(preset.type);
-    updatePresetUsage(preset.id, normalizedType);
     dispatch('usePreset', preset);
   }
 
@@ -654,7 +648,7 @@
         yes: {
           icon: '<i class="fas fa-broom"></i>',
           label: "Sí, limpiar",
-          callback: () => {
+          callback: async () => {
             let removedCount = 0;
 
             presetsStore.update(currentPresets => {
@@ -716,14 +710,7 @@
             });
 
             // Persistir los cambios
-            presetsStore.subscribe(async (presets) => {
-              try {
-                await persistPresets(presets);
-                console.log('Cleaned presets saved successfully');
-              } catch (error) {
-                console.error('Error saving cleaned presets:', error);
-              }
-            })();
+            await savePresetsToFoundry();
 
             // Mostrar notificación
             if (game?.ui?.notifications) {
@@ -866,7 +853,7 @@
     newSituationalModifierForm = { name: '', description: '', img: '', statEffects: {} as Record<string, number> };
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!editingPreset) return;
 
     console.log('SaveEdit - Before update, editingPreset.id:', editingPreset.id);
@@ -935,13 +922,7 @@
     });
 
     // Persist the changes using the proper function
-    presetsStore.subscribe(async (presets) => {
-      try {
-        await persistPresets(presets);
-      } catch (error) {
-        console.error('Error saving presets:', error);
-      }
-    })(); // Immediately invoke to run once
+    await savePresetsToFoundry();
 
     // Obtener el preset actualizado del store para emitir el evento
     let updatedPreset = null;
@@ -1008,6 +989,17 @@
       top: popupElement?.offsetTop || 100,
       left: popupElement?.offsetLeft || 100
     }).render(true);
+  }
+
+  // Save presets to Foundry settings
+  async function savePresetsToFoundry() {
+    try {
+      if (typeof game !== 'undefined' && game.settings) {
+        await game.settings.set('crow-nest', 'unifiedPresets', $presetsStore);
+      }
+    } catch (error) {
+      console.error('Error saving presets to Foundry:', error);
+    }
   }
 
   // Function to create preset from existing item
@@ -1183,7 +1175,7 @@
   }
 
   // Function to update preset from existing item (only if it exists)
-  function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
+  async function updatePresetFromExistingItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('Updating preset from item:', item, 'Type:', type);
 
     // Validar que el item tenga la estructura correcta
@@ -1288,13 +1280,7 @@
         });
 
         // Persist changes
-        presetsStore.subscribe(async (presets) => {
-          try {
-            await persistPresets(presets);
-          } catch (error) {
-            console.error('Error saving presets:', error);
-          }
-        })(); // Immediately invoke to run once
+        await savePresetsToFoundry();
 
         dispatch('presetUpdated', { preset: existingPreset, originalItem: item });
         return true;
@@ -1373,39 +1359,36 @@
         <!-- Unified Components for preset management -->
         {#if activeTab === 'resources'}
           <UnifiedResources
+            groupId={undefined}
             title="Gestión de Presets de Recursos"
-            showPresets={true}
-            editingResources={false}
+            expandedResourceDetails={{}}
             inPresetManager={true}
             on:updateResource={() => {}}
           />
         {:else if activeTab === 'reputations'}
           <UnifiedReputation
+            groupId={undefined}
             title="Gestión de Presets de Reputación"
-            showPresets={true}
-            editingReputation={false}
+            expandedReputationDetails={{}}
             inPresetManager={true}
             on:updateReputation={() => {}}
           />
         {:else if activeTab === 'patrolEffects'}
           <UnifiedPatrolEffects
+            groupId={undefined}
             title="Gestión de Presets de Efectos de Patrulla"
-            showPresets={true}
-            editingPatrolEffects={false}
+            expandedPatrolEffectDetails={{}}
             inPresetManager={true}
             on:updatePatrolEffect={() => {}}
           />
         {:else if activeTab === 'situationalModifiers'}
           <UnifiedSituationalModifiers
+            groupId={undefined}
             title="Gestión de Presets de Modificadores Situacionales"
-            showPresets={true}
-            editingSituationalModifiers={false}
+            expandedSituationalModifierDetails={{}}
             inPresetManager={true}
+            displayMode="guard"
             on:updateSituationalModifier={() => {}}
-            on:removePreset={(e) => {
-              console.log('PresetPopup - Removing situational modifier preset:', e.detail);
-              removeSituationalModifier(e.detail);
-            }}
           />
         {:else}
           <!-- Keep original forms for situationalModifiers only -->

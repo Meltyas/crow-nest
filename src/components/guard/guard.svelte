@@ -635,10 +635,10 @@
               <!-- Reputation Tab -->
               {#if activeGuardTab === 'reputation'}
                 <UnifiedReputation
+                  groupId={undefined}
                   title="Reputación"
-                  editingReputations={editingReputation}
                   expandedReputationDetails={expandedReputationDetails}
-                  on:toggleEditingReputations={handleToggleEditingReputation}
+                  inPresetManager={false}
                   on:updateReputation={handlers.handleUpdateReputation}
                   on:repImageClick={handlers.handleRepImageClick}
                   on:newRepImageClick={handlers.handleNewRepImageClick}
@@ -650,10 +650,10 @@
               <!-- Resources Tab -->
               {:else if activeGuardTab === 'resources'}
                 <UnifiedResources
+                  groupId={undefined}
                   title="Recursos"
-                  editingResources={editingResources}
                   expandedResourceDetails={expandedResourceDetails}
-                  on:toggleEditingResources={handleToggleEditingResources}
+                  inPresetManager={false}
                   on:updateResource={handlers.handleUpdateResource}
                   on:resImageClick={handlers.handleResImageClick}
                   on:newResImageClick={handlers.handleNewResImageClick}

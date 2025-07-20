@@ -56,10 +56,8 @@
 <UnifiedResources
   {groupId}
   title="Recursos"
-  showPresets={true}
-  editingResources={editingResources}
-  {expandedResourceDetails}
-  on:toggleEditingResources={handleToggleEditingResources}
+  expandedResourceDetails={expandedResourceDetails}
+  inPresetManager={false}
   on:updateResource={handleUpdateResource}
   on:resImageClick={handleResImageClick}
   on:newResImageClick={handleNewResImageClick}

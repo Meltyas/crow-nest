@@ -23,7 +23,7 @@
   // Reactive variables for drag and drop
   $: isDragged = draggedIndex === index;
   $: dropZone = dropZoneVisible[index];
-  $: isExpanded = expandedDetails[situationalModifier.key] || false;
+  $: isExpanded = (expandedDetails && expandedDetails[situationalModifier.key || situationalModifier.id]) || false;
 
   function handleImageClick() {
     if (simpleView) {
@@ -207,6 +207,9 @@
   function toggleDetails(event: MouseEvent) {
     event.stopPropagation();
     const key = situationalModifier.key || situationalModifier.id;
+    if (!expandedDetails) {
+      expandedDetails = {};
+    }
     expandedDetails[key] = !expandedDetails[key];
     expandedDetails = { ...expandedDetails };
   }
