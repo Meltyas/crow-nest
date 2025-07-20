@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { closeResourceEditDialog, closeReputationEditDialog, dialogStore, handleResourceSave, handleReputationSave } from '../utils/dialog-manager';
+  import { closeResourceEditDialog, closeReputationEditDialog, closePatrolEffectEditDialog, dialogStore, handleResourceSave, handleReputationSave, handlePatrolEffectSave } from '../utils/dialog-manager';
   import ResourceEditDialog from './unified/dialogs/ResourceEditDialog.svelte';
   import ReputationEditDialog from './unified/dialogs/ReputationEditDialog.svelte';
+  import PatrolEffectEditDialog from './unified/dialogs/PatrolEffectEditDialog.svelte';
 
   let currentDialogState: any;
 
@@ -30,6 +31,14 @@
   visible={currentDialogState?.reputationEditDialog?.visible || false}
   on:save={(event) => handleReputationSave(event.detail)}
   on:close={closeReputationEditDialog}
+/>
+
+<!-- Global Patrol Effect Edit Dialog -->
+<PatrolEffectEditDialog
+  patrolEffect={currentDialogState?.patrolEffectEditDialog?.patrolEffect}
+  visible={currentDialogState?.patrolEffectEditDialog?.visible || false}
+  on:save={(event) => handlePatrolEffectSave(event.detail)}
+  on:close={closePatrolEffectEditDialog}
 />
 
 <!-- Future global dialogs can be added here -->

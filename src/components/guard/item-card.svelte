@@ -9,7 +9,7 @@
 
   export let item: any; // GuardReputation | GuardResource
   export let index: number;
-  export let type: 'reputation' | 'resource'; // Para determinar el comportamiento
+  export let type: 'reputation' | 'resource' | 'patrol-effect'; // Para determinar el comportamiento
   export let expandedDetails: Record<string, boolean> = {};
   export let draggedIndex: number | null = null;
   export let dropZoneVisible: Record<string, 'left' | 'right' | null> = {};

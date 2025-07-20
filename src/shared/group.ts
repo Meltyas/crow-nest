@@ -37,6 +37,7 @@ export interface Group {
   skills: GroupSkill[];
   experiences: GroupExperience[];
   patrolEffects: GroupPatrolEffects;
+  patrolOrder: { [effectId: string]: number }; // Order for patrol effects within this group
   maxUnits: number;
   maxSoldiers: number; // Maximum number of soldiers for formation layout
   hope: number; // 0-6 hope level

@@ -13,6 +13,7 @@
 
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
+  import UnifiedPatrolEffects from '@/components/unified/unified-patrol-effects.svelte';
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
   import {
@@ -29,7 +30,7 @@
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { openResourceEditDialog, openReputationEditDialog } from '../../utils/dialog-manager';
+  import { openResourceEditDialog, openReputationEditDialog, openPatrolEffectEditDialog } from '../../utils/dialog-manager';
   import PopupFocusManager from '../../utils/popup-focus';
 
   // Helper function to normalize preset types for legacy compatibility
@@ -66,6 +67,18 @@
         id: '',
         name: '',
         value: 0,
+        description: '',
+        img: '',
+        sourceId: ''
+      });
+    } else if (activeTab === 'patrolEffects') {
+      // Open patrol effect dialog with empty data for creation
+      openPatrolEffectEditDialog({
+        id: '',
+        name: '',
+        value: 0,
+        type: 'permanent',
+        statEffects: {},
         description: '',
         img: '',
         sourceId: ''
@@ -786,6 +799,23 @@
       return;
     }
 
+    // For patrol effects, use the global dialog manager
+    if (normalizedType === 'patrolEffect') {
+      // Convert preset format to PatrolEffect format for the global dialog
+      const patrolEffect = {
+        id: preset.data.sourceId || preset.id,
+        name: preset.data.name,
+        value: preset.data.value,
+        type: preset.data.type,
+        statEffects: preset.data.statEffects,
+        description: preset.data.description,
+        img: preset.data.img,
+        sourceId: preset.data.sourceId
+      };
+      openPatrolEffectEditDialog(patrolEffect);
+      return;
+    }
+
     // For other types, use the existing form-based editing
     editingPreset = preset;
     editingPresetType = normalizedType;
@@ -1348,58 +1378,19 @@
             inPresetManager={true}
             on:updateReputation={() => {}}
           />
+        {:else if activeTab === 'patrolEffects'}
+          <UnifiedPatrolEffects
+            title="Gestión de Presets de Efectos de Patrulla"
+            showPresets={true}
+            editingPatrolEffects={false}
+            inPresetManager={true}
+            on:updatePatrolEffect={() => {}}
+          />
         {:else}
-          <!-- Keep original forms for patrolEffects and situationalModifiers -->
+          <!-- Keep original forms for situationalModifiers only -->
           {#if showCreateForm}
             <div class="create-form">
-              {#if activeTab === 'patrolEffects'}
-                <h3>{editingPreset ? 'Editar Efecto de Patrulla' : 'Crear Efecto de Patrulla'}</h3>
-                <div class="form-group">
-                  <label>Nombre:</label>
-                  <input bind:value={newPatrolEffectForm.name} placeholder="Nombre del efecto" />
-                </div>
-                <div class="form-group">
-                  <label>Tipo:</label>
-                  <select bind:value={newPatrolEffectForm.type}>
-                    <option value="buff">Buff</option>
-                    <option value="debuff">Debuff</option>
-                    <option value="neutral">Neutral</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Duración:</label>
-                  <input bind:value={newPatrolEffectForm.duration} placeholder="ej: 1 turno, 10 minutos" />
-                </div>
-                <div class="form-group">
-                  <label>Descripción:</label>
-                  <textarea bind:value={newPatrolEffectForm.description} placeholder="Descripción opcional"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>Efectos en Stats:</label>
-                  <div class="stat-effects">
-                    {#each stats as stat}
-                      <div class="stat-effect-item">
-                        <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                        <span>{stat.name}</span>
-                        <input
-                          type="number"
-                          value={newPatrolEffectForm.statEffects[stat.key] || 0}
-                          on:input={(e) => {
-                            const value = parseInt(e.currentTarget.value) || 0;
-                            addStatEffect(stat.key, value);
-                          }}
-                        />
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-                <div class="form-buttons">
-                  <button class="create-btn" on:click={createPatrolEffectPreset}>
-                    {editingPreset ? 'Guardar' : 'Crear'}
-                  </button>
-                  <button class="cancel-btn" on:click={() => editingPreset ? cancelEdit() : (showCreateForm = false)}>Cancelar</button>
-                </div>
-              {:else if activeTab === 'situationalModifiers'}
+              {#if activeTab === 'situationalModifiers'}
                 <h3>{editingPreset ? 'Editar Modificador Situacional' : 'Crear Modificador Situacional'}</h3>
                 <div class="form-group">
                   <label>Nombre:</label>
@@ -1464,43 +1455,10 @@
           {/if}
         {/if}
 
-        <!-- Only show presets list for patrolEffects and situationalModifiers -->
-        {#if activeTab !== 'resources' && activeTab !== 'reputations'}
+        <!-- Only show presets list for situationalModifiers -->
+        {#if activeTab !== 'resources' && activeTab !== 'reputations' && activeTab !== 'patrolEffects'}
           <div class="presets-list grid-layout">
-            {#if activeTab === 'patrolEffects'}
-              <!-- Debug: Log patrol effects -->
-              {#each presets.patrolEffects.filter(p => p && p.data) as preset}
-              <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
-                <div class="preset-item-info">
-                  <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
-                  <div class="preset-item-details">
-                    <p><strong>Tipo:</strong> {safeGetPresetProperty(preset, 'type', 'buff')} | <strong>Duración:</strong> {safeGetPresetProperty(preset, 'duration', '1 turno')}</p>
-                    {#if safeGetPresetProperty(preset, 'description')}
-                      <p class="description">{safeGetPresetProperty(preset, 'description')}</p>
-                    {/if}
-                    {#if game?.user?.isGM}
-                      <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
-                    {/if}
-                    <div class="stat-effects-preview">
-                      {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
-                        {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
-                        {#if stat && value !== 0}
-                          <span class="stat-effect-preview">
-                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                            {stat.name}: {value > 0 ? '+' : ''}{value}
-                          </span>
-                        {/if}
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-                <div class="preset-actions">
-                  <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
-                  <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
-                </div>
-              </div>
-            {/each}
-          {:else if activeTab === 'situationalModifiers'}
+            {#if activeTab === 'situationalModifiers'}
             {#each presets.situationalModifiers.filter(p => p && p.data) as preset}
               <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
                 {#if safeGetPresetProperty(preset, 'img')}
@@ -1532,40 +1490,6 @@
                 </div>
               </div>
             {/each}
-            {:else if activeTab === 'situationalModifiers'}
-              {#each presets.situationalModifiers.filter(p => p && p.data) as preset}
-                <div class="preset-item-card modifier-item" on:dblclick={() => editPreset(preset)}>
-                  {#if safeGetPresetProperty(preset, 'img')}
-                    <img class="preset-item-image" src={safeGetPresetProperty(preset, 'img')} alt="situational modifier" />
-                  {/if}
-                  <div class="preset-item-info">
-                    <div class="preset-item-name">{safeGetPresetProperty(preset, 'name', 'Sin nombre')}</div>
-                    <div class="preset-item-details">
-                      {#if safeGetPresetProperty(preset, 'description')}
-                        <p class="description">{safeGetPresetProperty(preset, 'description')}</p>
-                      {/if}
-                      {#if game?.user?.isGM}
-                        <span class="source-id-debug">ID: {safeGetPresetProperty(preset, 'sourceId') || preset.data?.sourceId || 'No sourceId'}</span>
-                      {/if}
-                      <div class="stat-effects-preview">
-                        {#each safeGetStatEffectEntries(preset.data) as [statKey, value]}
-                          {@const stat = stats.find(s => s.key === statKey || s.id === statKey)}
-                          {#if stat && value !== 0}
-                            <span class="stat-effect-preview">
-                              <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} />
-                              {stat.name}: {value > 0 ? '+' : ''}{value}
-                            </span>
-                          {/if}
-                        {/each}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="preset-actions">
-                    <button class="use-btn" on:click|stopPropagation={() => usePreset(preset)}>Usar</button>
-                    <button class="delete-btn" on:click|stopPropagation={() => deletePreset(preset)}>×</button>
-                  </div>
-                </div>
-              {/each}
             {/if}
           </div>
         {/if}

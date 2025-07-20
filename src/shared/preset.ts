@@ -33,13 +33,12 @@ export interface Reputation extends BasePresetItem {
 export interface PatrolEffect extends BasePresetItem {
   id: string;
   name: string;
-  value: number;
-  type: "permanent" | "situational";
   statEffects: { [key: string]: number };
   img?: string;
   groupId?: string; // undefined = global, string = group-specific
   description?: string; // For details in ItemCard
   active?: boolean; // Para mostrar en guard (true) o solo en presets (false)
+  presetOrder?: number; // Order when displayed in preset manager (lower = higher priority)
 }
 
 // Situational Modifier interface
@@ -51,6 +50,8 @@ export interface SituationalModifier extends BasePresetItem {
   groupId?: string; // undefined = global, string = group-specific
   description?: string; // For details in ItemCard
   active?: boolean; // Para mostrar en guard (true) o solo en presets (false)
+  guardOrder?: number; // Order when displayed in guard (lower = higher priority)
+  presetOrder?: number; // Order when displayed in preset manager (lower = higher priority)
 }
 
 // Preset collection interface (all items are presets, components filter by groupId)

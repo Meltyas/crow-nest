@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import { getAdmins } from '@/admin/admins';
+  import PatrolCard from '@/components/guard/patrol-card.svelte';
   import PatrolLayout from '@/components/patrol-layout/patrol-layout.svelte';
   import { patrolSheetManager } from '@/components/patrol-sheet/patrol-sheet';
   import { presetManager } from '@/components/presets/preset-manager';
@@ -17,6 +18,7 @@
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { presetsStore } from '@/stores/presets';
+  import { openPatrolEffectEditDialog } from '@/utils/dialog-manager';
   import { generateUUID } from '@/utils/log';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
   import { onDestroy, onMount } from 'svelte';
@@ -72,6 +74,7 @@
   // Patrol Effect application state
   let pendingPatrolEffect: any = null;
   let applyingPatrolEffect = false;
+  let pendingPatrolEffectGroup: Group | null = null; // Store group for auto-applying new patrol effects
 
   // Sync manager
   let syncManager: SyncManager;
@@ -150,6 +153,11 @@
 
   // Create preset from a new patrol effect
   function createPatrolEffectPreset(effect) {
+    if (!effect?.name) {
+      console.warn('Cannot create patrol effect preset: effect name is missing');
+      return;
+    }
+
     const nameKey = effect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const effectsKey = Object.keys(effect.statEffects).sort().join('-');
     const sourceId = `temp-${nameKey}-${effectsKey}`;
@@ -169,6 +177,41 @@
     } else {
       console.log('Groups.svelte - Preset already exists for sourceId:', sourceId);
     }
+  }
+
+  // PatrolCard event handlers
+  function handlePatrolCardEdit(event: CustomEvent, group: Group, effectId: string) {
+    editPatrolEffect(group, effectId);
+  }
+
+  function handlePatrolCardRemove(event: CustomEvent, group: Group, effectId: string) {
+    removePatrolEffect(group, effectId);
+  }
+
+  function handlePatrolCardCreatePreset(event: CustomEvent) {
+    const effect = event.detail;
+    createPatrolEffectPreset(effect);
+  }
+
+  function handlePatrolCardShowInChat(event: CustomEvent) {
+    // The PatrolCard component handles this internally
+  }
+
+  function openPatrolEffectDialog(group: Group) {
+    // Store the target group for later use
+    pendingPatrolEffectGroup = group;
+    
+    // Open dialog for creating new patrol effect
+    openPatrolEffectEditDialog({
+      id: '',
+      name: '',
+      value: 0,
+      type: 'permanent',
+      statEffects: {},
+      description: '',
+      img: 'icons/svg/aura.svg',
+      sourceId: ''
+    });
   }
 
   onMount(() => {
@@ -255,13 +298,15 @@
 
           // Ensure all effects have sourceId and key (for sync compatibility)
           if (!effect.sourceId && effect.name && effect.statEffects) {
-            const nameKey = effect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            const effectsKey = Object.keys(effect.statEffects || {}).sort().join('-');
-            const stableSourceId = `temp-${nameKey}-${effectsKey}`;
+            if (effect.name && typeof effect.name === 'string') {
+              const nameKey = effect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+              const effectsKey = Object.keys(effect.statEffects || {}).sort().join('-');
+              const stableSourceId = `temp-${nameKey}-${effectsKey}`;
 
-            effect.sourceId = stableSourceId;
-            effect.key = stableSourceId;
-            effectsUpdated = true;
+              effect.sourceId = stableSourceId;
+              effect.key = stableSourceId;
+              effectsUpdated = true;
+            }
 
             console.log(`Migrated effect "${effect.name}" to have sourceId: ${stableSourceId} in group: ${group.name}`);
           } else if (effect.sourceId) {
@@ -317,17 +362,40 @@
 
     // Listen for patrol effect application events
     const handlePatrolEffectApplication = (event: CustomEvent) => {
-      pendingPatrolEffect = event.detail;
+      // Handle both formats: event.detail directly or event.detail.patrolEffect
+      const patrolEffect = event.detail.patrolEffect || event.detail;
+      console.log('Groups.svelte - Received patrol effect application event:', patrolEffect);
+      pendingPatrolEffect = patrolEffect;
       applyingPatrolEffect = true;
     };
 
     window.addEventListener('crow-nest-apply-patrol-effect', handlePatrolEffectApplication);
     presetManager.addEventListener('presetUpdated', handlePresetUpdated);
 
+    // Listen for new patrol effects created from dialog to auto-apply to pending group
+    const handleNewPatrolEffectCreated = async (event: CustomEvent) => {
+      console.log('Groups.svelte - New patrol effect created:', event.detail);
+      
+      if (pendingPatrolEffectGroup && event.detail) {
+        const newEffect = event.detail;
+        
+        // Apply the new effect to the pending group
+        await applyNewPatrolEffectToGroup(pendingPatrolEffectGroup, newEffect);
+        
+        // Clear the pending group
+        pendingPatrolEffectGroup = null;
+        
+        console.log('Groups.svelte - Auto-applied new patrol effect to group:', pendingPatrolEffectGroup?.id);
+      }
+    };
+
+    window.addEventListener('patrol-effect-created', handleNewPatrolEffectCreated);
+
     // Cleanup function
     return () => {
       document.removeEventListener('click', handleGlobalClick);
       window.removeEventListener('crow-nest-apply-patrol-effect', handlePatrolEffectApplication);
+      window.removeEventListener('patrol-effect-created', handleNewPatrolEffectCreated);
       presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
     };
 
@@ -1072,6 +1140,12 @@
                 group.patrolEffects = {};
               }
 
+              // Check if effectName is valid
+              if (!effectName || typeof effectName !== 'string') {
+                console.warn('Cannot add patrol effect: effect name is missing or invalid');
+                return;
+              }
+
               // Generate stable sourceId for new effect
               const nameKey = effectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
               const effectsKey = Object.keys(statEffects).sort().join('-');
@@ -1285,6 +1359,14 @@
       group.patrolEffects = {};
     }
 
+    // Check if pendingPatrolEffect has a valid name
+    if (!pendingPatrolEffect?.name || typeof pendingPatrolEffect.name !== 'string') {
+      console.warn('Cannot apply patrol effect: effect name is missing or invalid');
+      pendingPatrolEffect = null;
+      applyingPatrolEffect = false;
+      return;
+    }
+
     // Generate a stable sourceId based on the effect's content (same logic as createPatrolEffectPreset)
     const nameKey = pendingPatrolEffect.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const effectsKey = Object.keys(pendingPatrolEffect.statEffects || {}).sort().join('-');
@@ -1330,7 +1412,43 @@
 
     // Show success notification
     ui.notifications?.info(`Efecto de patrulla "${group.patrolEffects[effectId].name}" aplicado a ${group.name}.`);
-  }  function handleGroupClick(group: Group) {
+  }
+
+  // Function to apply a patrol effect directly to a group (for auto-apply after creation)
+  async function applyNewPatrolEffectToGroup(group: Group, patrolEffect: any) {
+    if (!group || !patrolEffect) return;
+
+    // Generate a unique ID for this effect instance
+    const effectId = `preset_${patrolEffect.sourceId || Date.now()}`;
+
+    // Initialize patrolEffects if undefined
+    if (!group.patrolEffects) {
+      group.patrolEffects = {};
+    }
+
+    // Add the effect to the group
+    group.patrolEffects[effectId] = {
+      name: patrolEffect.name,
+      description: patrolEffect.description,
+      statEffects: patrolEffect.statEffects || {},
+      img: patrolEffect.img || 'icons/svg/aura.svg',
+      sourceId: patrolEffect.sourceId
+    };
+
+    // Update the groups
+    const updatedGroups = groups.map(g =>
+      g.id === group.id
+        ? { ...g, patrolEffects: { ...g.patrolEffects } }
+        : g
+    );
+
+    updateGroups(updatedGroups);
+
+    // Show success notification
+    ui.notifications?.info(`Efecto de patrulla "${patrolEffect.name}" añadido a ${group.name}.`);
+  }
+
+  function handleGroupClick(group: Group) {
     if (applyingPatrolEffect && pendingPatrolEffect) {
       applyPatrolEffectToGroup(group);
     }
@@ -1950,6 +2068,42 @@
   .draggable-handle:hover::before {
     opacity: 1;
   }
+
+  .patrol-add-button {
+    width: 40px;
+    height: 40px;
+    background: #9b59b6;
+    border: 2px solid #8e44ad;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-bottom: .5rem;
+  }
+
+  .patrol-add-button:hover {
+    background: #8e44ad;
+    border-color: #7d3c98;
+    transform: scale(1.05);
+  }
+
+  .patrol-add-button:active {
+    transform: scale(0.95);
+  }
+
+  .patrol-effects-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
 </style>
 
 <div class="groups-container">
@@ -2260,68 +2414,44 @@
 
               {#if Object.entries(group.patrolEffects || {}).length === 0}
                 <div style="text-align: center; padding: 1rem; color: #888; font-style: italic;">
-                  Edit para añadir efectos de patrulla
+                  <button
+                    class="patrol-add-button"
+                    on:click={() => openPatrolEffectDialog(group)}
+                    title="Añadir efecto de patrulla"
+                  >
+                    +
+                  </button>
                 </div>
               {:else}
-                {#each Object.entries(group.patrolEffects || {}) as [effectId, effect]}
-                  <div
-                    style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: rgba(155, 89, 182, 0.1); border: 2px solid #9b59b6; border-radius: 8px; {editing[group.id] ? 'cursor: pointer;' : ''}"
-                    class:editable-effect={editing[group.id]}
-                    on:dblclick={editing[group.id] ? () => editPatrolEffect(group, effectId) : undefined}
-                    on:keydown={editing[group.id] ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editPatrolEffect(group, effectId); } } : undefined}
-                    title={editing[group.id] ? 'Doble clic para editar' : ''}
-                    role={editing[group.id] ? 'button' : undefined}
-                    tabindex={editing[group.id] ? '0' : undefined}
+                <div class="patrol-effects-container">
+                  {#each Object.entries(group.patrolEffects || {}) as [effectId, effect], i}
+                    <PatrolCard
+                      patrolEffect={{
+                        ...effect,
+                        id: effectId,
+                        key: effectId,
+                        active: true
+                      }}
+                      index={i}
+                      expandedDetails={{}}
+                      draggedIndex={null}
+                      dropZoneVisible={{}}
+                      inPresetManager={false}
+                      simpleView={true}
+                      on:edit={(e) => handlePatrolCardEdit(e, group, effectId)}
+                      on:remove={(e) => handlePatrolCardRemove(e, group, effectId)}
+                      on:createPreset={handlePatrolCardCreatePreset}
+                      on:showInChat={handlePatrolCardShowInChat}
+                    />
+                  {/each}
+                  <button
+                    class="patrol-add-button"
+                    on:click={() => openPatrolEffectDialog(group)}
+                    title="Añadir efecto de patrulla"
                   >
-                    <!-- Effect Header -->
-                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
-                      <div style="flex: 1;">
-                        <strong style="color: #9b59b6; font-size: 1.2em; display: block; margin-bottom: 0.5rem; text-shadow: 0 0 2px rgba(155, 89, 182, 0.3);">{effect.name}</strong>
-                        {#if effect.description}
-                          <div style="color: #666; font-size: 0.9em; line-height: 1.4; margin-bottom: 0.75rem;">
-                            {effect.description}
-                          </div>
-                        {/if}
-                      </div>
-                      {#if editing[group.id]}
-                        <div style="display: flex; gap: 0.5rem;">
-                            {#if game?.user?.isGM}
-                            <button
-                              on:click={() => createPatrolEffectPreset(effect)}
-                              style="padding: 0.25rem 0.5rem; background: #d4af37; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                              title="Crear preset con este efecto"
-                            >
-                              Preset
-                            </button>
-                            {/if}
-                          <button
-                            on:click={() => removePatrolEffect(group, effectId)}
-                            style="padding: 0.25rem 0.5rem; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; flex-shrink: 0;"
-                            title="Eliminar efecto"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      {/if}
-                    </div>
-
-                    <!-- Stats Effects -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                      {#each Object.entries(effect.statEffects || {}) as [statKey, value]}
-                        {@const stat = stats.find(s => s.key === statKey)}
-                        {#if stat}
-                          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(155, 89, 182, 0.15); border: 1px solid #9b59b6; border-radius: 6px;">
-                            <img src={stat.img || 'icons/svg/shield.svg'} alt={stat.name} style="width: 24px; height: 24px;" />
-                            <span style="font-weight: bold; color: #9b59b6; font-size: 0.9em;">{stat.name}</span>
-                            <span style="font-weight: bold; color: {value >= 0 ? '#28a745' : '#dc3545'}; font-size: 1.1em;">
-                              {value >= 0 ? '+' : ''}{value}
-                            </span>
-                          </div>
-                        {/if}
-                      {/each}
-                    </div>
-                  </div>
-                {/each}
+                    +
+                  </button>
+                </div>
               {/if}
             </div>
 
