@@ -76,6 +76,10 @@
   let applyingPatrolEffect = false;
   let pendingPatrolEffectGroup: Group | null = null; // Store group for auto-applying new patrol effects
 
+  // Edit context state for patrol effects
+  let editingGroupContext: Group | null = null;
+  let editingEffectId: string | null = null;
+
   // Sync manager
   let syncManager: SyncManager;
 
@@ -181,10 +185,12 @@
 
   // PatrolCard event handlers
   function handlePatrolCardEdit(event: CustomEvent, group: Group, effectId: string) {
+    console.log('Groups.svelte - handlePatrolCardEdit called with:', { event, group: group.id, effectId });
     editPatrolEffect(group, effectId);
   }
 
   function handlePatrolCardRemove(event: CustomEvent, group: Group, effectId: string) {
+    console.log('Groups.svelte - handlePatrolCardRemove called with:', { event, group: group.id, effectId });
     removePatrolEffect(group, effectId);
   }
 
@@ -339,6 +345,8 @@
     // Listen for stats and modifiers updates (for UI updates)
     syncManager.subscribe('stats', handleStatsSync);
     syncManager.subscribe('modifiers', handleModifiersSync);
+    // Listen for preset store updates (for patrol effect synchronization)
+    syncManager.subscribe('unifiedPresets', handlePatrolEffectStoreUpdate);
 
     // Add global click listener to close floating containers
     const handleGlobalClick = (event: MouseEvent) => {
@@ -391,11 +399,71 @@
 
     window.addEventListener('patrol-effect-created', handleNewPatrolEffectCreated);
 
+    // Listen for patrol effect updates from dialog (for existing effects being edited)
+    const handlePatrolEffectUpdated = async (event: CustomEvent) => {
+      console.log('Groups.svelte - Patrol effect updated from dialog:', event.detail);
+      
+      if (editingGroupContext && editingEffectId && event.detail) {
+        const updatedEffect = event.detail;
+        
+        console.log('Groups.svelte - Updating effect in group:', {
+          groupId: editingGroupContext.id,
+          effectId: editingEffectId,
+          updatedEffect
+        });
+
+        // Update the effect in the group
+        if (editingGroupContext.patrolEffects && editingGroupContext.patrolEffects[editingEffectId]) {
+          editingGroupContext.patrolEffects[editingEffectId] = {
+            ...editingGroupContext.patrolEffects[editingEffectId],
+            name: updatedEffect.name,
+            description: updatedEffect.description,
+            statEffects: updatedEffect.statEffects,
+            img: updatedEffect.img
+          };
+
+          // Update the groups array
+          const updatedGroups = groups.map(g =>
+            g.id === editingGroupContext.id
+              ? { ...g, patrolEffects: { ...g.patrolEffects } }
+              : g
+          );
+
+          updateGroups(updatedGroups);
+
+          // Update preset store for reverse sync (patrol -> preset)
+          const existingEffect = editingGroupContext.patrolEffects[editingEffectId];
+          if (existingEffect.sourceId) {
+            console.log('Groups.svelte - Updating preset store from dialog save:', {
+              sourceId: existingEffect.sourceId,
+              updates: updatedEffect
+            });
+
+            await updatePatrolEffectPreset(existingEffect.sourceId, {
+              name: updatedEffect.name,
+              description: updatedEffect.description,
+              statEffects: updatedEffect.statEffects,
+              img: updatedEffect.img
+            });
+          }
+
+          ui.notifications?.info(`Efecto de patrulla "${updatedEffect.name}" actualizado.`);
+        }
+        
+        // Clear the editing context
+        editingGroupContext = null;
+        editingEffectId = null;
+      }
+    };
+
+    window.addEventListener('patrol-effect-updated', handlePatrolEffectUpdated);
+
     // Cleanup function
     return () => {
       document.removeEventListener('click', handleGlobalClick);
       window.removeEventListener('crow-nest-apply-patrol-effect', handlePatrolEffectApplication);
       window.removeEventListener('patrol-effect-created', handleNewPatrolEffectCreated);
+      window.removeEventListener('patrol-effect-updated', handlePatrolEffectUpdated);
       presetManager.removeEventListener('presetUpdated', handlePresetUpdated);
     };
 
@@ -406,6 +474,7 @@
     if (syncManager) {
       syncManager.unsubscribe('stats', handleStatsSync);
       syncManager.unsubscribe('modifiers', handleModifiersSync);
+      syncManager.unsubscribe('unifiedPresets', handlePatrolEffectStoreUpdate);
       // No need to unsubscribe from groups - it's global
     }
 
@@ -428,16 +497,77 @@
     }
   }
 
+  // Handler for preset store updates - specifically for patrol effects
+  function handlePatrolEffectStoreUpdate(event: SyncEvent) {
+    console.log('Groups.svelte - Handling patrol effect store update:', event);
+    
+    if (event.type !== 'unifiedPresets' || !event.data || !event.data.patrolEffects) return;
+
+    // Update all patrol effects in all groups based on sourceId matching
+    let hasUpdates = false;
+    const updatedGroups = groups.map(group => {
+      if (!group.patrolEffects) return group;
+
+      const updatedEffects = { ...group.patrolEffects };
+      let groupHasUpdates = false;
+
+      // Check each effect in the group against the updated presets
+      for (const [effectId, effect] of Object.entries(updatedEffects)) {
+        if (!effect.sourceId) continue;
+
+        // Find matching preset in the store
+        const matchingPreset = event.data.patrolEffects.find(
+          (preset: any) => preset.sourceId === effect.sourceId
+        );
+
+        if (matchingPreset) {
+          console.log('Groups.svelte - Found matching preset to update effect:', {
+            effectId,
+            effectName: effect.name,
+            presetName: matchingPreset.name,
+            sourceId: effect.sourceId
+          });
+
+          // Update the effect with data from the preset
+          updatedEffects[effectId] = {
+            ...effect,
+            name: matchingPreset.name,
+            description: matchingPreset.description || '',
+            statEffects: matchingPreset.statEffects || {},
+            img: matchingPreset.img || effect.img
+          };
+
+          groupHasUpdates = true;
+          hasUpdates = true;
+        }
+      }
+
+      if (groupHasUpdates) {
+        return { ...group, patrolEffects: updatedEffects };
+      }
+
+      return group;
+    });
+
+    if (hasUpdates) {
+      console.log('Groups.svelte - Updating groups with patrol effect changes from store');
+      updateGroups(updatedGroups);
+    }
+  }
+
   async function persist() {
+    console.log('Groups.svelte - persist called, isAdminMode:', isAdminMode);
     if (isAdminMode) {
       await persistAdmins(groups);
     } else {
       await persistGroups(groups);
     }
+    console.log('Groups.svelte - persist completed');
   }
 
   // Helper function to update groups and sync
   function updateGroups(newGroups: Group[]) {
+    console.log('Groups.svelte - updateGroups called with:', newGroups.length, 'groups');
     groups = newGroups;
     if (isAdminMode) {
       adminsStore.set(groups);
@@ -445,6 +575,43 @@
       groupsStore.set(groups);
     }
     persist();
+  }
+
+  // Function to update patrol effect preset store (async helper)
+  async function updatePatrolEffectPreset(sourceId: string, updates: any) {
+    try {
+      console.log('Groups.svelte - updatePatrolEffectPreset called with:', { sourceId, updates });
+      
+      // Import updatePatrolEffect dynamically
+      const { updatePatrolEffect, presetsStore } = await import('@/stores/presets');
+      
+      // Get current presets to find the correct preset by sourceId
+      let currentPresets: any = null;
+      const unsubscribe = presetsStore.subscribe((presets) => {
+        currentPresets = presets;
+      });
+      unsubscribe();
+
+      // Find the preset with matching sourceId
+      const presetToUpdate = currentPresets.patrolEffects.find(
+        (preset: any) => preset.sourceId === sourceId
+      );
+
+      if (presetToUpdate) {
+        console.log('Groups.svelte - Found preset to update:', presetToUpdate.id);
+        
+        // Update the preset with new values
+        await updatePatrolEffect(presetToUpdate.id, updates);
+
+        console.log('Groups.svelte - Preset updated successfully');
+        ui.notifications?.info(`Preset "${updates.name}" actualizado correctamente`);
+      } else {
+        console.warn('Groups.svelte - No preset found with sourceId:', sourceId);
+      }
+    } catch (error) {
+      console.error('Groups.svelte - Error updating preset:', error);
+      ui.notifications?.error(`Error al actualizar preset: ${error.message}`);
+    }
   }
 
   function addGroup() {
@@ -1211,138 +1378,44 @@
   }
 
   function editPatrolEffect(group: Group, effectId: string) {
-    // Use Foundry's Dialog system to edit multi-stat effect
-    if (!Dialog) {
-      console.error("Dialog not available");
-      return;
-    }
-
+    console.log('Groups.svelte - editPatrolEffect called with:', { groupId: group.id, effectId });
+    
     const existingEffect = group.patrolEffects[effectId];
     if (!existingEffect) {
       console.error("Effect not found");
       return;
     }
 
-    // Create checkboxes for each stat, pre-selecting and pre-filling existing values
-    const statCheckboxes = stats.map(stat => {
-      const isChecked = existingEffect.statEffects[stat.key] !== undefined;
-      const currentValue = existingEffect.statEffects[stat.key] || 0;
+    console.log('Groups.svelte - Existing effect:', existingEffect);
 
-      return `
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-          <input type="checkbox" id="stat-${stat.key}" name="statCheckbox" value="${stat.key}" ${isChecked ? 'checked' : ''}>
-          <label for="stat-${stat.key}" style="flex: 1;">${stat.name}</label>
-          <input type="number" id="value-${stat.key}" name="statValue" placeholder="±" value="${currentValue}" style="width: 60px;" ${isChecked ? '' : 'disabled'}>
-        </div>
-      `;
-    }).join('');
+    // Use the global dialog system for editing
+    const patrolEffectForDialog = {
+      id: effectId,
+      name: existingEffect.name || '',
+      description: existingEffect.description || '',
+      statEffects: existingEffect.statEffects || {},
+      img: existingEffect.img || 'icons/svg/aura.svg',
+      sourceId: existingEffect.sourceId || ''
+    };
 
-    new Dialog({
-      title: "Editar Efecto de Patrulla Multi-Stat",
-      content: `
-        <form>
-          <div class="form-group">
-            <label>Nombre del efecto:</label>
-            <input type="text" name="effectName" placeholder="Ej: Falta de personal, Bendición divina..." value="${existingEffect.name}" autofocus />
-          </div>
-          <div class="form-group">
-            <label>Descripción:</label>
-            <textarea name="effectDescription" placeholder="Descripción del efecto" rows="3" style="width: 100%; resize: vertical;">${existingEffect.description || ''}</textarea>
-          </div>
-          <div class="form-group">
-            <label>Stats afectados y valores:</label>
-            <div style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; max-height: 200px; overflow-y: auto;">
-              ${statCheckboxes}
-            </div>
-          </div>
-        </form>
-      `,
-      buttons: {
-        ok: {
-          icon: '<i class="fas fa-check"></i>',
-          label: "Guardar",
-          callback: (html: any) => {
-            const form = html[0].querySelector("form");
-            const effectName = form.effectName.value.trim();
-            const effectDescription = form.effectDescription.value.trim();
-
-            // Collect selected stats and their values
-            const statEffects: Record<string, number> = {};
-            const checkedBoxes = form.querySelectorAll('input[name="statCheckbox"]:checked');
-
-            checkedBoxes.forEach((checkbox: HTMLInputElement) => {
-              const statKey = checkbox.value;
-              const valueInput = form.querySelector(`#value-${statKey}`) as HTMLInputElement;
-              const value = parseInt(valueInput.value) || 0;
-              if (value !== 0) { // Only include non-zero values
-                statEffects[statKey] = value;
-              }
-            });
-
-            if (effectName && Object.keys(statEffects).length > 0) {
-              // Update existing effect
-              group.patrolEffects[effectId] = {
-                name: effectName,
-                description: effectDescription,
-                statEffects: statEffects,
-                sourceId: existingEffect.sourceId, // Preserve existing sourceId
-                key: existingEffect.key // Preserve existing key
-              };
-
-              // Use updateGroups helper instead of manual update
-              updateGroups([...groups]);
-
-              // Notify preset manager about the effect update (reverse sync)
-              if (existingEffect.sourceId) {
-                console.log('Groups.svelte - Notifying preset manager of effect update:', {
-                  sourceId: existingEffect.sourceId,
-                  name: effectName,
-                  description: effectDescription,
-                  statEffects: statEffects
-                });
-
-                const updatedEffect = {
-                  sourceId: existingEffect.sourceId,
-                  key: existingEffect.key,
-                  name: effectName,
-                  description: effectDescription,
-                  statEffects: statEffects,
-                  type: 'neutral',
-                  duration: ''
-                };
-
-                // Update the preset via preset manager
-                presetManager.updatePresetFromItem(updatedEffect, 'patrolEffect');
-              }
-            } else if (Object.keys(statEffects).length === 0) {
-              ui.notifications?.warn("Debes seleccionar al menos un stat con un valor diferente de 0");
-            }
-          }
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: "Cancelar"
-        }
-      },
-      default: "ok",
-      render: (html: any) => {
-        // Add checkbox functionality after dialog is rendered
-        const checkboxes = html[0].querySelectorAll('input[name="statCheckbox"]');
-        checkboxes.forEach((checkbox: HTMLInputElement) => {
-          const valueInput = html[0].querySelector(`#value-${checkbox.value}`) as HTMLInputElement;
-          checkbox.addEventListener('change', () => {
-            valueInput.disabled = !checkbox.checked;
-            if (!checkbox.checked) valueInput.value = '0';
-          });
-        });
-      }
-    }).render(true);
+    console.log('Groups.svelte - Opening dialog for patrol effect:', patrolEffectForDialog);
+    
+    // Store group context for after edit
+    editingGroupContext = group;
+    editingEffectId = effectId;
+    
+    // Open global dialog
+    openPatrolEffectEditDialog(patrolEffectForDialog);
   }
 
   function removePatrolEffect(group: Group, effectId: string) {
+    console.log('Groups.svelte - removePatrolEffect called with:', { groupId: group.id, effectId });
     if (group.patrolEffects && group.patrolEffects[effectId]) {
       delete group.patrolEffects[effectId];
+      console.log('Groups.svelte - Effect deleted, calling updateGroups');
       updateGroups([...groups]);
+    } else {
+      console.warn('Groups.svelte - Effect not found:', effectId);
     }
   }
 

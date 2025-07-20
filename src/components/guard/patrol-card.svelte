@@ -46,21 +46,95 @@
     }
   }
 
-  function handleImageClickSimple() {
-    // Para simple view: click simple muestra en chat
-    showPatrolEffectInChat();
+  function handleImageClickForFullView(event: MouseEvent) {
+    event.stopPropagation();
+    handleImageClick();
   }
 
-  function handleImageDoubleClickSimple() {
-    // Para simple view: doble click edita
+  function handleEditWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
     handleEdit();
   }
 
+  function handleShowInChatWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleShowInChat();
+  }
+
+  function handleCreatePresetWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleCreatePreset();
+  }
+
+  function handleRemoveWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleRemove();
+  }
+
+  function handleActivatePresetWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleActivatePreset();
+  }
+
+  function handleRemovePresetWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleRemovePreset();
+  }
+
+  function handleUseWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleUse();
+  }
+
+  function handleImageClickWithStopPropagation(event: MouseEvent) {
+    event.stopPropagation();
+    handleImageClickSimple();
+  }
+
+  function handleImageClickSimple() {
+    // Para simple view: click simple muestra en chat
+    console.log('PatrolCard - handleImageClickSimple called, simpleView:', simpleView);
+    showPatrolEffectInChat();
+  }
+
+  function handleImageRightClickSimple(event: MouseEvent) {
+    event.preventDefault(); // Prevenir menú contextual del navegador
+    event.stopPropagation(); // Evitar que el evento llegue al grupo
+    console.log('PatrolCard - handleImageRightClickSimple called, shiftKey:', event.shiftKey);
+    
+    if (event.shiftKey) {
+      // Shift + right click: eliminar
+      handleRemove();
+    } else {
+      // Right click simple: editar
+      handleEdit();
+    }
+  }
+
+  function handleImageRightClick(event: MouseEvent) {
+    event.preventDefault(); // Prevenir menú contextual del navegador
+    event.stopPropagation(); // Evitar que el evento llegue al grupo
+    
+    if (event.shiftKey) {
+      // Shift + right click: eliminar
+      if (inPresetManager) {
+        handleRemovePreset();
+      } else {
+        handleRemove();
+      }
+    } else {
+      // Right click simple: editar
+      handleEdit();
+    }
+  }
+
   function handleRemove() {
+    console.log('PatrolCard - handleRemove called, dispatching remove event with index:', index);
     dispatch('remove', index);
   }
 
   function handleEdit() {
+    console.log('PatrolCard - handleEdit called, dispatching edit event with:', patrolEffect);
     dispatch('edit', patrolEffect);
   }
 
@@ -117,14 +191,24 @@
             Efectos en Stats:
           </div>
           ${Object.entries(patrolEffect.statEffects || {})
-            .filter(([_, value]) => value !== 0)
+            .filter(([_, value]) => Number(value) !== 0)
             .map(([stat, value]) => `
               <div style="font-size: 11px; color: #666;">
-                ${stat}: ${value > 0 ? '+' : ''}${value}
+                ${stat}: ${Number(value) > 0 ? '+' : ''}${Number(value)}
               </div>
             `).join('')}
         </div>`
       : "";
+
+    // Get the image URL and ensure it's valid for Foundry
+    let imageUrl = patrolEffect.img || 'icons/svg/aura.svg';
+    // If it's a relative path, ensure it's properly formatted for Foundry
+    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('icons/')) {
+      // This might be a user-uploaded image, ensure it has proper path
+      if (!imageUrl.startsWith('/')) {
+        imageUrl = `modules/crow-nest/${imageUrl}`;
+      }
+    }
 
     const content = `
       <div style="
@@ -139,7 +223,7 @@
         position: relative;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       ">
-        <img src="${patrolEffect.img || 'icons/svg/aura.svg'}" alt="${patrolEffect.name}" style="
+        <img src="${imageUrl}" alt="${patrolEffect.name}" style="
           background: #000000;
           width: 100%;
           aspect-ratio: 2 / 1;
@@ -147,7 +231,7 @@
           border-radius: 6px 6px 0 0;
           flex-shrink: 0;
           border-bottom: 2px solid #9b59b6;
-        " />
+        " onerror="this.src='icons/svg/aura.svg';" />
         <div style="
           flex: 1;
           display: flex;
@@ -234,23 +318,30 @@
       ? `<div style="margin-top: 0.5rem;">
           <div style="font-weight: bold; color: #d4af37; margin-bottom: 0.3rem; font-size: 0.9em;">Efectos en Stats:</div>
           ${Object.entries(patrolEffect.statEffects || {})
-            .filter(([_, value]) => value !== 0)
+            .filter(([_, value]) => Number(value) !== 0)
             .map(([stat, value]) => {
               const statData = stats?.find(s => s.key === stat);
-              const color = value >= 0 ? '#28a745' : '#dc3545';
+              const color = Number(value) >= 0 ? '#28a745' : '#dc3545';
               return `<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
                 <img src="${statData?.img || 'icons/svg/shield.svg'}" style="width: 16px; height: 16px; border-radius: 2px;" />
                 <span style="color: #ffffff; font-size: 0.85em;">${statData?.name || stat}:</span>
-                <span style="color: ${color}; font-weight: bold; font-size: 0.85em;">${value >= 0 ? '+' : ''}${value}</span>
+                <span style="color: ${color}; font-weight: bold; font-size: 0.85em;">${Number(value) >= 0 ? '+' : ''}${Number(value)}</span>
               </div>`;
             }).join('')}
         </div>`
       : '';
 
+    const controlsInfo = `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #666; font-size: 0.8em; color: #ccc;">
+      <div>Click: Mostrar en chat</div>
+      <div>Right-click: Editar</div>
+      <div>Shift+Right-click: Eliminar</div>
+    </div>`;
+
     return `<div style="max-width: 300px;">
       <div style="font-weight: bold; color: #9b59b6; margin-bottom: 0.3rem;">${name}</div>
       ${description}
       ${statsDisplay}
+      ${controlsInfo}
     </div>`;
   })();
 </script>
@@ -262,8 +353,8 @@
       <Tooltip content={tooltipContent}>
         <button
           class="patrol-simple-image-button"
-          on:click={handleImageClickSimple}
-          on:dblclick={handleImageDoubleClickSimple}
+          on:click={handleImageClickWithStopPropagation}
+          on:contextmenu={handleImageRightClickSimple}
         >
           <img
             class="patrol-simple-image"
@@ -296,7 +387,7 @@
       on:dragleave={handleDragLeave}
     >
       <!-- Patrol Effect Image -->
-      <button class="patrol-image-button" on:click={handleImageClick}>
+      <button class="patrol-image-button" on:click={handleImageClickForFullView} on:contextmenu={handleImageRightClick}>
         <img
           class="patrol-image"
           src={patrolEffect.img || 'icons/svg/aura.svg'}
@@ -325,11 +416,11 @@
         ></textarea>
 
         <!-- Stat Effects Preview -->
-        {#if patrolEffect.statEffects && Object.keys(patrolEffect.statEffects).some(key => patrolEffect.statEffects[key] !== 0)}
+        {#if patrolEffect.statEffects && Object.keys(patrolEffect.statEffects).some(key => Number(patrolEffect.statEffects[key]) !== 0)}
           <div class="patrol-stats-preview">
             <span class="patrol-stats-label">Efectos en Stats:</span>
             <div class="patrol-stats-list">
-              {#each Object.entries(patrolEffect.statEffects).filter(([_, value]) => value !== 0) as [stat, value]}
+              {#each Object.entries(patrolEffect.statEffects).filter(([_, value]) => Number(value) !== 0) as [stat, value]}
                 {@const statData = stats?.find(s => s.key === stat)}
                 <div class="patrol-stat-item-with-image">
                   <img
@@ -338,8 +429,8 @@
                     class="patrol-stat-image"
                   />
                   <span class="patrol-stat-name">{statData?.name || stat}:</span>
-                  <span class="patrol-stat-value {value >= 0 ? 'positive' : 'negative'}">
-                    {value >= 0 ? '+' : ''}{value}
+                  <span class="patrol-stat-value {Number(value) >= 0 ? 'positive' : 'negative'}">
+                    {Number(value) >= 0 ? '+' : ''}{Number(value)}
                   </span>
                 </div>
               {/each}
@@ -350,31 +441,31 @@
 
       <!-- Action Buttons -->
       <div class="patrol-actions">
-        <button class="patrol-action-button edit" on:click={handleEdit} title="Editar">
+        <button class="patrol-action-button edit" on:click={handleEditWithStopPropagation} title="Editar">
           ✏️
         </button>
-        <button class="patrol-action-button chat" on:click={handleShowInChat} title="Mostrar en chat">
+        <button class="patrol-action-button chat" on:click={handleShowInChatWithStopPropagation} title="Mostrar en chat">
           💬
         </button>
         {#if inPresetManager}
-          <button class="patrol-action-button use" on:click={handleUse} title="Usar en patrulla">
+          <button class="patrol-action-button use" on:click={handleUseWithStopPropagation} title="Usar en patrulla">
             ⚡
           </button>
           <button
             class="patrol-action-button activate {patrolEffect.active ? 'active' : 'inactive'}"
-            on:click={handleActivatePreset}
+            on:click={handleActivatePresetWithStopPropagation}
             title={patrolEffect.active ? 'Desactivar' : 'Activar'}
           >
             {patrolEffect.active ? '👁️' : '🚫'}
           </button>
-          <button class="patrol-action-button remove" on:click={handleRemovePreset} title="Eliminar">
+          <button class="patrol-action-button remove" on:click={handleRemovePresetWithStopPropagation} title="Eliminar">
             🗑️
           </button>
         {:else}
-          <button class="patrol-action-button preset" on:click={handleCreatePreset} title="Crear preset">
+          <button class="patrol-action-button preset" on:click={handleCreatePresetWithStopPropagation} title="Crear preset">
             📋
           </button>
-          <button class="patrol-action-button remove" on:click={handleRemove} title="Eliminar">
+          <button class="patrol-action-button remove" on:click={handleRemoveWithStopPropagation} title="Eliminar">
             🗑️
           </button>
         {/if}
@@ -412,7 +503,9 @@
     border-radius: 6px;
     overflow: hidden;
     transition: transform 0.2s ease;
-    display: contents;
+    display: block;
+    width: 40px;
+    height: 40px;
   }
 
   .patrol-simple-image-button:hover {
@@ -463,7 +556,9 @@
     overflow: hidden;
     transition: transform 0.2s ease;
     flex-shrink: 0;
-    display: contents;
+    display: block;
+    width: 80px;
+    height: 80px;
   }
 
   .patrol-image-button:hover {
@@ -559,15 +654,6 @@
 
   .patrol-stat-value.negative {
     color: #dc3545;
-  }
-
-  .patrol-stat-item {
-    font-size: 0.75rem;
-    background: rgba(155, 89, 182, 0.1);
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    border: 1px solid #9b59b6;
-    color: #000000;
   }
 
   .patrol-description {

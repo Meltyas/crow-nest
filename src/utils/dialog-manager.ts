@@ -273,6 +273,19 @@ export async function handlePatrolEffectSave(updatedPatrolEffect: any) {
 
       console.log("Patrol effect updated successfully:", updatedPatrolEffect);
       ui.notifications?.info("Efecto de patrulla actualizado correctamente");
+      
+      // Emit event for patrol effect updates (for groups to update existing effects)
+      const updatedPatrolEffectEvent = new CustomEvent('patrol-effect-updated', {
+        detail: {
+          id: patrolEffectId,
+          name: updatedPatrolEffect.name,
+          description: updatedPatrolEffect.description,
+          statEffects: updatedPatrolEffect.statEffects,
+          img: updatedPatrolEffect.img,
+          sourceId: updatedPatrolEffect.sourceId
+        }
+      });
+      window.dispatchEvent(updatedPatrolEffectEvent);
     }
 
     // Close the dialog
