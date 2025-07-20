@@ -11,9 +11,9 @@
   declare const game: any;
   declare const Dialog: any;
 
+  import UnifiedPatrolEffects from '@/components/unified/unified-patrol-effects.svelte';
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
-  import UnifiedPatrolEffects from '@/components/unified/unified-patrol-effects.svelte';
   import UnifiedSituationalModifiers from '@/components/unified/unified-situational-modifiers.svelte';
   import { getStats } from '@/guard/stats';
   import type { PresetCollection, PresetItem } from '@/shared/preset';
@@ -31,7 +31,7 @@
   } from '@/stores/presets';
   import { generateUUID } from '@/utils/log';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { openResourceEditDialog, openReputationEditDialog, openPatrolEffectEditDialog } from '../../utils/dialog-manager';
+  import { openPatrolEffectEditDialog, openReputationEditDialog, openResourceEditDialog } from '../../utils/dialog-manager';
   import PopupFocusManager from '../../utils/popup-focus';
 
   // Helper function to normalize preset types for legacy compatibility
@@ -83,7 +83,7 @@
         description: '',
         img: '',
         sourceId: ''
-      });
+      }, false); // false = no crear como activo desde preset manager
     } else {
       // For other tabs, use the old form behavior
       showCreateForm = !showCreateForm;
@@ -525,6 +525,7 @@
         img: preset.data.img || '',
         groupId: undefined, // Global preset
         description: preset.data.description || '',
+        active: false, // Los recursos añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     } else if (type === 'reputation') {
@@ -536,6 +537,7 @@
         img: preset.data.img || '',
         groupId: undefined, // Global preset
         description: preset.data.description || '',
+        active: false, // Las reputaciones añadidas desde preset no deben estar activas por defecto
         order: 0
       });
     } else if (type === 'patrolEffect') {
@@ -548,6 +550,7 @@
         statEffects: preset.data.statEffects || {},
         img: preset.data.img || '',
         groupId: undefined, // Global preset
+        active: false, // Los efectos añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     } else if (type === 'situationalModifier') {
@@ -558,6 +561,7 @@
         statEffects: preset.data.statEffects || {},
         img: preset.data.img || '',
         groupId: undefined, // Global preset
+        active: false, // Los modificadores añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     }
@@ -813,7 +817,7 @@
         img: preset.data.img,
         sourceId: preset.data.sourceId
       };
-      openPatrolEffectEditDialog(patrolEffect);
+      openPatrolEffectEditDialog(patrolEffect, false); // false = no crear como activo desde preset manager
       return;
     }
 
@@ -1127,6 +1131,7 @@
         img: preset.data.img || '',
         groupId: undefined, // Global preset
         description: preset.data.description || '',
+        active: false, // Los recursos añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     } else if (type === 'reputation') {
@@ -1138,6 +1143,7 @@
         img: preset.data.img || '',
         groupId: undefined, // Global preset
         description: preset.data.description || '',
+        active: false, // Las reputaciones añadidas desde preset no deben estar activas por defecto
         order: 0
       });
     } else if (type === 'patrolEffect') {
@@ -1150,6 +1156,7 @@
         statEffects: preset.data.statEffects || {},
         img: preset.data.img || '',
         groupId: undefined, // Global preset
+        active: false, // Los efectos añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     } else if (type === 'situationalModifier') {
@@ -1160,6 +1167,7 @@
         statEffects: preset.data.statEffects || {},
         img: preset.data.img || '',
         groupId: undefined, // Global preset
+        active: false, // Los modificadores añadidos desde preset no deben estar activos por defecto
         order: 0
       });
     }
@@ -1394,6 +1402,10 @@
             editingSituationalModifiers={false}
             inPresetManager={true}
             on:updateSituationalModifier={() => {}}
+            on:removePreset={(e) => {
+              console.log('PresetPopup - Removing situational modifier preset:', e.detail);
+              removeSituationalModifier(e.detail);
+            }}
           />
         {:else}
           <!-- Keep original forms for situationalModifiers only -->

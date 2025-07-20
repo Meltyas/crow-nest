@@ -3,9 +3,8 @@
   import { MODULE_ID } from '@/constants';
   import { adjustCheers, adjustDespair, getTokens, isGM, type GameTokens } from '@/data/tokens';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
-  import { onDestroy, onMount } from "svelte";
   import { Subject } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
+  import { onDestroy, onMount } from "svelte";
 
   let pos = { x: 0, y: 0 };
   let isDragging = false;
@@ -74,10 +73,10 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
     console.log('HUD - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     destroy$.next();
     destroy$.complete();
-    
+
     if (syncManager) {
       syncManager.cleanupComponent(componentId);
     }

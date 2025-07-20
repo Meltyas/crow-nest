@@ -21,7 +21,7 @@ Hooks.once("init", () => {
   console.log("🦅 Crow Nest | Init hook started");
   console.log("🦅 Crow Nest | Module ID:", MODULE_ID);
   console.log("🦅 Crow Nest | Game object available:", !!game);
-  
+
   try {
     game.settings.register(MODULE_ID, SETTING_STATS, {
       scope: "world",
@@ -29,105 +29,104 @@ Hooks.once("init", () => {
       type: Array,
       default: [],
     });
-  game.settings.register(MODULE_ID, SETTING_MODIFIERS, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
-  game.settings.register(MODULE_ID, SETTING_RESOURCES, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
-  game.settings.register(MODULE_ID, SETTING_PATROLS, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
-  game.settings.register(MODULE_ID, SETTING_ADMINS, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
+    game.settings.register(MODULE_ID, SETTING_MODIFIERS, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
+    game.settings.register(MODULE_ID, SETTING_RESOURCES, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
+    game.settings.register(MODULE_ID, SETTING_PATROLS, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
+    game.settings.register(MODULE_ID, SETTING_ADMINS, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
 
-  // Global Fear tracking for non-Daggerheart systems
-  game.settings.register(MODULE_ID, "global-fear", {
-    scope: "world",
-    config: false,
-    type: Number,
-    default: 0,
-  });
-  game.settings.register(MODULE_ID, SETTING_REPUTATION, {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
-  // Game tokens (Despair and Cheers) - GM only
-  game.settings.register(MODULE_ID, "gameTokens", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: { despair: 0, cheers: 0 },
-  });
+    // Global Fear tracking for non-Daggerheart systems
+    game.settings.register(MODULE_ID, "global-fear", {
+      scope: "world",
+      config: false,
+      type: Number,
+      default: 0,
+    });
+    game.settings.register(MODULE_ID, SETTING_REPUTATION, {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
+    // Game tokens (Despair and Cheers) - GM only
+    game.settings.register(MODULE_ID, "gameTokens", {
+      scope: "world",
+      config: false,
+      type: Object,
+      default: { despair: 0, cheers: 0 },
+    });
 
-  // Active patrol sheets - synchronized across all users
-  game.settings.register(MODULE_ID, "activePatrolSheets", {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
+    // Active patrol sheets - synchronized across all users
+    game.settings.register(MODULE_ID, "activePatrolSheets", {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
 
-  // Used roll buttons tracking - to prevent multiple uses
-  game.settings.register(MODULE_ID, "usedRollButtons", {
-    scope: "world",
-    config: false,
-    type: Array,
-    default: [],
-  });
+    // Used roll buttons tracking - to prevent multiple uses
+    game.settings.register(MODULE_ID, "usedRollButtons", {
+      scope: "world",
+      config: false,
+      type: Array,
+      default: [],
+    });
 
-  // Presets configuration
-  game.settings.register(MODULE_ID, "presets", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: {
-      resources: [],
-      reputations: [],
-      patrolEffects: [],
-      situationalModifiers: [],
-    },
-  });
+    // Presets configuration
+    game.settings.register(MODULE_ID, "presets", {
+      scope: "world",
+      config: false,
+      type: Object,
+      default: {
+        resources: [],
+        reputations: [],
+        patrolEffects: [],
+        situationalModifiers: [],
+      },
+    });
 
-  // Unified Presets configuration - New unified system
-  game.settings.register(MODULE_ID, "unifiedPresets", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: {
-      resources: [],
-      reputation: [],
-      patrolEffects: [],
-      skills: [],
-    },
-  });
+    // Unified Presets configuration - New unified system
+    game.settings.register(MODULE_ID, "unifiedPresets", {
+      scope: "world",
+      config: false,
+      type: Object,
+      default: {
+        resources: [],
+        reputation: [],
+        patrolEffects: [],
+        skills: [],
+      },
+    });
 
-  // Sync event setting for real-time synchronization
-  game.settings.register(MODULE_ID, "syncEvent", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: null,
-  });
-  
-  console.log("🦅 Crow Nest | All settings registered successfully");
-  console.log("🦅 Crow Nest | Module initialization completed successfully");
-  
+    // Sync event setting for real-time synchronization
+    game.settings.register(MODULE_ID, "syncEvent", {
+      scope: "world",
+      config: false,
+      type: Object,
+      default: null,
+    });
+
+    console.log("🦅 Crow Nest | All settings registered successfully");
+    console.log("🦅 Crow Nest | Module initialization completed successfully");
   } catch (error) {
     console.error("🦅 Crow Nest | Error during initialization:", error);
     console.error("🦅 Crow Nest | Stack trace:", error.stack);
@@ -211,23 +210,28 @@ function shouldShowPatrolSheetToCurrentUser(sheetData: any): boolean {
 
 Hooks.once("ready", () => {
   console.log("🦅 Crow Nest | Ready hook started");
-  
+
   try {
     // Verify game object availability
     if (!game) {
       console.error("🦅 Crow Nest | Game object not available");
       return;
     }
-    
+
     if (!game.user) {
       console.error("🦅 Crow Nest | Game user not available");
       return;
     }
-    
+
     console.log("🦅 Crow Nest | Game objects verified");
-    console.log("🦅 Crow Nest | Current user:", game.user.name, "| ID:", game.user.id);
+    console.log(
+      "🦅 Crow Nest | Current user:",
+      game.user.name,
+      "| ID:",
+      game.user.id
+    );
     console.log("🦅 Crow Nest | Is GM:", game.user.isGM);
-    
+
     // Initialize real-time synchronization
     console.log("🦅 Crow Nest | Initializing sync...");
     initializeSync();
@@ -236,199 +240,198 @@ Hooks.once("ready", () => {
     console.log("🦅 Crow Nest | Initializing groups sync...");
     initializeGroupsSync();
 
-  // Initialize unified presets system
-  loadUnifiedPresets()
-    .then(() => {
-      console.log("[Crow Nest] Unified presets system initialized");
-    })
-    .catch((error) => {
-      console.error("[Crow Nest] Failed to initialize presets:", error);
-    });
+    // Initialize unified presets system
+    loadUnifiedPresets()
+      .then(() => {
+        console.log("[Crow Nest] Unified presets system initialized");
+      })
+      .catch((error) => {
+        console.error("[Crow Nest] Failed to initialize presets:", error);
+      });
 
-  // Set up settings-based sync listener for real-time updates
-  const groupsSyncManager = SyncManager.getInstance();
+    // Set up settings-based sync listener for real-time updates
+    const groupsSyncManager = SyncManager.getInstance();
 
-  Hooks.on(
-    "updateSetting",
-    (setting: any, value: any, options: any, userId: string) => {
-      // Handle main patrols data changes - this is where the real data lives
-      if (setting.key === `${MODULE_ID}.patrols`) {
-        const currentUserId = game.user?.id;
-        if (userId !== currentUserId) {
-          // Update the groups store with the new data
+    Hooks.on(
+      "updateSetting",
+      (setting: any, value: any, options: any, userId: string) => {
+        // Handle main patrols data changes - this is where the real data lives
+        if (setting.key === `${MODULE_ID}.patrols`) {
+          const currentUserId = game.user?.id;
+          if (userId !== currentUserId) {
+            // Update the groups store with the new data
 
-          // Parse the actual data from Foundry's setting structure
-          let actualData = value;
+            // Parse the actual data from Foundry's setting structure
+            let actualData = value;
 
-          // If it's a Foundry setting object with 'value' property that's a JSON string
-          if (
-            value &&
-            typeof value === "object" &&
-            value.value &&
-            typeof value.value === "string"
-          ) {
-            try {
-              actualData = JSON.parse(value.value);
-            } catch (error) {
-              console.error(
-                "[Main] Error parsing JSON from value.value:",
-                error
-              );
-              return;
-            }
-          }
-          // If it's already a string, try to parse it
-          else if (typeof value === "string") {
-            try {
-              actualData = JSON.parse(value);
-            } catch (error) {
-              console.error("[Main] Error parsing JSON from string:", error);
-              return;
-            }
-          }
-
-          // Validate that the parsed data is an array before setting it
-          if (Array.isArray(actualData)) {
-            import("@/stores/groups").then(({ groupsStore }) => {
-              groupsStore.set(actualData);
-            });
-          } else {
-            console.error("[Main] Parsed data is not an array:", actualData);
-          }
-        }
-      }
-
-      // Handle presets changes
-      else if (setting.key === `${MODULE_ID}.presets`) {
-        const currentUserId = game.user?.id;
-        if (userId !== currentUserId) {
-          // Update the presets store with the new data
-          let actualData = value;
-
-          // If it's a Foundry setting object with 'value' property that's a JSON string
-          if (
-            value &&
-            typeof value === "object" &&
-            value.value &&
-            typeof value.value === "string"
-          ) {
-            try {
-              actualData = JSON.parse(value.value);
-            } catch (error) {
-              console.error("[Main] Error parsing presets JSON:", error);
-            }
-          }
-
-          if (actualData) {
-            import("@/stores/presets").then(({ presetsStore }) => {
-              presetsStore.set(actualData);
-            });
-          }
-        }
-      }
-
-      // Handle sync events for other types
-      else if (setting.key === `${MODULE_ID}.syncEvent`) {
-        // Don't process events from the same user (avoid loops)
-        const currentUserId = game.user?.id;
-        if (userId !== currentUserId && value) {
-          // Parse the actual event from the value
-          let actualEvent;
-          try {
-            // The value might be wrapped in an object with a 'value' property that's a JSON string
+            // If it's a Foundry setting object with 'value' property that's a JSON string
             if (
+              value &&
               typeof value === "object" &&
               value.value &&
               typeof value.value === "string"
             ) {
-              actualEvent = JSON.parse(value.value);
-            } else if (typeof value === "string") {
-              actualEvent = JSON.parse(value);
-            } else {
-              actualEvent = value;
+              try {
+                actualData = JSON.parse(value.value);
+              } catch (error) {
+                console.error(
+                  "[Main] Error parsing JSON from value.value:",
+                  error
+                );
+                return;
+              }
+            }
+            // If it's already a string, try to parse it
+            else if (typeof value === "string") {
+              try {
+                actualData = JSON.parse(value);
+              } catch (error) {
+                console.error("[Main] Error parsing JSON from string:", error);
+                return;
+              }
             }
 
-            groupsSyncManager.handleRemoteEvent(actualEvent);
-          } catch (error) {
-            console.error(
-              "[Main] Error parsing sync event:",
-              error,
-              "Raw value:",
-              value
-            );
+            // Validate that the parsed data is an array before setting it
+            if (Array.isArray(actualData)) {
+              import("@/stores/groups").then(({ groupsStore }) => {
+                groupsStore.set(actualData);
+              });
+            } else {
+              console.error("[Main] Parsed data is not an array:", actualData);
+            }
+          }
+        }
+
+        // Handle presets changes
+        else if (setting.key === `${MODULE_ID}.presets`) {
+          const currentUserId = game.user?.id;
+          if (userId !== currentUserId) {
+            // Update the presets store with the new data
+            let actualData = value;
+
+            // If it's a Foundry setting object with 'value' property that's a JSON string
+            if (
+              value &&
+              typeof value === "object" &&
+              value.value &&
+              typeof value.value === "string"
+            ) {
+              try {
+                actualData = JSON.parse(value.value);
+              } catch (error) {
+                console.error("[Main] Error parsing presets JSON:", error);
+              }
+            }
+
+            if (actualData) {
+              import("@/stores/presets").then(({ presetsStore }) => {
+                presetsStore.set(actualData);
+              });
+            }
+          }
+        }
+
+        // Handle sync events for other types
+        else if (setting.key === `${MODULE_ID}.syncEvent`) {
+          // Don't process events from the same user (avoid loops)
+          const currentUserId = game.user?.id;
+          if (userId !== currentUserId && value) {
+            // Parse the actual event from the value
+            let actualEvent;
+            try {
+              // The value might be wrapped in an object with a 'value' property that's a JSON string
+              if (
+                typeof value === "object" &&
+                value.value &&
+                typeof value.value === "string"
+              ) {
+                actualEvent = JSON.parse(value.value);
+              } else if (typeof value === "string") {
+                actualEvent = JSON.parse(value);
+              } else {
+                actualEvent = value;
+              }
+
+              groupsSyncManager.handleRemoteEvent(actualEvent);
+            } catch (error) {
+              console.error(
+                "[Main] Error parsing sync event:",
+                error,
+                "Raw value:",
+                value
+              );
+            }
           }
         }
       }
-    }
-  );
+    );
 
-  // Clean up any existing sync system first
-  cleanupSync();
+    // Clean up any existing sync system first
+    cleanupSync();
 
-  // Initialize patrol sheet manager
-  patrolSheetManager; // Esto inicializa la instancia
+    // Initialize patrol sheet manager
+    patrolSheetManager; // Esto inicializa la instancia
 
-  // Set up patrol sheet setting watcher (much simpler than sockets!)
-  game.settings.sheet.render(); // Ensure settings are ready
+    // Set up patrol sheet setting watcher (much simpler than sockets!)
+    game.settings.sheet.render(); // Ensure settings are ready
 
-  // Watch for changes in activePatrolSheets setting
-  Hooks.on("updateSetting", (setting, value, options, userId) => {
-    if (setting.key === `${MODULE_ID}.activePatrolSheets`) {
-      handlePatrolSheetSettingChange(value, userId);
-    }
-  });
+    // Watch for changes in activePatrolSheets setting
+    Hooks.on("updateSetting", (setting, value, options, userId) => {
+      if (setting.key === `${MODULE_ID}.activePatrolSheets`) {
+        handlePatrolSheetSettingChange(value, userId);
+      }
+    });
 
-  // Initialize patrol sheet sync handlers (always active for all users)
-  const syncManager = SyncManager.getInstance();
+    // Initialize patrol sheet sync handlers (always active for all users)
+    const syncManager = SyncManager.getInstance();
 
-  // Clear any existing patrol-sheet handlers first
-  syncManager.clearEventHandler("patrol-sheet");
+    // Clear any existing patrol-sheet handlers first
+    syncManager.clearEventHandler("patrol-sheet");
 
-  syncManager.registerEventHandler("patrol-sheet", (event) => {
-    patrolSheetManager.handleSyncEvent(event);
-  });
+    syncManager.registerEventHandler("patrol-sheet", (event) => {
+      patrolSheetManager.handleSyncEvent(event);
+    });
 
-  // Expose API for external access
-  (game.modules.get(MODULE_ID) as any).api = {
-    getGroups: () => getPatrols(),
-    patrolSheetManager: patrolSheetManager,
-    // Settings-based patrol sheet methods
-    forceShowPatrolSheetToAllViaSettings: (
-      group: any,
-      labels: any,
-      options: any = {}
-    ) =>
-      patrolSheetManager.forceShowPatrolSheetToAllViaSettings(
-        group,
-        labels,
-        options
-      ),
-    clearAllActivePatrolSheets: () =>
-      patrolSheetManager.clearAllActivePatrolSheets(),
-    debugActiveSheetsSetting: () =>
-      patrolSheetManager.debugActiveSheetsSetting(),
-  };
+    // Expose API for external access
+    (game.modules.get(MODULE_ID) as any).api = {
+      getGroups: () => getPatrols(),
+      patrolSheetManager: patrolSheetManager,
+      // Settings-based patrol sheet methods
+      forceShowPatrolSheetToAllViaSettings: (
+        group: any,
+        labels: any,
+        options: any = {}
+      ) =>
+        patrolSheetManager.forceShowPatrolSheetToAllViaSettings(
+          group,
+          labels,
+          options
+        ),
+      clearAllActivePatrolSheets: () =>
+        patrolSheetManager.clearAllActivePatrolSheets(),
+      debugActiveSheetsSetting: () =>
+        patrolSheetManager.debugActiveSheetsSetting(),
+    };
 
-  // Preset manager functionality now integrated in unified components
-  console.log("[Crow Nest] Unified presets system initialized");
+    // Preset manager functionality now integrated in unified components
+    console.log("[Crow Nest] Unified presets system initialized");
 
-  // Create HUD
-  const container = document.createElement("div");
-  container.style.position = "absolute";
-  document.body.appendChild(container);
-  new Hud({ target: container });
+    // Create HUD
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    document.body.appendChild(container);
+    new Hud({ target: container });
 
-  // Create Global Dialogs container
-  const dialogsContainer = document.createElement("div");
-  dialogsContainer.style.position = "absolute";
-  document.body.appendChild(dialogsContainer);
-  new GlobalDialogs({ target: dialogsContainer });
+    // Create Global Dialogs container
+    const dialogsContainer = document.createElement("div");
+    dialogsContainer.style.position = "absolute";
+    document.body.appendChild(dialogsContainer);
+    new GlobalDialogs({ target: dialogsContainer });
 
-  // Clean up old button records on startup
-  cleanupOldButtonRecords();
-  
-  console.log("🦅 Crow Nest | Ready hook completed successfully");
-  
+    // Clean up old button records on startup
+    cleanupOldButtonRecords();
+
+    console.log("🦅 Crow Nest | Ready hook completed successfully");
   } catch (error) {
     console.error("🦅 Crow Nest | Error in ready hook:", error);
     console.error("🦅 Crow Nest | Stack trace:", error.stack);
@@ -719,6 +722,8 @@ async function handleAddFear() {
 }
 
 // Module loaded successfully indicator
-console.log("🦅 Crow Nest | Module file loaded successfully - waiting for Foundry hooks");
+console.log(
+  "🦅 Crow Nest | Module file loaded successfully - waiting for Foundry hooks"
+);
 console.log("🦅 Crow Nest | Module version: 0.1.0");
 console.log("🦅 Crow Nest | Build timestamp:", new Date().toISOString());

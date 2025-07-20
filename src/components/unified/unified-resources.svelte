@@ -8,9 +8,9 @@
     toggleResourceActive
   } from '@/stores/presets';
   import { SyncManager } from '@/utils/sync';
+  import { Subject } from 'rxjs';
+  import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { Subject, combineLatest } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
   import { openResourceEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-reputation
@@ -270,11 +270,11 @@
 
       // Handle reordering directly in preset store
       await reorderResourcesInStore(draggedIndex, newIndex, inPresetManager);
-      
-      dispatch('reorderResources', { 
-        dragIndex: draggedIndex, 
+
+      dispatch('reorderResources', {
+        dragIndex: draggedIndex,
         dropIndex: newIndex,
-        inPresetManager: inPresetManager 
+        inPresetManager: inPresetManager
       });
     }
 
@@ -285,18 +285,18 @@
   async function reorderResourcesInStore(dragIndex: number, dropIndex: number, inPresetManager: boolean) {
     const orderProperty = inPresetManager ? 'presetOrder' : 'guardOrder';
     const currentResources = displayResources;
-    
-    if (dragIndex < 0 || dragIndex >= currentResources.length || 
+
+    if (dragIndex < 0 || dragIndex >= currentResources.length ||
         dropIndex < 0 || dropIndex >= currentResources.length) {
       return;
     }
 
     // Get the dragged item
     const draggedItem = currentResources[dragIndex];
-    
+
     // Update the preset store with new order values
     const updatedResources = [...currentPresets.resources];
-    
+
     // Reassign order values based on new positions
     currentResources.forEach((resource, index) => {
       const storeIndex = updatedResources.findIndex(r => r.id === resource.id);

@@ -1,3 +1,8 @@
+<script context="module" lang="ts">
+  // Foundry globals
+  declare const Dialog: any;
+</script>
+
 <script lang="ts">
   import type { GuardStat } from '@/guard/stats';
   import { generateUUID } from '@/utils/log';
@@ -27,7 +32,35 @@
   }
 
   function removeStat(index: number) {
-    dispatch('removeStat', index);
+    const stat = stats[index];
+    const statName = stat?.name || 'stat sin nombre';
+
+    // Use Foundry's Dialog system for confirmation
+    if (typeof Dialog !== 'undefined') {
+      new Dialog({
+        title: "Eliminar Stat",
+        content: `<p>¿Estás seguro de que quieres eliminar el stat "<strong>${statName}</strong>"?</p><p><strong>Esta acción no se puede deshacer.</strong></p>`,
+        buttons: {
+          yes: {
+            icon: '<i class="fas fa-trash"></i>',
+            label: "Sí, eliminar",
+            callback: () => {
+              dispatch('removeStat', index);
+            }
+          },
+          no: {
+            icon: '<i class="fas fa-times"></i>',
+            label: "Cancelar"
+          }
+        },
+        default: "no"
+      }).render(true);
+    } else {
+      // Fallback to confirm if Dialog is not available
+      if (confirm(`¿Estás seguro de que quieres eliminar el stat "${statName}"?`)) {
+        dispatch('removeStat', index);
+      }
+    }
   }
 
   function updateStat() {

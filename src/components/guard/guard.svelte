@@ -15,23 +15,26 @@
   import UnifiedReputation from '@/components/unified/unified-reputation.svelte';
   import UnifiedResources from '@/components/unified/unified-resources.svelte';
   import UnifiedSituationalModifiers from '@/components/unified/unified-situational-modifiers.svelte';
-  import { MODULE_ID, SETTING_MODIFIERS, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
-  import type { GuardModifier, GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
+  import { MODULE_ID, SETTING_REPUTATION, SETTING_RESOURCES, SETTING_STATS } from '@/constants';
+  import type { GuardReputation, GuardResource, GuardStat } from '@/guard/stats';
   import {
     getReputation,
     getResources,
     getStats,
   } from '@/guard/stats';
   import { getPatrols, savePatrols } from '@/patrol/patrols';
+  import { presetsStore } from '@/stores/presets';
   import { openResourceEditDialog } from '@/utils/dialog-manager';
   import PopupFocusManager from '@/utils/popup-focus';
   import { SyncManager } from '@/utils/sync';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { GuardHandlers } from './guard-handlers';
   import './guard.css';
   import StatsSection from './stats-section.svelte';
-  import { presetsStore } from '@/stores/presets';
+
+  // Foundry globals
+  const game = (globalThis as any).game;
 
   // Props for controlling the popup
   export let showPopup = false;
@@ -319,12 +322,12 @@
     // Helper function to create sync handlers - DRY principle
     const createSyncHandler = (type: string, handlerMethod: Function) => (data: any) => {
       if (data && handlers) {
-        handlerMethod.call(handlers, { 
-          type, 
-          action: 'update', 
-          data, 
-          timestamp: Date.now(), 
-          user: 'rxjs-sync' 
+        handlerMethod.call(handlers, {
+          type,
+          action: 'update',
+          data,
+          timestamp: Date.now(),
+          user: 'rxjs-sync'
         });
       }
     };
@@ -386,7 +389,7 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call
     console.log('Guard - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     syncManager?.cleanupComponent(componentId);
 
     // Complete the destroy subject
@@ -401,13 +404,13 @@
   function getTotalStatValue(stat: Stat): number {
     // Get active situational modifiers for guard (global ones without groupId)
     const activeSituationalModifiers = $presetsStore.situationalModifiers.filter(m => !m.groupId && m.active);
-    
+
     // Calculate bonus from active situational modifiers
     const modifierBonus = activeSituationalModifiers.reduce((acc, m) => {
       const statEffect = m.statEffects[stat.key];
       return acc + (statEffect ? Number(statEffect) : 0);
     }, 0);
-    
+
     return stat.value + modifierBonus;
   }
 
@@ -704,7 +707,17 @@
   group={createGuardGroup()}
   baseValue={rollDialogBaseValue}
   totalModifier={rollDialogTotalModifier}
-  guardModifiers={$presetsStore.situationalModifiers.filter(m => !m.groupId && m.active)}
+  guardModifiers={$presetsStore.situationalModifiers
+    .filter(m => !m.groupId && m.active)
+    .map(m => ({
+      key: m.id,
+      name: m.name,
+      description: m.description,
+      img: m.img,
+      state: 'neutral',
+      mods: m.statEffects || {},
+      sourceId: m.sourceId
+    }))}
   on:close={closeRollDialog}
 />
 

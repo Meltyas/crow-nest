@@ -19,13 +19,11 @@
   import { adminsStore, persistAdmins } from '@/stores/admins';
   import { groupsStore, persistGroups } from '@/stores/groups';
   import { presetsStore } from '@/stores/presets';
-  import { openPatrolEffectEditDialog } from '@/utils/dialog-manager';
-  import { openSituationalModifierEditDialog } from '@/utils/dialog-manager';
+  import { openPatrolEffectEditDialog, openSituationalModifierEditDialog } from '@/utils/dialog-manager';
   import { generateUUID } from '@/utils/log';
   import { SyncManager, type SyncEvent } from '@/utils/sync';
-  import { onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
+  import { onDestroy, onMount } from 'svelte';
 
   // Access game through global window object to avoid declaration issues
   const game = (globalThis as any).game;
@@ -234,7 +232,7 @@
   function openPatrolEffectDialog(group: Group) {
     // Store the target group for later use
     pendingPatrolEffectGroup = group;
-    
+
     // Open dialog for creating new patrol effect
     openPatrolEffectEditDialog({
       id: '',
@@ -383,7 +381,7 @@
       }
     });
 
-    // RxJS REACTIVE PIPELINE for modifiers  
+    // RxJS REACTIVE PIPELINE for modifiers
     syncManager.subscribeToDataType('modifiers', componentId, (syncModifiers) => {
       console.log('Groups - Modifiers sync update received:', !!syncModifiers);
       if (syncModifiers) {
@@ -434,16 +432,16 @@
     // Listen for new patrol effects created from dialog to auto-apply to pending group
     const handleNewPatrolEffectCreated = async (event: CustomEvent) => {
       console.log('Groups.svelte - New patrol effect created:', event.detail);
-      
+
       if (pendingPatrolEffectGroup && event.detail) {
         const newEffect = event.detail;
-        
+
         // Apply the new effect to the pending group
         await applyNewPatrolEffectToGroup(pendingPatrolEffectGroup, newEffect);
-        
+
         // Clear the pending group
         pendingPatrolEffectGroup = null;
-        
+
         console.log('Groups.svelte - Auto-applied new patrol effect to group:', pendingPatrolEffectGroup?.id);
       }
     };
@@ -453,10 +451,10 @@
     // Listen for patrol effect updates from dialog (for existing effects being edited)
     const handlePatrolEffectUpdated = async (event: CustomEvent) => {
       console.log('Groups.svelte - Patrol effect updated from dialog:', event.detail);
-      
+
       if (editingGroupContext && editingEffectId && event.detail) {
         const updatedEffect = event.detail;
-        
+
         console.log('Groups.svelte - Updating effect in group:', {
           groupId: editingGroupContext.id,
           effectId: editingEffectId,
@@ -500,7 +498,7 @@
 
           ui.notifications?.info(`Efecto de patrulla "${updatedEffect.name}" actualizado.`);
         }
-        
+
         // Clear the editing context
         editingGroupContext = null;
         editingEffectId = null;
@@ -524,10 +522,10 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
     console.log('Groups - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     destroy$.next();
     destroy$.complete();
-    
+
     if (syncManager) {
       syncManager.cleanupComponent(componentId);
     }
@@ -554,7 +552,7 @@
   // Handler for preset store updates - specifically for patrol effects
   function handlePatrolEffectStoreUpdate(event: SyncEvent) {
     console.log('Groups.svelte - Handling patrol effect store update:', event);
-    
+
     if (event.type !== 'unifiedPresets' || !event.data || !event.data.patrolEffects) return;
 
     // Update all patrol effects in all groups based on sourceId matching
@@ -635,10 +633,10 @@
   async function updatePatrolEffectPreset(sourceId: string, updates: any) {
     try {
       console.log('Groups.svelte - updatePatrolEffectPreset called with:', { sourceId, updates });
-      
+
       // Import updatePatrolEffect dynamically
       const { updatePatrolEffect, presetsStore } = await import('@/stores/presets');
-      
+
       // Get current presets to find the correct preset by sourceId
       let currentPresets: any = null;
       const unsubscribe = presetsStore.subscribe((presets) => {
@@ -653,7 +651,7 @@
 
       if (presetToUpdate) {
         console.log('Groups.svelte - Found preset to update:', presetToUpdate.id);
-        
+
         // Update the preset with new values
         await updatePatrolEffect(presetToUpdate.id, updates);
 
@@ -1433,7 +1431,7 @@
 
   function editPatrolEffect(group: Group, effectId: string) {
     console.log('Groups.svelte - editPatrolEffect called with:', { groupId: group.id, effectId });
-    
+
     const existingEffect = group.patrolEffects[effectId];
     if (!existingEffect) {
       console.error("Effect not found");
@@ -1453,11 +1451,11 @@
     };
 
     console.log('Groups.svelte - Opening dialog for patrol effect:', patrolEffectForDialog);
-    
+
     // Store group context for after edit
     editingGroupContext = group;
     editingEffectId = effectId;
-    
+
     // Open global dialog
     openPatrolEffectEditDialog(patrolEffectForDialog);
   }
@@ -1600,7 +1598,7 @@
         });
       }
     });
-    
+
     // Also log current presets
     console.log('Current presets in presetsStore:');
     import('@/stores/presets').then(({ presetsStore }) => {
@@ -1609,7 +1607,7 @@
         currentPresets = presets;
       });
       unsubscribe();
-      
+
       if (currentPresets && currentPresets.patrolEffects) {
         console.log('Patrol Effects in presets:', currentPresets.patrolEffects.map(effect => ({
           id: effect.id,
@@ -1620,14 +1618,14 @@
         })));
       }
     });
-    
+
     console.log('=== END DEBUG ===');
   }
 
   // Situational Modifier functions
   function editSituationalModifier(group: Group, modifierId: string) {
     console.log('Groups.svelte - editSituationalModifier called with:', { groupId: group.id, modifierId });
-    
+
     const existingModifier = group.situationalModifiers?.[modifierId];
     if (!existingModifier) {
       console.error("Situational modifier not found");
@@ -1647,11 +1645,11 @@
     };
 
     console.log('Groups.svelte - Opening dialog for situational modifier:', modifierForDialog);
-    
+
     // Store group context for after edit
     editingGroupContext = group;
     editingEffectId = modifierId;
-    
+
     // Open global dialog
     openSituationalModifierEditDialog(modifierForDialog, false); // Pass false for groups context
   }
@@ -1686,8 +1684,8 @@
     const effectsKey = Object.keys(modifier.statEffects || {}).sort().join('-');
     const sourceId = modifier.sourceId || `situational-${nameKey}-${effectsKey}`;
 
-    const existingPreset = existingPresets.find(p => 
-      p.data.sourceId === sourceId || 
+    const existingPreset = existingPresets.find(p =>
+      p.data.sourceId === sourceId ||
       (p.data.name === modifier.name && JSON.stringify(p.data.statEffects) === JSON.stringify(modifier.statEffects))
     );
 
@@ -2734,7 +2732,7 @@
                   {Object.keys(group.situationalModifiers || {}).length}
                 </span>
               </div>
-              
+
               {#if Object.keys(group.situationalModifiers || {}).length === 0}
                 <div style="text-align: center; padding: 1rem; color: #999; font-style: italic;">
                   Sin modificadores situacionales

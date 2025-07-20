@@ -74,7 +74,7 @@
     isDragging = false;
     document.removeEventListener('mousemove', handleDrag);
     document.removeEventListener('mouseup', stopDrag);
-    
+
     // Save position to localStorage
     localStorage.setItem('crow-nest-situational-modifier-edit-dialog-position', JSON.stringify(position));
   }
@@ -91,21 +91,32 @@
     }
   });
 
-  // Fill inputs when situational modifier changes (simple function, not reactive)
+  // Track if inputs have been filled to prevent overwriting user input
+  let inputsFilled = false;
+
+  // Fill inputs only once when dialog opens
   function fillInputs() {
     console.log('fillInputs called with situational modifier:', situationalModifier);
-    if (situationalModifier) {
+    if (situationalModifier && !inputsFilled) {
       editName = situationalModifier.name || '';
       editDescription = situationalModifier.description || situationalModifier.details || '';
       editImg = situationalModifier.img || '';
       editStatEffects = { ...situationalModifier.statEffects } || {};
+      inputsFilled = true;
       console.log('Filled inputs:', { editName, editDescription, editImg, editStatEffects });
     }
   }
 
-  // Call fillInputs when visible becomes true
+  // Reset and fill inputs when dialog becomes visible
   $: if (visible && situationalModifier) {
-    fillInputs();
+    if (!inputsFilled) {
+      fillInputs();
+    }
+  }
+
+  // Reset flag when dialog closes
+  $: if (!visible) {
+    inputsFilled = false;
   }
 
   // Handle image selection using Foundry's FilePicker
@@ -160,7 +171,7 @@
       <!-- Basic info section -->
       <fieldset class="modifier-container">
         <legend>Información Básica</legend>
-        
+
         <!-- Name input -->
         <div class="form-group">
           <label for="modifier-name">Nombre:</label>

@@ -341,10 +341,16 @@ export async function updateSituationalModifier(
   modifierId: string,
   updates: Partial<SituationalModifier>
 ): Promise<void> {
-  console.log("[Presets Store] updateSituationalModifier called with:", { modifierId, updates });
+  console.log("[Presets Store] updateSituationalModifier called with:", {
+    modifierId,
+    updates,
+  });
   const current = get(presetsStore);
-  console.log("[Presets Store] Current situational modifiers:", current.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
-  
+  console.log(
+    "[Presets Store] Current situational modifiers:",
+    current.situationalModifiers.map((m) => ({ id: m.id, name: m.name }))
+  );
+
   const updated = {
     ...current,
     situationalModifiers: current.situationalModifiers.map((m) =>
@@ -352,7 +358,10 @@ export async function updateSituationalModifier(
     ),
   };
 
-  console.log("[Presets Store] Updated situational modifiers:", updated.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
+  console.log(
+    "[Presets Store] Updated situational modifiers:",
+    updated.situationalModifiers.map((m) => ({ id: m.id, name: m.name }))
+  );
   await persistPresets(updated);
 }
 
@@ -396,7 +405,10 @@ export async function deleteSituationalModifierPreset(
 // Persistence and synchronization functions
 async function persistPresets(presets: PresetCollection): Promise<void> {
   try {
-    console.log("[Presets] persistPresets called with situational modifiers:", presets.situationalModifiers.map(m => ({ id: m.id, name: m.name })));
+    console.log(
+      "[Presets] persistPresets called with situational modifiers:",
+      presets.situationalModifiers.map((m) => ({ id: m.id, name: m.name }))
+    );
     const game = (globalThis as any).game;
     if (!game || !game.settings) {
       console.warn(

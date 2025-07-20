@@ -72,7 +72,7 @@
     event.preventDefault(); // Prevenir menú contextual del navegador
     event.stopPropagation(); // Evitar que el evento llegue al grupo
     console.log('SituationalModifierCard - handleImageRightClickSimple called, shiftKey:', event.shiftKey);
-    
+
     if (event.shiftKey) {
       // Shift + right click: eliminar
       handleRemove();
@@ -85,7 +85,7 @@
   function handleImageRightClick(event: MouseEvent) {
     event.preventDefault(); // Prevenir menú contextual del navegador
     event.stopPropagation(); // Evitar que el evento llegue al grupo
-    
+
     if (event.shiftKey) {
       // Shift + right click: eliminar
       if (inPresetManager) {
@@ -213,7 +213,7 @@
 
   async function showSituationalModifierInChat() {
     const name = situationalModifier.name || 'Modificador Situacional';
-    const description = situationalModifier.description 
+    const description = situationalModifier.description
       ? `<div style="margin-bottom: 0.5rem; font-style: italic; color: #666;">${situationalModifier.description}</div>`
       : '';
 
@@ -290,7 +290,7 @@
   // Tooltip content for simple view
   $: tooltipContent = (() => {
     const name = situationalModifier.name || 'Modificador Situacional';
-    const description = situationalModifier.description 
+    const description = situationalModifier.description
       ? `<div style="margin-bottom: 0.5rem; font-style: italic;">${situationalModifier.description}</div>`
       : '';
 

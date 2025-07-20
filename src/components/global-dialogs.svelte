@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { closeResourceEditDialog, closeReputationEditDialog, closePatrolEffectEditDialog, closeSituationalModifierEditDialog, dialogStore, handleResourceSave, handleReputationSave, handlePatrolEffectSave, handleSituationalModifierSave } from '../utils/dialog-manager';
-  import ResourceEditDialog from './unified/dialogs/ResourceEditDialog.svelte';
-  import ReputationEditDialog from './unified/dialogs/ReputationEditDialog.svelte';
+  import { closePatrolEffectEditDialog, closeReputationEditDialog, closeResourceEditDialog, closeSituationalModifierEditDialog, dialogStore, handlePatrolEffectSave, handleReputationSave, handleResourceSave, handleSituationalModifierSave } from '../utils/dialog-manager';
   import PatrolEffectEditDialog from './unified/dialogs/PatrolEffectEditDialog.svelte';
+  import ReputationEditDialog from './unified/dialogs/ReputationEditDialog.svelte';
+  import ResourceEditDialog from './unified/dialogs/ResourceEditDialog.svelte';
   import SituationalModifierEditDialog from './unified/dialogs/SituationalModifierEditDialog.svelte';
 
   let currentDialogState: any;

@@ -341,7 +341,7 @@
             const statImg = stat ? stat.img : 'icons/svg/shield.svg';
             const displayValue = Number(value) >= 0 ? `+${value}` : `${value}`;
             const valueColor = Number(value) >= 0 ? '#10b981' : '#ef4444';
-            
+
             return `<div style="
               display: flex;
               flex-direction: column;

@@ -101,7 +101,7 @@
     event.preventDefault(); // Prevenir menú contextual del navegador
     event.stopPropagation(); // Evitar que el evento llegue al grupo
     console.log('PatrolCard - handleImageRightClickSimple called, shiftKey:', event.shiftKey);
-    
+
     if (event.shiftKey) {
       // Shift + right click: eliminar
       handleRemove();
@@ -114,7 +114,7 @@
   function handleImageRightClick(event: MouseEvent) {
     event.preventDefault(); // Prevenir menú contextual del navegador
     event.stopPropagation(); // Evitar que el evento llegue al grupo
-    
+
     if (event.shiftKey) {
       // Shift + right click: eliminar
       if (inPresetManager) {
@@ -175,18 +175,18 @@
     console.log('patrolEffect keys:', Object.keys(patrolEffect));
     console.log('typeof patrolEffect:', typeof patrolEffect);
     console.log('JSON.stringify(patrolEffect):', JSON.stringify(patrolEffect, null, 2));
-    
+
     // También mostrar en chat para fácil visualización
     const debugContent = `
       <div style="background: #f8f9fa; padding: 1rem; border: 2px solid #dc3545; border-radius: 8px; font-family: monospace; white-space: pre-wrap;">
         <h3 style="color: #dc3545; margin-top: 0;">🐛 DEBUG: Patrol Effect Data</h3>
         <strong>Object Keys:</strong> ${Object.keys(patrolEffect).join(', ')}
-        
+
         <strong>Name:</strong> ${patrolEffect.name || 'undefined'}
         <strong>Description:</strong> ${patrolEffect.description || 'undefined'}
         <strong>Image:</strong> ${patrolEffect.img || 'undefined'}
         <strong>Stat Effects:</strong> ${JSON.stringify(patrolEffect.statEffects, null, 2)}
-        
+
         <strong>Full Object:</strong>
         ${JSON.stringify(patrolEffect, null, 2)}
       </div>

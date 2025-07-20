@@ -12,7 +12,7 @@ if (module) {
     title: module.title,
     active: module.active,
     version: module.version,
-    author: module.authors?.[0]?.name || "Unknown"
+    author: module.authors?.[0]?.name || "Unknown",
   });
 } else {
   console.log("❌ Module 'crow-nest' not found in game.modules");
@@ -21,8 +21,8 @@ if (module) {
 
 // 2. Check manifest file
 fetch("modules/crow-nest/module.json")
-  .then(response => response.json())
-  .then(manifest => {
+  .then((response) => response.json())
+  .then((manifest) => {
     console.log("📄 Manifest loaded successfully:");
     console.log("   - ID:", manifest.id);
     console.log("   - Title:", manifest.title);
@@ -30,34 +30,52 @@ fetch("modules/crow-nest/module.json")
     console.log("   - Compatibility:", manifest.compatibility);
     console.log("   - Main script:", manifest.esmodules?.[0] || "Not found");
   })
-  .catch(error => {
+  .catch((error) => {
     console.log("❌ Failed to load manifest:", error);
   });
 
 // 3. Check main script
 fetch("modules/crow-nest/dist/main.js")
-  .then(response => {
-    console.log("📦 Main script status:", response.ok ? "✅ Found" : "❌ Not found");
-    console.log("   - Size:", response.headers.get("content-length") || "Unknown");
+  .then((response) => {
+    console.log(
+      "📦 Main script status:",
+      response.ok ? "✅ Found" : "❌ Not found"
+    );
+    console.log(
+      "   - Size:",
+      response.headers.get("content-length") || "Unknown"
+    );
   })
-  .catch(error => {
+  .catch((error) => {
     console.log("❌ Failed to load main script:", error);
   });
 
 // 4. Check CSS
 fetch("modules/crow-nest/dist/main.css")
-  .then(response => {
-    console.log("🎨 CSS file status:", response.ok ? "✅ Found" : "❌ Not found");
-    console.log("   - Size:", response.headers.get("content-length") || "Unknown");
+  .then((response) => {
+    console.log(
+      "🎨 CSS file status:",
+      response.ok ? "✅ Found" : "❌ Not found"
+    );
+    console.log(
+      "   - Size:",
+      response.headers.get("content-length") || "Unknown"
+    );
   })
-  .catch(error => {
+  .catch((error) => {
     console.log("❌ Failed to load CSS:", error);
   });
 
 // 5. Check if hooks are registered
 console.log("🪝 Hooks check:");
-console.log("   - Init hook registered:", !!Hooks._hooks.init?.find(h => h.fn.toString().includes("Crow Nest")));
-console.log("   - Ready hook registered:", !!Hooks._hooks.ready?.find(h => h.fn.toString().includes("Crow Nest")));
+console.log(
+  "   - Init hook registered:",
+  !!Hooks._hooks.init?.find((h) => h.fn.toString().includes("Crow Nest"))
+);
+console.log(
+  "   - Ready hook registered:",
+  !!Hooks._hooks.ready?.find((h) => h.fn.toString().includes("Crow Nest"))
+);
 
 // 6. Check global availability
 console.log("🌍 Global availability:");

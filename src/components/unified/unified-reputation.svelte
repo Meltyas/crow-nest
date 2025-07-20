@@ -2,16 +2,14 @@
   import AddItemForm from '@/components/guard/add-item-form.svelte';
   import ItemCard from '@/components/guard/item-card.svelte';
   import {
-    addReputation,
     deleteReputationPreset,
     presetsStore,
     toggleReputationActive
   } from '@/stores/presets';
-  import { generateUUID } from '@/utils/log';
   import { SyncManager } from '@/utils/sync';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
+  import { debounceTime, distinctUntilChanged, takeUntil, tap } from 'rxjs/operators';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { openReputationEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de resources-section
@@ -109,7 +107,7 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
     console.log('UnifiedReputation - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     if (syncManager) {
       syncManager.cleanupComponent(componentId);
     }
@@ -295,11 +293,11 @@
 
       // Handle reordering directly in preset store
       await reorderReputationsInStore(draggedIndex, newIndex, inPresetManager);
-      
-      dispatch('reorderReputations', { 
-        dragIndex: draggedIndex, 
+
+      dispatch('reorderReputations', {
+        dragIndex: draggedIndex,
         dropIndex: newIndex,
-        inPresetManager: inPresetManager 
+        inPresetManager: inPresetManager
       });
     }
 
@@ -310,18 +308,18 @@
   async function reorderReputationsInStore(dragIndex: number, dropIndex: number, inPresetManager: boolean) {
     const orderProperty = inPresetManager ? 'presetOrder' : 'guardOrder';
     const currentReputations = displayReputations;
-    
-    if (dragIndex < 0 || dragIndex >= currentReputations.length || 
+
+    if (dragIndex < 0 || dragIndex >= currentReputations.length ||
         dropIndex < 0 || dropIndex >= currentReputations.length) {
       return;
     }
 
     // Get the dragged item
     const draggedItem = currentReputations[dragIndex];
-    
+
     // Update the preset store with new order values
     const updatedReputations = [...currentPresets.reputations];
-    
+
     // Reassign order values based on new positions
     currentReputations.forEach((reputation, index) => {
       const storeIndex = updatedReputations.findIndex(r => r.id === reputation.id);

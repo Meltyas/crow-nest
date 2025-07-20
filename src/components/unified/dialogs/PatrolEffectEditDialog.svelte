@@ -21,10 +21,38 @@
   // Get available stats
   let stats = getStats();
 
-  // Position state (copied exactly from ResourceEditDialog)
+  // Position state
   let position = { x: 100, y: 100 };
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
+
+  // Track if inputs have been filled to prevent overwriting user input
+  let inputsFilled = false;
+
+  // Fill inputs only once when dialog opens
+  function fillInputs() {
+    console.log('fillInputs called with patrol effect:', patrolEffect);
+    if (patrolEffect && !inputsFilled) {
+      editName = patrolEffect.name || '';
+      editDescription = patrolEffect.description || patrolEffect.details || '';
+      editImg = patrolEffect.img || '';
+      editStatEffects = { ...patrolEffect.statEffects } || {};
+      inputsFilled = true;
+      console.log('Filled inputs:', { editName, editDescription, editImg, editStatEffects });
+    }
+  }
+
+  // Reset and fill inputs when dialog becomes visible
+  $: if (visible && patrolEffect) {
+    if (!inputsFilled) {
+      fillInputs();
+    }
+  }
+
+  // Reset flag when dialog closes
+  $: if (!visible) {
+    inputsFilled = false;
+  }
 
   function handleSave() {
     const updatedPatrolEffect = {
@@ -49,8 +77,9 @@
     dispatch('close');
   }
 
-  // Drag functionality (copied exactly from ResourceEditDialog)
+  // Drag functionality
   function startDrag(event: MouseEvent) {
+    // Only start drag if clicking on header, not on interactive elements
     if ((event.target as HTMLElement).closest('.close-button, .roll-button, select, input, textarea, button, .experience-chip, .image-preview-button')) {
       return; // Don't drag if clicking on interactive elements
     }
@@ -91,23 +120,6 @@
       }
     }
   });
-
-  // Fill inputs when patrol effect changes (simple function, not reactive)
-  function fillInputs() {
-    console.log('fillInputs called with patrol effect:', patrolEffect);
-    if (patrolEffect) {
-      editName = patrolEffect.name || '';
-      editDescription = patrolEffect.description || patrolEffect.details || '';
-      editImg = patrolEffect.img || '';
-      editStatEffects = patrolEffect.statEffects ? { ...patrolEffect.statEffects } : {};
-      console.log('Filled inputs:', { editName, editDescription, editImg, editStatEffects });
-    }
-  }
-
-  // Call fillInputs when visible becomes true
-  $: if (visible && patrolEffect) {
-    fillInputs();
-  }
 
   // Handle image selection using Foundry's FilePicker
   function handleImageSelect() {

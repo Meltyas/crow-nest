@@ -8,9 +8,9 @@
     toggleSituationalModifierActive
   } from '@/stores/presets';
   import { SyncManager } from '@/utils/sync';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
+  import { debounceTime, distinctUntilChanged, takeUntil, tap } from 'rxjs/operators';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { openSituationalModifierEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-resources
@@ -102,10 +102,10 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
     console.log('UnifiedSituationalModifiers - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     destroy$.next();
     destroy$.complete();
-    
+
     if (syncManager) {
       syncManager.cleanupComponent(componentId);
     }
@@ -279,7 +279,7 @@
   async function reorderSituationalModifiers(dragIndex: number, dropIndex: number) {
     // Create a copy of the current situational modifiers to modify
     const updatedSituationalModifiers = [...currentPresets.situationalModifiers];
-    
+
     // Get the items being reordered - only using presetOrder since guardOrder was removed
     const draggedItem = displaySituationalModifiers[dragIndex];
     const orderProperty = 'presetOrder';

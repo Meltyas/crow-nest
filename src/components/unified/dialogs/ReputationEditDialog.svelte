@@ -100,21 +100,32 @@
     }
   });
 
-  // Fill inputs when reputation changes (simple function, not reactive)
+  // Track if inputs have been filled to prevent overwriting user input
+  let inputsFilled = false;
+
+  // Fill inputs only once when dialog opens
   function fillInputs() {
     console.log('fillInputs called with reputation:', reputation);
-    if (reputation) {
+    if (reputation && !inputsFilled) {
       editName = reputation.name || '';
       editValue = reputation.value || 0;
       editDescription = reputation.description || reputation.details || '';
       editImg = reputation.img || '';
+      inputsFilled = true;
       console.log('Filled inputs:', { editName, editValue, editDescription, editImg });
     }
   }
 
-  // Call fillInputs when visible becomes true
+  // Reset and fill inputs when dialog becomes visible
   $: if (visible && reputation) {
-    fillInputs();
+    if (!inputsFilled) {
+      fillInputs();
+    }
+  }
+
+  // Reset flag when dialog closes
+  $: if (!visible) {
+    inputsFilled = false;
   }
 
   // Handle image selection using Foundry's FilePicker

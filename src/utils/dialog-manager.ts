@@ -1,5 +1,10 @@
-import type { Reputation, Resource, PatrolEffect, SituationalModifier } from "@/shared/preset";
-import { writable, get } from "svelte/store";
+import type {
+  PatrolEffect,
+  Reputation,
+  Resource,
+  SituationalModifier,
+} from "@/shared/preset";
+import { get, writable } from "svelte/store";
 
 // Store for managing global dialogs
 interface DialogState {
@@ -14,6 +19,7 @@ interface DialogState {
   patrolEffectEditDialog: {
     visible: boolean;
     patrolEffect: PatrolEffect | null;
+    createAsActive: boolean;
   };
   situationalModifierEditDialog: {
     visible: boolean;
@@ -34,6 +40,7 @@ const initialState: DialogState = {
   patrolEffectEditDialog: {
     visible: false,
     patrolEffect: null,
+    createAsActive: true, // Por defecto true para mantener compatibilidad
   },
   situationalModifierEditDialog: {
     visible: false,
@@ -95,12 +102,16 @@ export function closeReputationEditDialog() {
 }
 
 // Patrol Effect Edit Dialog functions
-export function openPatrolEffectEditDialog(patrolEffect: PatrolEffect) {
+export function openPatrolEffectEditDialog(
+  patrolEffect: PatrolEffect,
+  createAsActive: boolean = true
+) {
   dialogStore.update((state) => ({
     ...state,
     patrolEffectEditDialog: {
       visible: true,
       patrolEffect,
+      createAsActive, // Pasar el flag para saber si crear activo o no
     },
   }));
 }
@@ -111,12 +122,16 @@ export function closePatrolEffectEditDialog() {
     patrolEffectEditDialog: {
       visible: false,
       patrolEffect: null,
+      createAsActive: true, // Reset al valor por defecto
     },
   }));
 }
 
 // Situational Modifier Edit Dialog functions
-export function openSituationalModifierEditDialog(situationalModifier: SituationalModifier, fromPresetManager: boolean = false) {
+export function openSituationalModifierEditDialog(
+  situationalModifier: SituationalModifier,
+  fromPresetManager: boolean = false
+) {
   dialogStore.update((state) => ({
     ...state,
     situationalModifierEditDialog: {
@@ -153,20 +168,20 @@ export async function handleResourceSave(updatedResource: any) {
     console.log("Full updatedResource:", updatedResource);
 
     // Check if this is a creation (empty ID) or update
-    if (!resourceId || resourceId === '') {
+    if (!resourceId || resourceId === "") {
       console.log("Creating new resource (no ID provided)");
-      
+
       // Create new resource - set active: true so it appears in guard interface
       await addResource({
         name: updatedResource.name,
         value: updatedResource.value || 0,
-        img: updatedResource.img || '',
+        img: updatedResource.img || "",
         sourceId: `resource-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         groupId: undefined, // Global preset
-        description: updatedResource.description || '',
+        description: updatedResource.description || "",
         active: true, // New resources created via dialog should be active
         guardOrder: 0, // Add at the beginning of guard list
-        presetOrder: 0 // Add at the beginning of preset list
+        presetOrder: 0, // Add at the beginning of preset list
       });
 
       console.log("Resource created successfully:", updatedResource);
@@ -207,20 +222,20 @@ export async function handleReputationSave(updatedReputation: any) {
     console.log("Full updatedReputation:", updatedReputation);
 
     // Check if this is a creation (empty ID) or update
-    if (!reputationId || reputationId === '') {
+    if (!reputationId || reputationId === "") {
       console.log("Creating new reputation (no ID provided)");
-      
+
       // Create new reputation - set active: true so it appears in guard interface
       await addReputation({
         name: updatedReputation.name,
         value: updatedReputation.value || 0,
-        img: updatedReputation.img || '',
+        img: updatedReputation.img || "",
         sourceId: `reputation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         groupId: undefined, // Global preset
-        description: updatedReputation.description || '',
+        description: updatedReputation.description || "",
         active: true, // New reputations created via dialog should be active
         guardOrder: 0, // Add at the beginning of guard list
-        presetOrder: 0 // Add at the beginning of preset list
+        presetOrder: 0, // Add at the beginning of preset list
       });
 
       console.log("Reputation created successfully:", updatedReputation);
@@ -249,49 +264,62 @@ export async function handleReputationSave(updatedReputation: any) {
 
 // Patrol Effect save handler
 export async function handlePatrolEffectSave(updatedPatrolEffect: any) {
-  console.log("Global save patrol effect handler called with:", updatedPatrolEffect);
+  console.log(
+    "Global save patrol effect handler called with:",
+    updatedPatrolEffect
+  );
+
+  // Get the createAsActive flag from the dialog store
+  let createAsActive = true; // Default value
+  const unsubscribe = dialogStore.subscribe((state) => {
+    createAsActive = state.patrolEffectEditDialog.createAsActive;
+  });
+  unsubscribe();
 
   // Import the presets store dynamically to avoid circular imports
-  const { updatePatrolEffect, addPatrolEffect } = await import("@/stores/presets");
+  const { updatePatrolEffect, addPatrolEffect } = await import(
+    "@/stores/presets"
+  );
 
   try {
     // Get the patrol effect ID directly from the updatedPatrolEffect that contains the original data
-    const patrolEffectId = updatedPatrolEffect.id || updatedPatrolEffect.sourceId;
+    const patrolEffectId =
+      updatedPatrolEffect.id || updatedPatrolEffect.sourceId;
 
     console.log("Attempting to save with ID:", patrolEffectId);
     console.log("Full updatedPatrolEffect:", updatedPatrolEffect);
 
     // Check if this is a creation (empty ID) or update
-    if (!patrolEffectId || patrolEffectId === '') {
+    if (!patrolEffectId || patrolEffectId === "") {
       console.log("Creating new patrol effect (no ID provided)");
-      
+
       // Generate a consistent sourceId
       const sourceId = `patrol-effect-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Create new patrol effect - set active: true so it appears in guard interface
+
+      // Create new patrol effect - usar el flag createAsActive
       await addPatrolEffect({
         name: updatedPatrolEffect.name,
         statEffects: updatedPatrolEffect.statEffects || {},
-        img: updatedPatrolEffect.img || '',
+        img: updatedPatrolEffect.img || "",
         sourceId: sourceId,
         groupId: undefined, // Global preset
-        description: updatedPatrolEffect.description || '',
-        active: true, // New patrol effects created via dialog should be active
-        presetOrder: 0 // Add at the beginning of preset list
+        description: updatedPatrolEffect.description || "",
+        active: createAsActive, // Usar el flag del diálogo para determinar si debe estar activo
+        presetOrder: 0, // Add at the beginning of preset list
       });
 
       console.log("Patrol effect created successfully:", updatedPatrolEffect);
       ui.notifications?.info("Efecto de patrulla creado correctamente");
-      
+
       // Emit event for auto-application to pending group
-      const newPatrolEffectEvent = new CustomEvent('patrol-effect-created', {
+      const newPatrolEffectEvent = new CustomEvent("patrol-effect-created", {
         detail: {
           name: updatedPatrolEffect.name,
           description: updatedPatrolEffect.description,
           statEffects: updatedPatrolEffect.statEffects,
           img: updatedPatrolEffect.img,
-          sourceId: sourceId
-        }
+          sourceId: sourceId,
+        },
       });
       window.dispatchEvent(newPatrolEffectEvent);
     } else {
@@ -306,18 +334,21 @@ export async function handlePatrolEffectSave(updatedPatrolEffect: any) {
 
       console.log("Patrol effect updated successfully:", updatedPatrolEffect);
       ui.notifications?.info("Efecto de patrulla actualizado correctamente");
-      
+
       // Emit event for patrol effect updates (for groups to update existing effects)
-      const updatedPatrolEffectEvent = new CustomEvent('patrol-effect-updated', {
-        detail: {
-          id: patrolEffectId,
-          name: updatedPatrolEffect.name,
-          description: updatedPatrolEffect.description,
-          statEffects: updatedPatrolEffect.statEffects,
-          img: updatedPatrolEffect.img,
-          sourceId: updatedPatrolEffect.sourceId
+      const updatedPatrolEffectEvent = new CustomEvent(
+        "patrol-effect-updated",
+        {
+          detail: {
+            id: patrolEffectId,
+            name: updatedPatrolEffect.name,
+            description: updatedPatrolEffect.description,
+            statEffects: updatedPatrolEffect.statEffects,
+            img: updatedPatrolEffect.img,
+            sourceId: updatedPatrolEffect.sourceId,
+          },
         }
-      });
+      );
       window.dispatchEvent(updatedPatrolEffectEvent);
     }
 
@@ -330,61 +361,76 @@ export async function handlePatrolEffectSave(updatedPatrolEffect: any) {
 }
 
 // Situational Modifier save handler
-export async function handleSituationalModifierSave(updatedSituationalModifier: any) {
-  console.log("Dialog manager - Handling situational modifier save:", updatedSituationalModifier);
-  
+export async function handleSituationalModifierSave(
+  updatedSituationalModifier: any
+) {
+  console.log(
+    "Dialog manager - Handling situational modifier save:",
+    updatedSituationalModifier
+  );
+
   // Import the presets store dynamically to avoid circular imports
-  const { updateSituationalModifier, addSituationalModifier } = await import("@/stores/presets");
+  const { updateSituationalModifier, addSituationalModifier } = await import(
+    "@/stores/presets"
+  );
 
   try {
     // Get the context information from the dialog store
     const dialogState = get(dialogStore);
-    const fromPresetManager = dialogState.situationalModifierEditDialog.fromPresetManager;
-    
+    const fromPresetManager =
+      dialogState.situationalModifierEditDialog.fromPresetManager;
+
     // Get the situational modifier ID directly from the updatedSituationalModifier that contains the original data
-    const modifierId = updatedSituationalModifier.id || updatedSituationalModifier.sourceId;
+    const modifierId =
+      updatedSituationalModifier.id || updatedSituationalModifier.sourceId;
 
     console.log("Attempting to save with ID:", modifierId);
     console.log("Full updatedSituationalModifier:", updatedSituationalModifier);
     console.log("fromPresetManager:", fromPresetManager);
 
     // Check if this is a creation (empty ID) or update
-    if (!modifierId || modifierId === '') {
+    if (!modifierId || modifierId === "") {
       console.log("Creating new situational modifier (no ID provided)");
-      
+
       // Generate a consistent sourceId
       const sourceId = `situational-modifier-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Create new situational modifier
       // If from preset manager: active: false (goes to preset pool)
       // If from guard: active: true (goes directly to guard)
       await addSituationalModifier({
         name: updatedSituationalModifier.name,
         statEffects: updatedSituationalModifier.statEffects || {},
-        img: updatedSituationalModifier.img || 'icons/svg/upgrade.svg',
+        img: updatedSituationalModifier.img || "icons/svg/upgrade.svg",
         sourceId: sourceId,
         groupId: undefined, // Global preset
-        description: updatedSituationalModifier.description || '',
+        description: updatedSituationalModifier.description || "",
         active: !fromPresetManager, // Active only if NOT from preset manager
-        presetOrder: 0 // Add at the beginning of preset list
+        presetOrder: 0, // Add at the beginning of preset list
       });
 
-      console.log("Situational modifier created successfully:", updatedSituationalModifier);
+      console.log(
+        "Situational modifier created successfully:",
+        updatedSituationalModifier
+      );
       ui.notifications?.info("Modificador situacional creado correctamente");
-      
+
       // Emit event for auto-application to pending group
-      const newModifierEvent = new CustomEvent('situational-modifier-created', {
+      const newModifierEvent = new CustomEvent("situational-modifier-created", {
         detail: {
           name: updatedSituationalModifier.name,
           description: updatedSituationalModifier.description,
           statEffects: updatedSituationalModifier.statEffects,
           img: updatedSituationalModifier.img,
-          sourceId: sourceId
-        }
+          sourceId: sourceId,
+        },
       });
       window.dispatchEvent(newModifierEvent);
     } else {
-      console.log("Updating existing situational modifier with ID:", modifierId);
+      console.log(
+        "Updating existing situational modifier with ID:",
+        modifierId
+      );
       console.log("Updates to apply:", {
         name: updatedSituationalModifier.name,
         statEffects: updatedSituationalModifier.statEffects,
@@ -399,20 +445,28 @@ export async function handleSituationalModifierSave(updatedSituationalModifier: 
         img: updatedSituationalModifier.img,
       });
 
-      console.log("Situational modifier updated successfully:", updatedSituationalModifier);
-      ui.notifications?.info("Modificador situacional actualizado correctamente");
-      
+      console.log(
+        "Situational modifier updated successfully:",
+        updatedSituationalModifier
+      );
+      ui.notifications?.info(
+        "Modificador situacional actualizado correctamente"
+      );
+
       // Emit event for situational modifier updates (for groups to update existing modifiers)
-      const updatedModifierEvent = new CustomEvent('situational-modifier-updated', {
-        detail: {
-          id: modifierId,
-          name: updatedSituationalModifier.name,
-          description: updatedSituationalModifier.description,
-          statEffects: updatedSituationalModifier.statEffects,
-          img: updatedSituationalModifier.img,
-          sourceId: updatedSituationalModifier.sourceId
+      const updatedModifierEvent = new CustomEvent(
+        "situational-modifier-updated",
+        {
+          detail: {
+            id: modifierId,
+            name: updatedSituationalModifier.name,
+            description: updatedSituationalModifier.description,
+            statEffects: updatedSituationalModifier.statEffects,
+            img: updatedSituationalModifier.img,
+            sourceId: updatedSituationalModifier.sourceId,
+          },
         }
-      });
+      );
       window.dispatchEvent(updatedModifierEvent);
     }
 

@@ -99,21 +99,32 @@
     }
   });
 
-  // Fill inputs when resource changes (simple function, not reactive)
+  // Track if inputs have been filled to prevent overwriting user input
+  let inputsFilled = false;
+
+  // Fill inputs only once when dialog opens
   function fillInputs() {
     console.log('fillInputs called with resource:', resource);
-    if (resource) {
+    if (resource && !inputsFilled) {
       editName = resource.name || '';
       editValue = resource.value || 0;
       editDescription = resource.description || resource.details || '';
       editImg = resource.img || '';
+      inputsFilled = true;
       console.log('Filled inputs:', { editName, editValue, editDescription, editImg });
     }
   }
 
-  // Call fillInputs when visible becomes true
+  // Reset and fill inputs when dialog becomes visible
   $: if (visible && resource) {
-    fillInputs();
+    if (!inputsFilled) {
+      fillInputs();
+    }
+  }
+
+  // Reset flag when dialog closes
+  $: if (!visible) {
+    inputsFilled = false;
   }
 
   // Handle image selection using Foundry's FilePicker

@@ -203,7 +203,7 @@
     }
 
     // Calculate and show individual modifier components
-    const guardBonus = guardModifiers.reduce((sum, mod) => sum + (mod.mods[stat.key] || 0), 0);
+    const guardBonus = guardModifiers.reduce((sum, mod) => sum + ((mod.mods && mod.mods[stat.key]) || 0), 0);
     const patrolModifier = group.mods[stat.key] || 0;
     const patrolEffects = Object.values(group.patrolEffects || {})
       .filter(effect => effect.statEffects[stat.key] !== undefined && effect.statEffects[stat.key] !== 0);
@@ -321,7 +321,7 @@
         <div class="bonuses-title">Bonuses Breakdown:</div>
         <div class="bonuses-breakdown">
           ${baseValue !== 0 ? `<span class="bonus-item">Guard ${stat.name} Base: ${baseValue >= 0 ? '+' : ''}${baseValue}</span>` : ''}
-          ${guardModifiers.filter(mod => mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0).map(mod => `<span class="bonus-item guard-situational ${mod.mods[stat.key] >= 0 ? 'positive' : 'negative'}">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
+          ${guardModifiers.filter(mod => mod.mods && mod.mods[stat.key] !== undefined && mod.mods[stat.key] !== 0).map(mod => `<span class="bonus-item guard-situational ${mod.mods[stat.key] >= 0 ? 'positive' : 'negative'}">${mod.name}: ${mod.mods[stat.key] >= 0 ? '+' : ''}${mod.mods[stat.key]}</span>`).join('')}
           ${patrolModifier !== 0 ? `<span class="bonus-item patrol-modifier">Patrol Modifier: ${patrolModifier >= 0 ? '+' : ''}${patrolModifier}</span>` : ''}
           ${patrolEffects.map(effect => `<span class="bonus-item patrol-effect-modifier">${effect.name}: ${effect.statEffects[stat.key] >= 0 ? '+' : ''}${effect.statEffects[stat.key]}</span>`).join('')}
           ${bonus !== 0 ? `<span class="bonus-item">Situational: ${bonus >= 0 ? '+' : ''}${bonus}</span>` : ''}

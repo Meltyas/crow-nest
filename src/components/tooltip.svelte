@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   export let content = '';
   export let size: string | number = ''; // New prop for size control
 

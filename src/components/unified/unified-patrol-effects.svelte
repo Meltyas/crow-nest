@@ -8,9 +8,9 @@
     togglePatrolEffectActive
   } from '@/stores/presets';
   import { SyncManager } from '@/utils/sync';
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { Subject } from 'rxjs';
-  import { takeUntil, distinctUntilChanged, debounceTime, tap } from 'rxjs/operators';
+  import { debounceTime, distinctUntilChanged, takeUntil, tap } from 'rxjs/operators';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { openPatrolEffectEditDialog } from '../../utils/dialog-manager';
 
   // Component props - siguiendo el patrón de unified-resources
@@ -101,10 +101,10 @@
   onDestroy(() => {
     // RxJS CLEANUP - Single cleanup call replaces manual unsubscribe
     console.log('UnifiedPatrolEffects - Cleaning up RxJS subscriptions for componentId:', componentId);
-    
+
     destroy$.next();
     destroy$.complete();
-    
+
     if (syncManager) {
       syncManager.cleanupComponent(componentId);
     }
@@ -284,7 +284,7 @@
   async function reorderPatrolEffects(dragIndex: number, dropIndex: number) {
     // Create a copy of the current patrol effects to modify
     const updatedPatrolEffects = [...currentPresets.patrolEffects];
-    
+
     // Get the items being reordered - only using presetOrder since guardOrder was removed
     const draggedItem = displayPatrolEffects[dragIndex];
     const orderProperty = 'presetOrder';
