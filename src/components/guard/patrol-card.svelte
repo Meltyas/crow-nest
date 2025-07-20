@@ -147,7 +147,7 @@
   }
 
   function handleActivatePreset() {
-    dispatch('activatePreset', { id: patrolEffect.id, active: !patrolEffect.active });
+    dispatch('activatePreset', patrolEffect.id);
   }
 
   function handleRemovePreset() {
@@ -156,7 +156,7 @@
       dispatch('removePreset', patrolEffect.id);
     } else {
       // En guard: desactivar (quitar del guard)
-      dispatch('activatePreset', { id: patrolEffect.id, active: false });
+      dispatch('activatePreset', patrolEffect.id);
     }
   }
 
@@ -708,6 +708,9 @@
     color: #9b59b6;
     font-size: 0.75rem;
     flex-shrink: 0;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .patrol-stat-value {

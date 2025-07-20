@@ -1,4 +1,3 @@
-import type { PresetItem } from "@/shared/preset";
 import PopupFocusManager from "@/utils/popup-focus";
 import PresetPopup from "./presets-popup.svelte";
 
@@ -200,7 +199,7 @@ export class PresetManager {
     return savedPosition || { x: 100, y: 100 };
   }
 
-  private handleUsePreset(preset: PresetItem) {
+  private handleUsePreset(preset: any) {
     // NO cerrar el popup de presets - mantenerlo abierto para reutilización
     const event = new CustomEvent("crow-nest-use-preset", {
       detail: preset,
@@ -250,6 +249,12 @@ export class PresetManager {
       | "patrolEffect"
       | "situationalModifier"
   ) {
+    // Validar que el item sea válido antes de proceder
+    if (!item || typeof item !== 'object' || !item.name || item.name === '' || item.name === 'undefined') {
+      console.warn('PresetManager: Invalid item for preset update:', item);
+      return false;
+    }
+
     // Si el popup está abierto, actualizar el preset correspondiente
     if (this.activePopup) {
       const updated = this.activePopup.updatePresetFromItem(item, type);
@@ -290,7 +295,7 @@ export class PresetManager {
       | "situationalModifier"
   ) {
     // Importar el store de presets dinámicamente
-    const { presetsStore, persistPresets } = await import("@/stores/presets");
+    const { presetsStore } = await import("@/stores/presets");
 
     // Obtener los presets actuales
     let currentPresets: any = null;
@@ -344,9 +349,6 @@ export class PresetManager {
 
       // Actualizar el store
       presetsStore.update((presets) => ({ ...presets }));
-
-      // IMPORTANTE: Persistir los cambios para que se sincronicen
-      await persistPresets(currentPresets);
 
       // Emitir evento de actualización
       this.emitEvent('presetUpdated', { preset: existingPreset, originalItem: item });

@@ -165,13 +165,24 @@ export async function toggleReputationActive(
 export async function togglePatrolEffectActive(
   effectId: string
 ): Promise<void> {
+  console.log("[Presets] togglePatrolEffectActive called with effectId:", effectId);
   const current = get(presetsStore);
+  
+  // Find the current patrol effect to see its current state
+  const currentEffect = current.patrolEffects.find(e => e.id === effectId);
+  console.log("[Presets] Current patrol effect state:", currentEffect ? { id: currentEffect.id, name: currentEffect.name, active: currentEffect.active } : 'NOT FOUND');
+  
   const updated = {
     ...current,
     patrolEffects: current.patrolEffects.map((e) =>
       e.id === effectId ? { ...e, active: !e.active } : e
     ),
   };
+  
+  // Find the updated patrol effect to confirm the change
+  const updatedEffect = updated.patrolEffects.find(e => e.id === effectId);
+  console.log("[Presets] Updated patrol effect state:", updatedEffect ? { id: updatedEffect.id, name: updatedEffect.name, active: updatedEffect.active } : 'NOT FOUND');
+  
   presetsStore.set(updated); // Actualizar store inmediatamente
   await persistPresets(updated);
 }
@@ -405,10 +416,12 @@ export async function deleteSituationalModifierPreset(
 // Persistence and synchronization functions
 async function persistPresets(presets: PresetCollection): Promise<void> {
   try {
-    console.log(
-      "[Presets] persistPresets called with situational modifiers:",
-      presets.situationalModifiers.map((m) => ({ id: m.id, name: m.name }))
-    );
+    console.log("[Presets] persistPresets called with:");
+    console.log("  - Patrol Effects:", presets.patrolEffects.map((p) => ({ id: p.id, name: p.name, active: p.active })));
+    console.log("  - Situational Modifiers:", presets.situationalModifiers.map((m) => ({ id: m.id, name: m.name, active: m.active })));
+    console.log("  - Resources:", presets.resources.map((r) => ({ id: r.id, name: r.name, active: r.active })));
+    console.log("  - Reputations:", presets.reputations.map((rep) => ({ id: rep.id, name: rep.name, active: rep.active })));
+    
     const game = (globalThis as any).game;
     if (!game || !game.settings) {
       console.warn(

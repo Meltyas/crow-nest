@@ -26,8 +26,7 @@
   const destroy$ = new Subject<void>();
   const componentId = `unified-situational-modifiers-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Suscripción al store para reactividad completa
-  let currentPresets = $presetsStore;
+  // SyncManager for bidirectional synchronization
   let syncManager: SyncManager;
 
   // Local state - siguiendo el patrón de resources-section.svelte
@@ -42,14 +41,14 @@
 
   // Variables reactivas basadas en el store actualizado - con ordenamiento personalizado
   $: activeSituationalModifiers = (groupId
-    ? currentPresets.situationalModifiers.filter(m => m.groupId === groupId && m.active)
-    : currentPresets.situationalModifiers.filter(m => !m.groupId && m.active))
+    ? $presetsStore.situationalModifiers.filter(m => m.groupId === groupId && m.active)
+    : $presetsStore.situationalModifiers.filter(m => !m.groupId && m.active))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // Para presets: todos los disponibles para seleccionar - ordenados por presetOrder
   $: availablePresets = (groupId
-    ? currentPresets.situationalModifiers.filter(m => m.groupId === groupId)
-    : currentPresets.situationalModifiers.filter(m => !m.groupId))
+    ? $presetsStore.situationalModifiers.filter(m => m.groupId === groupId)
+    : $presetsStore.situationalModifiers.filter(m => !m.groupId))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
@@ -79,17 +78,16 @@
       tap(presets => console.log('UnifiedSituationalModifiers - Store updated for groupId:', groupId, !!presets)),
       takeUntil(destroy$)
     ).subscribe(storePresets => {
-      if (storePresets && storePresets !== currentPresets) {
-        currentPresets = storePresets;
-      }
+      // Store updates are now handled automatically by Svelte's reactivity
+      // No need to manually update currentPresets
     });
 
     // Secondary stream: Remote sync updates (for bidirectional sync)
     syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
       console.log('UnifiedSituationalModifiers - Sync update for groupId:', groupId, !!syncPresets);
-      if (syncPresets && syncPresets !== currentPresets) {
+      if (syncPresets && syncPresets !== $presetsStore) {
         console.log('UnifiedSituationalModifiers - Applying sync presets for groupId:', groupId);
-        currentPresets = syncPresets;
+        presetsStore.set(syncPresets);
       }
     });
 
@@ -268,7 +266,27 @@
 
   async function toggleSituationalModifierActiveState(data: { id: string, active: boolean }) {
     console.log('UnifiedSituationalModifiers - toggleSituationalModifierActiveState called with:', data);
+    console.log('UnifiedSituationalModifiers - Current context:', { inPresetManager, groupId, displayCount: displaySituationalModifiers.length });
+    
+    // Show current state before toggle
+    const currentModifier = displaySituationalModifiers.find(m => m.id === data.id);
+    console.log('UnifiedSituationalModifiers - Modifier found in display list:', currentModifier ? { id: currentModifier.id, name: currentModifier.name, active: currentModifier.active } : 'NOT FOUND');
+    
     await toggleSituationalModifierActive(data.id);
+    
+    console.log('UnifiedSituationalModifiers - After toggle - displayCount:', displaySituationalModifiers.length);
+    console.log('UnifiedSituationalModifiers - After toggle - activeCount:', activeSituationalModifiers.length);
+    console.log('UnifiedSituationalModifiers - After toggle - availableCount:', availablePresets.length);
+    
+    // Show all modifiers and their states after toggle
+    const filteredModifiers = $presetsStore.situationalModifiers
+      .filter(m => groupId ? m.groupId === groupId : !m.groupId)
+      .map(m => ({ id: m.id, name: m.name, active: m.active }));
+    
+    console.log('UnifiedSituationalModifiers - All modifiers after toggle:', filteredModifiers);
+    console.log('UnifiedSituationalModifiers - Summary: Active =', filteredModifiers.filter(m => m.active).map(m => m.name), 
+                'Inactive =', filteredModifiers.filter(m => !m.active).map(m => m.name));
+    
     dispatch('updateSituationalModifier'); // Notify parent component if needed
   }
 
@@ -278,7 +296,7 @@
 
   async function reorderSituationalModifiers(dragIndex: number, dropIndex: number) {
     // Create a copy of the current situational modifiers to modify
-    const updatedSituationalModifiers = [...currentPresets.situationalModifiers];
+    const updatedSituationalModifiers = [...$presetsStore.situationalModifiers];
 
     // Get the items being reordered - only using presetOrder since guardOrder was removed
     const draggedItem = displaySituationalModifiers[dragIndex];
@@ -314,7 +332,7 @@
 
     // Update the store
     presetsStore.set({
-      ...currentPresets,
+      ...$presetsStore,
       situationalModifiers: updatedSituationalModifiers
     });
 

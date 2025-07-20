@@ -130,9 +130,6 @@
       case 'reputation':
         applyReputationPreset(preset);
         break;
-      case 'patrolEffect':
-        applyPatrolEffectPreset(preset);
-        break;
       case 'situationalModifier':
         // Situational modifiers are now handled by the unified system
         console.log('Guard - Situational modifier preset applied via unified system:', preset.data.name);
@@ -225,24 +222,6 @@
 
     reputation = [...reputation, newReputation];
     handlers.handleUpdateReputation();
-  }
-
-  function applyPatrolEffectPreset(preset: any) {
-    // Activar modo de aplicación de modificador temporal
-    const event = new CustomEvent('crow-nest-apply-patrol-effect', {
-      detail: {
-        presetId: preset.data.sourceId || preset.id, // Use sourceId for consistency, fallback to id
-        name: preset.data.name,
-        description: preset.data.description || '',
-        statEffects: preset.data.statEffects,
-        sourceId: preset.data.sourceId // Also pass sourceId directly
-      }
-    });
-
-    window.dispatchEvent(event);
-
-    // Mostrar notificación para indicar que haga clic en un grupo
-    ui.notifications?.info(`Modificador temporal "${preset.data.name}" listo. Haz clic en un grupo para aplicarlo.`);
   }
 
   function onDragStart(event: MouseEvent) {

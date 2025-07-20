@@ -1005,14 +1005,20 @@
   // Function to create preset from existing item
   async function createPresetFromItem(item: any, type: 'resource' | 'reputation' | 'patrolEffect' | 'situationalModifier') {
     console.log('Creating preset from item:', item, 'Type:', type);
-    console.log('Item sourceId:', item.sourceId);
-    console.log('Item key:', item.key);
-    console.log('Item name:', item.name);
-    console.log('Item statEffects:', item.statEffects);
+    console.log('Item sourceId:', item?.sourceId);
+    console.log('Item key:', item?.key);
+    console.log('Item name:', item?.name);
+    console.log('Item statEffects:', item?.statEffects);
 
     // Validar que el item tenga la estructura correcta
     if (!item || typeof item !== 'object') {
       console.warn('Invalid item for preset creation:', item);
+      return;
+    }
+
+    // Validar que el item tenga propiedades básicas requeridas
+    if (!item.name || item.name === '' || item.name === 'undefined') {
+      console.warn('Invalid item name for preset creation:', item.name);
       return;
     }
 
@@ -1181,6 +1187,12 @@
     // Validar que el item tenga la estructura correcta
     if (!item || typeof item !== 'object') {
       console.warn('Invalid item for preset update:', item);
+      return false;
+    }
+
+    // Validar que el item tenga propiedades básicas requeridas
+    if (!item.name || item.name === '' || item.name === 'undefined') {
+      console.warn('Invalid item name for preset update:', item.name);
       return false;
     }
 

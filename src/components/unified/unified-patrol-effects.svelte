@@ -25,8 +25,7 @@
   const destroy$ = new Subject<void>();
   const componentId = `unified-patrol-effects-${groupId || 'global'}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Suscripción al store para reactividad completa
-  let currentPresets = $presetsStore;
+  // SyncManager for bidirectional synchronization
   let syncManager: SyncManager;
 
   // Local state - siguiendo el patrón de resources-section.svelte
@@ -41,14 +40,14 @@
 
   // Variables reactivas basadas en el store actualizado - con ordenamiento personalizado
   $: activePatrolEffects = (groupId
-    ? currentPresets.patrolEffects.filter(e => e.groupId === groupId && e.active)
-    : currentPresets.patrolEffects.filter(e => !e.groupId && e.active))
+    ? $presetsStore.patrolEffects.filter(e => e.groupId === groupId && e.active)
+    : $presetsStore.patrolEffects.filter(e => !e.groupId && e.active))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // Para presets: todos los disponibles para seleccionar - ordenados por presetOrder
   $: availablePresets = (groupId
-    ? currentPresets.patrolEffects.filter(e => e.groupId === groupId)
-    : currentPresets.patrolEffects.filter(e => !e.groupId))
+    ? $presetsStore.patrolEffects.filter(e => e.groupId === groupId)
+    : $presetsStore.patrolEffects.filter(e => !e.groupId))
     .sort((a, b) => (a.presetOrder ?? 999) - (b.presetOrder ?? 999));
 
   // En preset manager, mostrar todos los presets; en guard, solo los activos
@@ -78,17 +77,16 @@
       tap(presets => console.log('UnifiedPatrolEffects - Store updated for groupId:', groupId, !!presets)),
       takeUntil(destroy$)
     ).subscribe(storePresets => {
-      if (storePresets && storePresets !== currentPresets) {
-        currentPresets = storePresets;
-      }
+      // Store updates are now handled automatically by Svelte's reactivity
+      // No need to manually update currentPresets
     });
 
     // Secondary stream: Remote sync updates (for bidirectional sync)
     syncManager.subscribeToDataType('presets', componentId, (syncPresets) => {
       console.log('UnifiedPatrolEffects - Sync update for groupId:', groupId, !!syncPresets);
-      if (syncPresets && syncPresets !== currentPresets) {
+      if (syncPresets && syncPresets !== $presetsStore) {
         console.log('UnifiedPatrolEffects - Applying sync presets for groupId:', groupId);
-        currentPresets = syncPresets;
+        presetsStore.set(syncPresets);
       }
     });
 
@@ -271,19 +269,41 @@
     dispatch('createPreset', patrolEffect);
   }
 
-  async function togglePatrolEffectActiveState(data: { id: string, active: boolean }) {
-    console.log('UnifiedPatrolEffects - togglePatrolEffectActiveState called with:', data);
-    await togglePatrolEffectActive(data.id);
+  async function togglePatrolEffectActiveState(id: string) {
+    console.log('UnifiedPatrolEffects - togglePatrolEffectActiveState called with id:', id);
+    console.log('UnifiedPatrolEffects - Current context:', { inPresetManager, groupId, displayCount: displayPatrolEffects.length });
+    
+    // Show current state before toggle
+    const currentEffect = displayPatrolEffects.find(e => e.id === id);
+    console.log('UnifiedPatrolEffects - Effect found in display list:', currentEffect ? { id: currentEffect.id, name: currentEffect.name, active: currentEffect.active } : 'NOT FOUND');
+    
+    await togglePatrolEffectActive(id);
+    
+    console.log('UnifiedPatrolEffects - After toggle - displayCount:', displayPatrolEffects.length);
+    console.log('UnifiedPatrolEffects - After toggle - activeCount:', activePatrolEffects.length);
+    console.log('UnifiedPatrolEffects - After toggle - availableCount:', availablePresets.length);
+    
+    // Show all effects and their states after toggle
+    const filteredEffects = $presetsStore.patrolEffects
+      .filter(e => groupId ? e.groupId === groupId : !e.groupId)
+      .map(e => ({ id: e.id, name: e.name, active: e.active }));
+    
+    console.log('UnifiedPatrolEffects - All effects after toggle:', filteredEffects);
+    console.log('UnifiedPatrolEffects - Summary: Active =', filteredEffects.filter(e => e.active).map(e => e.name), 
+                'Inactive =', filteredEffects.filter(e => !e.active).map(e => e.name));
+    
     dispatch('updatePatrolEffect'); // Notify parent component if needed
   }
 
-  function removePatrolEffectPreset(id: string) {
-    dispatch('removePreset', id);
+  async function removePatrolEffectPreset(id: string) {
+    console.log('UnifiedPatrolEffects - removePatrolEffectPreset called with:', id);
+    await deletePatrolEffectPreset(id);
+    dispatch('updatePatrolEffect'); // Notify parent component if needed
   }
 
   async function reorderPatrolEffects(dragIndex: number, dropIndex: number) {
     // Create a copy of the current patrol effects to modify
-    const updatedPatrolEffects = [...currentPresets.patrolEffects];
+    const updatedPatrolEffects = [...$presetsStore.patrolEffects];
 
     // Get the items being reordered - only using presetOrder since guardOrder was removed
     const draggedItem = displayPatrolEffects[dragIndex];
@@ -319,7 +339,7 @@
 
     // Update the store
     presetsStore.set({
-      ...currentPresets,
+      ...$presetsStore,
       patrolEffects: updatedPatrolEffects
     });
 
